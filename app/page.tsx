@@ -3,6 +3,7 @@
 import { useTheme } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { Play } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   const { setTheme, theme } = useTheme();
@@ -40,8 +41,8 @@ export default function Home() {
           <button
             onClick={() => setTheme("daybreak")}
             className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all hover:scale-105 ${theme === "daybreak"
-                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
+              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+              : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
               }`}
           >
             <div className="h-4 w-4 rounded-full bg-[#f59e0b]" />
@@ -50,8 +51,8 @@ export default function Home() {
           <button
             onClick={() => setTheme("midnight")}
             className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all hover:scale-105 ${theme === "midnight"
-                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
+              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+              : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
               }`}
           >
             <div className="h-4 w-4 rounded-full bg-[#2dd4bf]" />
@@ -60,8 +61,8 @@ export default function Home() {
           <button
             onClick={() => setTheme("paperback")}
             className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all hover:scale-105 ${theme === "paperback"
-                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
+              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+              : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
               }`}
           >
             <div className="h-4 w-4 rounded-full bg-[#d97706]" />
@@ -70,12 +71,14 @@ export default function Home() {
         </div>
 
         {/* Call to Action */}
-        <button className="group relative overflow-hidden rounded-full bg-foreground px-8 py-3 text-background transition-all hover:scale-105 hover:shadow-lg">
-          <span className="relative z-10 flex items-center gap-2 font-medium">
-            Begin Journey <Play className="h-4 w-4 fill-current" />
-          </span>
-          <div className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-500 group-hover:translate-x-0" />
-        </button>
+        <Link href="/onboarding">
+          <button className="group relative overflow-hidden rounded-full bg-foreground px-8 py-3 text-background transition-all hover:scale-105 hover:shadow-lg cursor-pointer">
+            <span className="relative z-10 flex items-center gap-2 font-medium">
+              Begin Journey <Play className="h-4 w-4 fill-current" />
+            </span>
+            <div className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-500 group-hover:translate-x-0" />
+          </button>
+        </Link>
       </motion.div>
     </main>
   );
