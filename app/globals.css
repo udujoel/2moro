@@ -1,21 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  /* Daybreak Theme (Default) - Now "Vibrant Blue" */
-  --background: #0047AB;
-  /* Deep Royal Blue */
-  --foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #0047AB;
-  --card: #003380;
-  /* Slightly darker/richer blue for depth */
-  --card-foreground: #ffffff;
-  --accent: #FF6B6B;
-  /* Coral Red for accents */
-  --border: #3375E0;
-  --muted: #003380;
-  --muted-foreground: #bfdbfe;
-  /* Light blue text */
+  /* Soft Theme (Default) */
+  --background: #FDF8F5;
+  /* Cream / Soft Beige */
+  --foreground: #2D2A26;
+  /* Soft Charcoal */
+  --primary: #8DA399;
+  /* Soft Sage Green */
+  --primary-foreground: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #2D2A26;
+  --accent: #E07A5F;
+  /* Muted Coral */
+  --border: #E5E0DC;
+  /* Soft Taupe */
+  --muted: #F2EBE6;
+  --muted-foreground: #8C8885;
+  --radius: 2rem;
+  /* Soft rounded corners */
 }
 
 [data-theme="midnight"] {

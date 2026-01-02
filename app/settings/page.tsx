@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -27,8 +28,7 @@ export default function SettingsPage() {
                         </div>
                     </Link>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">Hello, Architect</span>
-                        <div className="w-8 h-8 rounded-full bg-primary/20" />
+                        <ProfileDropdown />
                     </div>
                 </header>
 
