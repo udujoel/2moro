@@ -12,10 +12,11 @@
 [data-theme="midnight"] {
   /* Midnight Theme */
   --background: #000000;
-  --foreground: #ededed;
-  --primary: #2dd4bf;
-  --card: #171717;
-  --card-foreground: #ededed;
+  --foreground: #f8fafc;
+  --primary: #22d3ee;
+  /* Neon Cyan */
+  --card: #09090b;
+  --card-foreground: #f8fafc;
 }
 
 [data-theme="paperback"] {

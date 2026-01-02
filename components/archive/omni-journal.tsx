@@ -94,13 +94,15 @@ export function OmniJournal({ onNewEntry }: OmniJournalProps) {
                 )}
             </AnimatePresence>
 
-            <button
+            <motion.button
                 onClick={toggleOpen}
-                className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all ${isOpen ? "bg-muted text-foreground rotate-45" : "bg-foreground text-background"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-colors ${isOpen ? "bg-muted text-foreground rotate-45" : "bg-foreground text-background"
                     }`}
             >
                 <Plus className="w-6 h-6" />
-            </button>
+            </motion.button>
         </div>
     );
 }

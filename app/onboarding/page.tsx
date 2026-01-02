@@ -4,11 +4,12 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icebreaker } from "@/components/onboarding/icebreaker";
 import { PersonalityQuiz } from "@/components/onboarding/personality-quiz";
+import { BaselineSelector } from "@/components/onboarding/baseline-selector";
 import { OnboardingSummary } from "@/components/onboarding/summary";
 import { Play } from "lucide-react";
 import Link from "next/link";
 
-export type OnboardingStep = "welcome" | "icebreaker" | "quiz" | "summary";
+export type OnboardingStep = "welcome" | "icebreaker" | "quiz" | "baseline" | "summary";
 
 export default function OnboardingPage() {
     const [step, setStep] = useState<OnboardingStep>("welcome");
@@ -20,6 +21,11 @@ export default function OnboardingPage() {
     };
 
     const handleQuizComplete = (data: any) => {
+        setUserProfile((prev: any) => ({ ...prev, ...data }));
+        setStep("baseline");
+    };
+
+    const handleBaselineComplete = (data: any) => {
         setUserProfile((prev: any) => ({ ...prev, ...data }));
         setStep("summary");
     };
@@ -63,6 +69,10 @@ export default function OnboardingPage() {
 
                 {step === "quiz" && (
                     <PersonalityQuiz key="quiz" onComplete={handleQuizComplete} />
+                )}
+
+                {step === "baseline" && (
+                    <BaselineSelector key="baseline" onComplete={handleBaselineComplete} />
                 )}
 
                 {step === "summary" && (

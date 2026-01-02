@@ -32,7 +32,7 @@ export default function DashboardPage() {
 
                 <main className="flex-1 p-6 space-y-8 overflow-y-auto">
                     <div>
-                        <h1 className="text-3xl font-bold">The Compass</h1>
+                        <h1 className="text-3xl font-bold">Compass</h1>
                         <p className="text-muted-foreground">Navigate your daily actions to shape your future.</p>
                     </div>
 

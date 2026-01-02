@@ -36,7 +36,7 @@ export default function ArchivePage() {
 
                 <main className="flex-1 p-0 md:p-6 overflow-hidden flex flex-col relative">
                     <div className="p-6 md:p-0">
-                        <h1 className="text-3xl font-bold">The Archive</h1>
+                        <h1 className="text-3xl font-bold">Archive</h1>
                         <p className="text-muted-foreground">Your living autobiography.</p>
                     </div>
 

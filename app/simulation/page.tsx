@@ -29,7 +29,7 @@ export default function SimulationPage() {
 
                 <main className="flex-1 p-6 space-y-6 overflow-hidden flex flex-col">
                     <div>
-                        <h1 className="text-3xl font-bold">The Oracle</h1>
+                        <h1 className="text-3xl font-bold">Oracle</h1>
                         <p className="text-muted-foreground">Consult your future self.</p>
                     </div>
 

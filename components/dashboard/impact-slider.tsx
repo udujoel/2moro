@@ -8,7 +8,7 @@ export function ImpactSlider() {
     const [value, setValue] = useState(50);
 
     // Predict future based on slider value (mock logic)
-    const predictedBalance = 5000 + (value * 1000); // 5000 to 105000
+    const predictedBalance = 5000 + (value * 200); // 5000 to ~25000 (roughly 20k gain at max)
     const predictedHealth = 50 + (value * 0.4); // 50 to 90
 
     return (
@@ -64,8 +64,8 @@ export function ImpactSlider() {
                 <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-xl">
                     <p className="text-sm italic text-foreground/80">
                         {value < 30 && "\"In 5 years, you will likely be in the same financial spot.\""}
-                        {value >= 30 && value < 70 && "\"Small steps. You're maintaining, but not compounding.\""}
-                        {value >= 70 && "\"In 5 years, the compound effect will have transformed your life.\""}
+                        {value >= 30 && value < 70 && "\"You are treading water. To build wealth, you must increase intensity.\""}
+                        {value >= 70 && "\"In 5 years, you will have saved over $20k. The compound effect works.\""}
                     </p>
                 </div>
             </div>

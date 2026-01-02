@@ -37,7 +37,7 @@ export function SocraticChat() {
             const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: "That is an interesting desire. Does this align with the peace we wanted in our 40s? Or is it a fleeting impulse?" // Fixed response for demo
+                content: "Is this purchase for the person you are today, or the person you are becoming? How does this choice compound over the next decade?"
             };
             setMessages(prev => [...prev, aiMsg]);
             setIsTyping(false);
@@ -60,8 +60,8 @@ export function SocraticChat() {
                                     {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                                 </div>
                                 <div className={`p-4 rounded-2xl text-sm ${msg.role === "user"
-                                        ? "bg-primary text-primary-foreground rounded-tr-none"
-                                        : "bg-muted text-foreground rounded-tl-none"
+                                    ? "bg-primary text-primary-foreground rounded-tr-none"
+                                    : "bg-muted text-foreground rounded-tl-none"
                                     }`}>
                                     {msg.content}
                                 </div>

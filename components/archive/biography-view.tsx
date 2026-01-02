@@ -1,114 +1,92 @@
 "use client";
 
-import { useState } from "react";
-import { Book, Grid, Clapperboard } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface BiographyViewProps {
     entries: any[];
 }
 
+const COLORS = [
+    "bg-yellow-100 text-yellow-900 border-yellow-200",
+    "bg-red-100 text-red-900 border-red-200",
+    "bg-blue-100 text-blue-900 border-blue-200",
+    "bg-green-100 text-green-900 border-green-200",
+    "bg-purple-100 text-purple-900 border-purple-200",
+];
+
+const ROTATIONS = [
+    "rotate-1", "-rotate-2", "rotate-2", "-rotate-1", "rotate-0"
+];
+
 export function BiographyView({ entries }: BiographyViewProps) {
-    const [viewMode, setViewMode] = useState<"text" | "graphic" | "cinema">("text");
-
-    const groupedEntries = entries.reduce((acc: any, entry) => {
-        const chapter = entry.chapter || "Unfiled";
-        if (!acc[chapter]) acc[chapter] = [];
-        acc[chapter].push(entry);
-        return acc;
-    }, {});
-
     return (
-        <div className="flex flex-col h-full bg-card/50 rounded-t-3xl border-t border-x border-border shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-border bg-card">
-                <div className="flex gap-2 bg-muted p-1 rounded-lg">
-                    <button
-                        onClick={() => setViewMode("text")}
-                        className={`p-2 rounded-md transition-all ${viewMode === "text" ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
-                        title="Book Mode"
-                    >
-                        <Book className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => setViewMode("graphic")}
-                        className={`p-2 rounded-md transition-all ${viewMode === "graphic" ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
-                        title="Graphic Novel Mode"
-                    >
-                        <Grid className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={() => setViewMode("cinema")}
-                        className={`p-2 rounded-md transition-all ${viewMode === "cinema" ? "bg-background shadow-sm" : "hover:bg-background/50"}`}
-                        title="Cinema Mode"
-                    >
-                        <Clapperboard className="w-4 h-4" />
-                    </button>
-                </div>
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                    {Object.keys(groupedEntries).length} Chapters
-                </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8 font-serif">
-                {viewMode === "text" && (
-                    <div className="max-w-prose mx-auto space-y-12">
-                        {Object.entries(groupedEntries).map(([chapter, items]: [string, any]) => (
-                            <div key={chapter}>
-                                <h2 className="text-2xl font-bold mb-6 text-center border-b pb-4 border-border/50">{chapter}</h2>
-                                <div className="space-y-6">
-                                    {items.map((item: any) => (
-                                        <div key={item.id} className="leading-relaxed text-lg">
-                                            {item.type === "image" ? (
-                                                <figure className="my-6">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={item.content} alt="Memory" className="w-full rounded-sm grayscale hover:grayscale-0 transition-all duration-500" />
-                                                    <figcaption className="text-center text-sm italic text-muted-foreground mt-2">{item.caption}</figcaption>
-                                                </figure>
-                                            ) : (
-                                                <p>
-                                                    <span className="font-sans text-xs text-muted-foreground mr-2 uppercase tracking-wide float-left mt-1">{item.date}</span>
-                                                    {item.content}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-min pb-24">
+                {/* Intro Card */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-6 rounded-3xl bg-card border border-border shadow-sm flex flex-col justify-between aspect-square md:col-span-2 relative overflow-hidden group"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div>
+                        <h2 className="text-2xl font-bold mb-2">Cultivate Memory</h2>
+                        <p className="text-muted-foreground leading-relaxed">
+                            Your past is a living library. Capture moments to understand your journey.
+                        </p>
+                    </div>
+                    <div className="flex -space-x-2">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-muted" />
                         ))}
                     </div>
-                )}
+                </motion.div>
 
-                {viewMode === "graphic" && (
-                    <div className="max-w-4xl mx-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {entries.map((item) => (
-                                <div key={item.id} className="border-4 border-foreground bg-card p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:-translate-y-1 transition-transform">
-                                    {item.type === "image" ? (
-                                        <div className="h-48 overflow-hidden mb-2 border-b-2 border-foreground">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={item.content} alt="Panel" className="w-full h-full object-cover contrast-125" />
-                                        </div>
-                                    ) : (
-                                        <div className="h-48 flex items-center justify-center p-4 bg-yellow-50 dark:bg-yellow-900/20 mb-2 border-b-2 border-foreground">
-                                            <p className="font-comic text-sm font-bold text-center leading-tight">{item.content}</p>
-                                        </div>
-                                    )}
-                                    <div className="text-xs font-bold uppercase tracking-widest text-right">{item.date}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                {entries.map((entry, index) => {
+                    const colorClass = COLORS[index % COLORS.length];
+                    const rotationClass = ROTATIONS[index % ROTATIONS.length];
+                    const isLarge = index % 5 === 0 && index !== 0;
 
-                {viewMode === "cinema" && (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                        <Clapperboard className="w-16 h-16 mb-4 opacity-20" />
-                        <p>Nanobanana Slideshow Engine</p>
-                        <p className="text-sm">Generates a movie from your 2025 memories...</p>
-                        <button className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-full text-sm font-bold">
-                            Play "2025: The Year of Change"
-                        </button>
-                    </div>
-                )}
+                    return (
+                        <motion.div
+                            key={entry.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.1 }}
+                            whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
+                            className={`
+                                p-6 rounded-3xl shadow-sm border flex flex-col justify-between cursor-pointer transition-all duration-300
+                                ${colorClass} 
+                                ${rotationClass}
+                                ${isLarge ? "md:col-span-2 aspect-video" : "aspect-square"}
+                            `}
+                        >
+                            <div className="flex-1 overflow-hidden">
+                                {entry.type === "image" ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={entry.content} alt="Memory" className="w-full h-full object-cover rounded-xl mix-blend-multiply opacity-90" />
+                                ) : (
+                                    <p className={`font-medium ${isLarge ? "text-xl leading-relaxed" : "text-lg leading-snug"}`}>
+                                        "{entry.content}"
+                                    </p>
+                                )}
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-end">
+                                <span className="text-xs font-bold uppercase tracking-wider opacity-60">{entry.chapter?.split(":")[0] || "Entry"}</span>
+                                <span className="text-xs font-mono opacity-50">{entry.date}</span>
+                            </div>
+                        </motion.div>
+                    );
+                })}
+
+                {/* Empty State / Nudge */}
+                <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    className="p-6 rounded-3xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center text-center text-muted-foreground min-h-[200px]"
+                >
+                    <p className="text-sm font-medium mb-2">Add a new entry</p>
+                    <p className="text-xs opacity-50">Capture a thought, photo, or voice note.</p>
+                </motion.div>
             </div>
         </div>
     );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, RefreshCw, Check, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AgePicker } from "./age-picker";
 
 interface IcebreakerProps {
     onComplete: (data: any) => void;
@@ -13,6 +14,7 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
     const [analyzing, setAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState<any>(null);
     const [image, setImage] = useState<string | null>(null);
+    const [confirmedAge, setConfirmedAge] = useState(28);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -27,12 +29,13 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
         setAnalyzing(true);
         // Mock API call
         setTimeout(() => {
+            const mockAge = 28;
             setAnalysis({
-                caption: "You look like someone who enjoys quiet contemplation but loves a chaotic coffee shop. This was taken in your late 20s?",
-                age: 28,
-                occupation: "Designer",
+                caption: "You look like someone who enjoys quiet contemplation but loves a chaotic coffee shop.",
+                age: mockAge,
                 vibe: "Thoughtful Explorer"
             });
+            setConfirmedAge(mockAge);
             setAnalyzing(false);
         }, 2500);
     };
@@ -44,13 +47,13 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
             exit={{ opacity: 0, x: -20 }}
             className="flex flex-col items-center justify-center min-h-screen p-6 max-w-lg mx-auto"
         >
-            <div className="w-full space-y-8">
-                <div className="text-center">
-                    <h2 className="text-3xl font-bold mb-2">The Icebreaker</h2>
-                    <p className="text-muted-foreground">Upload a photo that represents you.</p>
-                </div>
+            {!analysis && !analyzing && (
+                <div className="w-full space-y-8 text-center">
+                    <div>
+                        <h2 className="text-3xl font-bold mb-2">The Icebreaker</h2>
+                        <p className="text-muted-foreground">Upload a photo that represents you.</p>
+                    </div>
 
-                {!image ? (
                     <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-3xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors group relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div className="flex flex-col items-center justify-center pt-5 pb-6 z-10">
@@ -58,59 +61,63 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
                                 <Camera className="w-8 h-8" />
                             </div>
                             <p className="mb-2 text-sm text-gray-500 dark:text-gray-400 font-medium">Click to upload photo</p>
-                            <p className="text-xs text-gray-400">SVG, PNG, JPG (MAX. 5MB)</p>
                         </div>
                         <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
                     </label>
-                ) : (
-                    <div className="relative w-full h-64 rounded-3xl overflow-hidden shadow-2xl">
+                </div>
+            )}
+
+            {(analyzing || (image && !analysis)) && (
+                <div className="flex flex-col items-center justify-center w-full h-64">
+                    <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 border-primary/20 mb-8">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={image} alt="User upload" className="w-full h-full object-cover" />
-                        {analyzing && (
-                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-white">
-                                <RefreshCw className="w-8 h-8 animate-spin mb-2 text-primary" />
-                                <p className="font-medium animate-pulse">Analyzing Vibe...</p>
-                            </div>
-                        )}
+                        <img src={image!} alt="Analyzing" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <RefreshCw className="w-10 h-10 animate-spin text-white" />
+                        </div>
                     </div>
-                )}
+                    <p className="text-lg font-medium animate-pulse text-primary">Analyzing Vibe...</p>
+                </div>
+            )}
 
-                {analysis && !analyzing && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-card border border-border p-6 rounded-2xl shadow-lg space-y-4"
-                    >
-                        <div>
-                            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-1">AI Insight</p>
-                            <p className="text-lg italic font-medium leading-relaxed">"{analysis.caption}"</p>
-                        </div>
+            {analysis && !analyzing && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full flex flex-col items-center"
+                >
+                    {/* Circular Image Cutout */}
+                    <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-2xl border-4 border-background ring-4 ring-primary/20 mb-8 z-10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={image!} alt="User" className="w-full h-full object-cover" />
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-muted p-3 rounded-xl">
-                                <p className="text-xs text-muted-foreground">Estimated Age</p>
-                                <p className="font-bold text-lg">{analysis.age}</p>
+                    <div className="bg-card border border-border rounded-3xl p-8 pt-16 -mt-16 w-full shadow-lg flex flex-col items-center">
+                        <p className="text-lg italic font-medium text-center mb-8 text-muted-foreground">
+                            "{analysis.caption}"
+                        </p>
+
+                        <div className="flex flex-col items-center gap-2 mb-8">
+                            <div className="flex items-center gap-3 text-2xl font-light">
+                                <span>I am</span>
+                                <AgePicker value={confirmedAge} onChange={setConfirmedAge} />
+                                <span>years old.</span>
                             </div>
-                            <div className="bg-muted p-3 rounded-xl">
-                                <p className="text-xs text-muted-foreground">Vibe</p>
-                                <p className="font-bold text-lg">{analysis.vibe}</p>
-                            </div>
                         </div>
 
-                        <div className="pt-4 flex gap-3">
-                            <button className="flex-1 py-3 rounded-xl border border-border font-medium text-sm hover:bg-muted transition-colors">
-                                Retake
-                            </button>
-                            <button
-                                onClick={() => onComplete(analysis)}
-                                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                            >
-                                Confirm <Check className="w-4 h-4" />
-                            </button>
+                        <div className="bg-muted/50 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-muted-foreground mb-8">
+                            Vibe Check: {analysis.vibe}
                         </div>
-                    </motion.div>
-                )}
-            </div>
+
+                        <button
+                            onClick={() => onComplete({ ...analysis, age: confirmedAge })}
+                            className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            Confirm Identity <Check className="w-5 h-5" />
+                        </button>
+                    </div>
+                </motion.div>
+            )}
         </motion.div>
     );
 }
