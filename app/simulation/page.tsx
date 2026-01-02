@@ -6,6 +6,7 @@ import { LifeSlideshow } from "@/components/simulation/life-slideshow";
 import { useState } from "react";
 import { Play } from "lucide-react";
 import Link from "next/link";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 
 export default function SimulationPage() {
     const [activeTab, setActiveTab] = useState<"chat" | "slides">("slides");
@@ -22,8 +23,7 @@ export default function SimulationPage() {
                         </div>
                     </Link>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">Hello, Architect</span>
-                        <div className="w-8 h-8 rounded-full bg-primary/20" />
+                        <ProfileDropdown />
                     </div>
                 </header>
 

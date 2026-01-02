@@ -5,6 +5,7 @@ import { OmniJournal } from "@/components/archive/omni-journal";
 import { BiographyView } from "@/components/archive/biography-view";
 import { Play } from "lucide-react";
 import Link from "next/link";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 import { useState } from "react";
 
 export default function ArchivePage() {
@@ -29,8 +30,7 @@ export default function ArchivePage() {
                         </div>
                     </Link>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">Hello, Architect</span>
-                        <div className="w-8 h-8 rounded-full bg-primary/20" />
+                        <ProfileDropdown />
                     </div>
                 </header>
 
