@@ -14,7 +14,7 @@ export default function DashboardPage() {
 
     return (
         <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
-            <Sidebar className="hidden md:flex w-64 border-r border-border" />
+            <Sidebar className="hidden md:flex border-r border-border" />
 
             <div className="flex-1 flex flex-col">
                 <header className="h-16 border-b border-border flex items-center px-6 justify-between md:justify-end">
