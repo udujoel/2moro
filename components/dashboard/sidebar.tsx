@@ -90,7 +90,8 @@ export function Sidebar({ className }: { className?: string }) {
             </nav>
 
             <div className="pt-6 border-t border-border">
-                <button
+                <Link
+                    href="/settings"
                     className={cn(
                         "flex items-center py-3 rounded-xl font-medium text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors overflow-hidden whitespace-nowrap",
                         isExpanded ? "px-4 justify-start" : "px-0 justify-center"
@@ -105,7 +106,7 @@ export function Sidebar({ className }: { className?: string }) {
                     >
                         Settings
                     </span>
-                </button>
+                </Link>
             </div>
         </aside>
     );

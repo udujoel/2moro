@@ -53,7 +53,10 @@ export function OnboardingSummary({ profile }: OnboardingSummaryProps) {
 
             <Link
                 href="/dashboard"
-                onClick={() => setTheme("daybreak")} // Reset or set default theme for dashboard
+                onClick={() => {
+                    setTheme("daybreak");
+                    localStorage.setItem("onboardingCompleted", "true");
+                }}
                 className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
                 Enter {profile.archetype === "The Architect" ? "The Studio" : "The Compass"}
