@@ -9,6 +9,7 @@ import { OnboardingSummary } from "@/components/onboarding/summary";
 import { Play, Check, Circle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/components/user-provider";
 
 export type OnboardingStep = "welcome" | "icebreaker" | "quiz" | "baseline" | "summary";
 
@@ -24,18 +25,21 @@ export default function OnboardingPage() {
     const [step, setStep] = useState<OnboardingStep>("welcome");
     const [userProfile, setUserProfile] = useState<any>({});
     const [mounted, setMounted] = useState(false);
+    const { completeOnboarding, updateProfileImage, onboardingCompleted } = useUser();
     const router = useRouter();
 
     useEffect(() => {
         setMounted(true);
-        const isCompleted = localStorage.getItem("onboardingCompleted");
-        if (isCompleted) {
+        if (onboardingCompleted) {
             router.push("/dashboard");
         }
-    }, [router]);
+    }, [onboardingCompleted, router]);
 
     const handleIcebreakerComplete = (data: any) => {
         setUserProfile((prev: any) => ({ ...prev, ...data }));
+        if (data.image) {
+            updateProfileImage(data.image);
+        }
         setStep("quiz");
     };
 

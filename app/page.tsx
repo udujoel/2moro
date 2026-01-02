@@ -4,9 +4,20 @@ import { useTheme } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { Play } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useUser } from "@/components/user-provider";
+import { useEffect } from "react";
 
 export default function Home() {
   const { setTheme, theme } = useTheme();
+  const { onboardingCompleted } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (onboardingCompleted) {
+      router.push("/dashboard");
+    }
+  }, [onboardingCompleted, router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 text-center transition-colors duration-300">

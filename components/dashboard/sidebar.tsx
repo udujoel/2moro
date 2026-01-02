@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useRef } from "react";
 import { Compass, Radio, BookOpen, Settings, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/components/user-provider";
 
 const NAV_ITEMS = [
     { label: "Compass", icon: Compass, href: "/dashboard" },
@@ -16,6 +17,7 @@ export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const [isExpanded, setIsExpanded] = useState(false);
     const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
+    const { profileImage } = useUser();
 
     const handleMouseEnter = () => {
         hoverTimeout.current = setTimeout(() => {
@@ -89,24 +91,54 @@ export function Sidebar({ className }: { className?: string }) {
                 ))}
             </nav>
 
-            <div className="pt-6 border-t border-border">
-                <Link
-                    href="/settings"
-                    className={cn(
-                        "flex items-center py-3 rounded-xl font-medium text-muted-foreground hover:bg-muted hover:text-foreground w-full transition-colors overflow-hidden whitespace-nowrap",
-                        isExpanded ? "px-4 justify-start" : "px-0 justify-center"
-                    )}
-                >
-                    <Settings className="w-5 h-5 shrink-0" />
-                    <span
-                        className={cn(
-                            "whitespace-nowrap overflow-hidden transition-all",
-                            isExpanded ? "w-auto opacity-100 ml-3 duration-300" : "w-0 opacity-0 ml-0 duration-1000"
-                        )}
-                    >
-                        Settings
-                    </span>
-                </Link>
+            <div className="pt-6 border-t border-border mt-auto relative">
+                {isExpanded ? (
+                    <div className="relative group">
+                        <button
+                            onClick={() => setIsExpanded(true)} // Keep sidebar open
+                            className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-muted transition-colors text-left"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border">
+                                {profileImage ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={profileImage} alt="User" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-primary font-bold">A</div>
+                                )}
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <p className="font-medium text-sm truncate">The Architect</p>
+                                <p className="text-xs text-muted-foreground truncate">View Profile</p>
+                            </div>
+                        </button>
+
+                        {/* Hover Dropdown (Simple implementation) */}
+                        <div className="absolute bottom-full left-0 w-full mb-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all translate-y-2 group-hover:translate-y-0">
+                            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-muted text-sm cursor-pointer">
+                                <Settings className="w-4 h-4" />
+                                Settings
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex justify-center group relative">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border cursor-pointer">
+                            {profileImage ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={profileImage} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-primary font-bold">A</div>
+                            )}
+                        </div>
+                        {/* Tooltip-style dropdown for collapsed state */}
+                        <div className="absolute left-full bottom-0 ml-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-muted text-sm cursor-pointer">
+                                <Settings className="w-4 h-4" />
+                                Settings
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </div>
         </aside>
     );

@@ -110,7 +110,7 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
                         </div>
 
                         <button
-                            onClick={() => onComplete({ ...analysis, age: confirmedAge })}
+                            onClick={() => onComplete({ ...analysis, age: confirmedAge, image })}
                             className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
                             Confirm Identity <Check className="w-5 h-5" />
