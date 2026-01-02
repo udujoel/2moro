@@ -54,10 +54,10 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
                         <p className="text-muted-foreground">Upload a photo that represents you.</p>
                     </div>
 
-                    <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-3xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors group relative overflow-hidden">
+                    <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border rounded-3xl cursor-pointer hover:bg-card/30 transition-colors group relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <div className="flex flex-col items-center justify-center pt-5 pb-6 z-10">
-                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:scale-110 transition-transform">
+                            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 text-primary group-hover:scale-110 transition-transform">
                                 <Camera className="w-8 h-8" />
                             </div>
                             <p className="mb-2 text-sm text-gray-500 dark:text-gray-400 font-medium">Click to upload photo</p>

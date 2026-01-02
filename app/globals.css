@@ -1,31 +1,50 @@
 @import "tailwindcss";
 
 :root {
-  /* Daybreak Theme (Default) */
-  --background: #F9FAFB;
-  --foreground: #1e293b;
-  --primary: #f59e0b;
-  --card: #ffffff;
-  --card-foreground: #1e293b;
+  /* Daybreak Theme (Default) - Now "Vibrant Blue" */
+  --background: #0047AB;
+  /* Deep Royal Blue */
+  --foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #0047AB;
+  --card: #003380;
+  /* Slightly darker/richer blue for depth */
+  --card-foreground: #ffffff;
+  --accent: #FF6B6B;
+  /* Coral Red for accents */
+  --border: #3375E0;
+  --muted: #003380;
+  --muted-foreground: #bfdbfe;
+  /* Light blue text */
 }
 
 [data-theme="midnight"] {
-  /* Midnight Theme */
-  --background: #000000;
-  --foreground: #f8fafc;
+  /* Midnight / Deep Space variant */
+  --background: #020617;
+  --foreground: #ffffff;
   --primary: #22d3ee;
-  /* Neon Cyan */
-  --card: #09090b;
-  --card-foreground: #f8fafc;
+  --primary-foreground: #000000;
+  --card: #0f172a;
+  --card-foreground: #e2e8f0;
+  --accent: #f472b6;
+  --border: #1e293b;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
 }
 
 [data-theme="paperback"] {
-  /* Paperback Theme */
-  --background: #FDFBF7;
-  --foreground: #431407;
-  --primary: #d97706;
-  --card: #f5f5f4;
-  --card-foreground: #431407;
+  /* Clean White/Blue variant (Reverse) */
+  --background: #ffffff;
+  --foreground: #0047AB;
+  --primary: #0047AB;
+  --primary-foreground: #ffffff;
+  --card: #f0fdf4;
+  /* Very subtle tint */
+  --card-foreground: #0047AB;
+  --accent: #FF6B6B;
+  --border: #e5e7eb;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
 }
 
 @theme inline {
