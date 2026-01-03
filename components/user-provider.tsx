@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getOrCreateUser, updateUser } from "@/lib/actions";
+import { loginAction } from "@/app/actions/auth";
 
 interface User {
     id: string; // Add ID for DB operations
@@ -43,14 +44,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         const initUser = async () => {
             const storedEmail = localStorage.getItem("userEmail");
+            console.log("Debug: Checking stored user", storedEmail);
 
             if (storedEmail) {
-                // Refresh data
-                const userData = await getOrCreateUser(storedEmail, "User"); // Name is fallback
-                if (userData) setUser(userData);
+                // Check if we effectively have the right user in Dev
+                if (process.env.NODE_ENV === "development" && storedEmail !== "tim@2moro.app") {
+                    console.log("Debug: Stored user mismatch in Dev. Switching to Tim.");
+                    await login("Tim Watson", "tim@2moro.app");
+                    return;
+                }
+
+                // Refresh session (set cookie) and data
+                const userData = await loginAction(storedEmail, "User");
+                console.log("Debug: Fetched user from DB", userData);
+                if (userData) {
+                    setUser(userData as User);
+                    // Force redirect if on public pages
+                    if (window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname === "/onboarding") {
+                        router.push("/dashboard");
+                    }
+                }
             } else if (process.env.NODE_ENV === "development") {
+                console.log("Debug: Dev mode auto-login for Tim Watson");
                 // Auto-login Tim
                 await login("Tim Watson", "tim@2moro.app");
+                // Force redirect after auto-login initiation
+                if (window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname === "/onboarding") {
+                    router.push("/dashboard");
+                }
             }
         };
 
@@ -59,12 +80,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (name: string = "Tim Watson", email: string = "tim@2moro.app") => {
         // Call Server Action
-        const dbUser = await getOrCreateUser(email, name);
+        const dbUser = await loginAction(email, name);
         if (dbUser) {
-            setUser(dbUser);
+            setUser(dbUser as User);
             localStorage.setItem("userEmail", email);
             if (dbUser.onboardingCompleted) {
-                // router.push("/dashboard"); // Optional: let the page handle redirect logic based on state
+                // Router push handled by consumer or standard flow
             }
         }
     };

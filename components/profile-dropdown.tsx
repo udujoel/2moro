@@ -1,3 +1,5 @@
+"use client";
+
 // ... imports ...
 import { useUser } from "@/components/user-provider";
 import { Settings, LogOut, ChevronDown, User } from "lucide-react";

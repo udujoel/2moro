@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { summarizePeopleInternal } from './ai';
 
 // --- User Actions ---
 
@@ -93,18 +94,42 @@ export async function getPeople(userId: string) {
     }
 }
 
-export async function createPerson(userId: string, name: string, relationship: string, avatar?: string) {
+export async function createPerson(userId: string, data: any) {
     try {
         return await prisma.person.create({
             data: {
-                userId,
-                name,
-                relationship,
-                avatar,
-            },
+                ...data,
+                userId
+            }
         });
     } catch (error) {
         console.error("Error creating person:", error);
         return null;
+    }
+}
+
+export async function generateRelationshipInsight(userId: string) {
+    console.log("Debug AI: Generating insight for user", userId);
+    try {
+        const people = await prisma.person.findMany({ where: { userId } });
+        const memories = await prisma.memory.findMany({
+            where: { userId },
+            take: 10,
+            orderBy: { createdAt: 'desc' }
+        });
+
+        console.log(`Debug AI: Found ${people.length} people and ${memories.length} memories`);
+
+        if (people.length === 0 && memories.length === 0) {
+            return "No data available to analyze yet. Start adding memories and people to generate insights.";
+        }
+
+        const peopleNames = people.map(p => p.name);
+        const memoryContext = memories.map(m => m.content);
+
+        return await summarizePeopleInternal(peopleNames, memoryContext);
+    } catch (error) {
+        console.error("Error generating insight:", error);
+        return "Insight generation failed.";
     }
 }

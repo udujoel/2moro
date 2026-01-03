@@ -1,14 +1,24 @@
-"use client";
-
-import { useState } from "react";
+import { getSessionUser } from "@/app/actions/auth";
+import { getHabits } from "@/app/actions/habits";
+import { getUserPreferences } from "@/app/actions/user";
 import { HabitStack } from "@/components/dashboard/habit-stack";
 import { ImpactSlider } from "@/components/dashboard/impact-slider";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { ProfileDropdown } from "@/components/profile-dropdown";
-import { useTheme } from "@/components/theme-provider";
+import { redirect } from "next/navigation";
 
-export default function DashboardPage() {
-    const { theme } = useTheme();
+export default async function DashboardPage() {
+    const userId = await getSessionUser();
+    if (!userId) {
+        redirect("/login");
+    }
+
+    const [habits, preferences] = await Promise.all([
+        getHabits(userId),
+        getUserPreferences(userId)
+    ]);
+
+    const impactValue = (preferences as any)?.impactValue ?? 50;
 
     return (
         <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
@@ -30,12 +40,12 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <section className="space-y-4">
                             <h2 className="text-xl font-semibold">Today's Discipline</h2>
-                            <ImpactSlider />
+                            <ImpactSlider initialValue={impactValue} userId={userId} />
                         </section>
 
                         <section className="space-y-4">
                             <h2 className="text-xl font-semibold">Atomic Habits</h2>
-                            <HabitStack />
+                            <HabitStack initialHabits={habits} userId={userId} />
                         </section>
                     </div>
                 </main>

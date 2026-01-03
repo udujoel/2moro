@@ -15,6 +15,7 @@ model User {
   avatar              String?
   bio                 String?
   onboardingCompleted Boolean   @default(false)
+  preferences         Json?     // Stores UI state like impact slider value
   
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -61,6 +62,7 @@ model Habit {
   title       String
   frequency   String   // daily, weekly
   streak      Int      @default(0)
+  lastCompletedAt DateTime?
   
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

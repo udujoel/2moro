@@ -1,15 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { useEffect, useState, useTransition } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { updatePreferences } from "@/app/actions/user";
 
-export function ImpactSlider() {
-    const [value, setValue] = useState(50);
+interface ImpactSliderProps {
+    initialValue: number;
+    userId: string;
+}
+
+export function ImpactSlider({ initialValue, userId }: ImpactSliderProps) {
+    const [value, setValue] = useState(initialValue);
+    const [isPending, startTransition] = useTransition();
+
+    // Debounced update
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (value !== initialValue) {
+                startTransition(async () => {
+                    await updatePreferences(userId, { impactValue: value });
+                });
+            }
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [value, userId, initialValue]);
 
     // Predict future based on slider value (mock logic)
-    const predictedBalance = 5000 + (value * 200); // 5000 to ~25000 (roughly 20k gain at max)
-    const predictedHealth = 50 + (value * 0.4); // 50 to 90
+    const predictedBalance = 5000 + (value * 200);
+    const predictedHealth = 50 + (value * 0.4);
 
     return (
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">

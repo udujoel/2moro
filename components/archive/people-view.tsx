@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Mic, Image as ImageIcon, ChevronLeft, ChevronRight, X, Calendar } from "lucide-react";
+import { Plus, Search, Mic, Image as ImageIcon, ChevronLeft, ChevronRight, X, Calendar, RefreshCw } from "lucide-react";
+import { generateRelationshipInsight } from "@/lib/actions";
 
 interface ArchiveEntry {
     id: number;
@@ -56,6 +57,19 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
     // Valid concern: `initialPeople` might be empty initially.
 
     const selectedPerson = people.find(p => p.id === selectedPersonId);
+
+    const [insight, setInsight] = useState<string | null>(null);
+    const [insightLoading, setInsightLoading] = useState(false);
+
+    useEffect(() => {
+        if (selectedPerson) {
+            setInsightLoading(true);
+            generateRelationshipInsight(selectedPerson.id).then(res => {
+                setInsight(res);
+                setInsightLoading(false);
+            });
+        }
+    }, [selectedPerson]);
 
     // Generate dates for the header (e.g., 7 days window)
     const dates = Array.from({ length: 7 }).map((_, i) => {
@@ -141,8 +155,30 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                         <h2 className="text-xl font-bold">{selectedPerson.name}</h2>
                                         <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">{selectedPerson.relationship}</p>
                                     </div>
-                                    <div className="bg-muted/50 rounded-xl p-4 text-left text-sm text-muted-foreground leading-relaxed">
-                                        <p>AI Summary: Key figure in your early career. Mentioned in 12 memories. Often associated with "Growth" and "Challenge".</p>
+                                    <div className="bg-muted/50 rounded-xl p-4 text-left text-sm text-muted-foreground leading-relaxed min-h-[100px] flex items-center justify-center relative group">
+                                        {insightLoading ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                <span className="text-xs">Consulting the Oracle...</span>
+                                            </div>
+                                        ) : (
+                                            <p>{insight || "No analysis available yet."}</p>
+                                        )}
+                                        {!insightLoading && (
+                                            <button
+                                                onClick={() => {
+                                                    setInsightLoading(true);
+                                                    generateRelationshipInsight(selectedPerson.id).then(res => {
+                                                        setInsight(res);
+                                                        setInsightLoading(false);
+                                                    });
+                                                }}
+                                                className="absolute top-2 right-2 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background rounded-full shadow-sm hover:scale-110"
+                                                title="Regenerate Insight"
+                                            >
+                                                <RefreshCw className="w-3 h-3 text-muted-foreground" />
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="bg-muted/30 p-2 rounded-lg text-center">
@@ -151,7 +187,7 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                         </div>
                                         <div className="bg-muted/30 p-2 rounded-lg text-center">
                                             <p className="text-xs text-muted-foreground">Memories</p>
-                                            <p className="font-semibold text-sm">12</p>
+                                            <p className="font-semibold text-sm">{selectedPerson.memoriesCount || 0}</p>
                                         </div>
                                     </div>
                                 </div>

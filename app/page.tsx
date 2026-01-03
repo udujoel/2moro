@@ -19,6 +19,10 @@ export default function Home() {
     }
   }, [onboardingCompleted, router]);
 
+  // Prevent flash of landing page if already onboarded
+  if (onboardingCompleted === undefined) return null; // Or a loading spinner
+  if (onboardingCompleted) return null; // Will redirect via useEffect
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 text-center transition-colors duration-300">
       <motion.div
@@ -47,49 +51,20 @@ export default function Home() {
           Craft Your Story. Design Your Future.
         </p>
 
-        {/* Theme Switcher (Demo) */}
-        <div className="grid grid-cols-3 gap-4 mb-16 w-full max-w-md">
-          <button
-            onClick={() => setTheme("daybreak")}
-            className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all hover:scale-105 ${theme === "daybreak"
-              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-              : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
-              }`}
-          >
-            <div className="h-4 w-4 rounded-full bg-[#f59e0b]" />
-            <span className="text-xs font-medium">Daybreak</span>
-          </button>
-          <button
-            onClick={() => setTheme("midnight")}
-            className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all hover:scale-105 ${theme === "midnight"
-              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-              : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
-              }`}
-          >
-            <div className="h-4 w-4 rounded-full bg-[#2dd4bf]" />
-            <span className="text-xs font-medium">Midnight</span>
-          </button>
-          <button
-            onClick={() => setTheme("paperback")}
-            className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all hover:scale-105 ${theme === "paperback"
-              ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-              : "border-gray-200 dark:border-gray-800 bg-background hover:bg-gray-50 dark:hover:bg-gray-900"
-              }`}
-          >
-            <div className="h-4 w-4 rounded-full bg-[#d97706]" />
-            <span className="text-xs font-medium">Paperback</span>
-          </button>
-        </div>
 
         {/* Call to Action */}
-        <Link href="/onboarding">
-          <button className="group relative overflow-hidden rounded-full bg-foreground px-8 py-3 text-background transition-all hover:scale-105 hover:shadow-lg cursor-pointer">
-            <span className="relative z-10 flex items-center gap-2 font-medium">
-              Begin Journey <Play className="h-4 w-4 fill-current" />
-            </span>
-            <div className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-500 group-hover:translate-x-0" />
-          </button>
-        </Link>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <Link href="/onboarding">
+            <button className="group relative overflow-hidden rounded-full bg-foreground px-8 py-3 text-background transition-all hover:scale-105 hover:shadow-lg cursor-pointer">
+              <span className="relative z-10 flex items-center gap-2 font-medium">
+                Begin Journey <Play className="h-4 w-4 fill-current" />
+              </span>
+              <div className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-500 group-hover:translate-x-0" />
+            </button>
+          </Link>
+
+          <p className="text-xs text-muted-foreground opacity-50">v0.9.2 (Professional Preview)</p>
+        </div>
       </motion.div>
     </main>
   );

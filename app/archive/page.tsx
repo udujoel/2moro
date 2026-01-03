@@ -27,16 +27,25 @@ export default function ArchivePage() {
                     getPeople(user.id)
                 ]);
 
+                console.log(`Debug Archive: Parsed ${dbMemories.length} memories and ${dbPeople.length} people for user ${user.id}`);
+
                 // Map DB Memories to UI format
                 const mappedMemories = dbMemories.map((m: any) => ({
                     id: m.id,
-                    type: m.type,
+                    type: m.type as "text" | "image",
                     content: m.content,
-                    date: new Date(m.memoryDate).toISOString().split('T')[0],
-                    createdAt: new Date(m.createdAt).toLocaleDateString(),
-                    chapter: "Chapter ??", // Placeholder
-                    color: "bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100", // Default color
-                    people: m.people // Pass linked people
+                    caption: m.type === 'image' ? m.content : undefined, // Check if this was intended
+                    // Fix: Use a placeholder or check if content is a valid URL for image type
+                    // Ideally, we should have a separate 'mediaUrl' field, but for now, let's assume content IS the url if image.
+                    // If the seed data put text in content for type=image, that's the issue.
+                    // Seed data: { type: "image", content: "Sunrise...", ... } -> This is a description, not a URL.
+                    // We need a real image source.
+                    imageSrc: m.type === 'image' ? (m.content.startsWith('http') ? m.content : `https://placehold.co/600x400?text=${encodeURIComponent(m.content.substring(0, 20))}`) : undefined,
+                    date: new Date(m.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    createdAt: new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    chapter: "Chapter 1", // Mock
+                    color: "bg-blue-500", // Mock
+                    people: m.people.map((p: any) => p.name)
                 }));
 
                 // Map DB People to UI format
