@@ -58,87 +58,93 @@ export function ProfileForm() {
             </div>
 
             {/* Avatar Section */}
-            <div className="flex items-center gap-6 mb-10">
-                <div className="w-24 h-24 rounded-full bg-secondary overflow-hidden border-4 border-background shadow-md relative group">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 mb-12 border-b border-border pb-8">
+                <div className="w-28 h-28 rounded-full bg-secondary overflow-hidden border-4 border-background shadow-xl ring-1 ring-border relative group">
                     {profileImage || user?.avatar ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={profileImage || user?.avatar || ""} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
-                            <User className="w-8 h-8" />
+                        <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary">
+                            <User className="w-10 h-10" />
                         </div>
                     )}
                 </div>
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleUpload}
-                        className="px-6 py-2 bg-red-400 hover:bg-red-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-red-400/20"
-                    >
-                        Upload
-                    </button>
-                    <button
-                        onClick={() => updateProfileImage("")}
-                        className="px-6 py-2 border border-border hover:bg-secondary rounded-xl text-sm font-medium transition-colors text-red-400 hover:text-red-500"
-                    >
-                        Remove
-                    </button>
+                <div className="flex flex-col gap-2 pt-2 text-center sm:text-left">
+                    <h3 className="font-semibold text-lg">Profile Picture</h3>
+                    <p className="text-sm text-muted-foreground mb-2 max-w-xs">
+                        This image will be used for your neural identity in the simulation.
+                    </p>
+                    <div className="flex gap-3 justify-center sm:justify-start">
+                        <button
+                            onClick={handleUpload}
+                            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-all shadow-sm"
+                        >
+                            Change Photo
+                        </button>
+                        <button
+                            onClick={() => updateProfileImage("")}
+                            className="px-4 py-2 border border-border hover:bg-muted rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:text-red-500"
+                        >
+                            Remove
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Form Fields */}
-            <form onSubmit={handleSave} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={handleSave} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-muted-foreground">First Name <span className="text-red-400">*</span></label>
+                        <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">First Name</label>
                         <input
                             type="text"
                             name="name"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                            className="w-full px-4 py-3 rounded-xl bg-muted/40 border border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none font-medium"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-muted-foreground">Last Name <span className="text-red-400">*</span></label>
+                        <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">Last Name</label>
                         <input
                             type="text"
                             name="lastName"
                             value={formData.lastName}
                             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                            className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                            className="w-full px-4 py-3 rounded-xl bg-muted/40 border border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none font-medium"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-muted-foreground">Email <span className="text-red-400">*</span></label>
+                        <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">Email</label>
                         <input
                             type="email"
                             value={formData.email}
                             disabled
-                            className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent opacity-60 cursor-not-allowed"
+                            className="w-full px-4 py-3 rounded-xl bg-muted/20 border border-transparent text-muted-foreground cursor-not-allowed"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-muted-foreground">Username <span className="text-red-400">*</span></label>
+                        <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">Username</label>
                         <input
                             type="text"
                             value={formData.username}
                             readOnly
-                            className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent focus:bg-background outline-none"
+                            className="w-full px-4 py-3 rounded-xl bg-muted/20 border border-transparent focus:bg-background outline-none"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-muted-foreground">Date of Birth <span className="text-red-400">*</span></label>
+                        <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">Date of Birth</label>
                         <input
                             type="date"
                             defaultValue="1995-01-14"
-                            className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/50 outline-none"
+                            className="w-full px-4 py-3 rounded-xl bg-muted/40 border border-transparent focus:bg-background focus:border-primary/50 outline-none font-medium"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-semibold text-muted-foreground">Country <span className="text-red-400">*</span></label>
-                        <select className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/50 outline-none appearance-none">
+                        <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">Country</label>
+                        <select className="w-full px-4 py-3 rounded-xl bg-muted/40 border border-transparent focus:bg-background focus:border-primary/50 outline-none appearance-none font-medium">
                             <option>United States</option>
                             <option>Canada</option>
                             <option>United Kingdom</option>
@@ -147,19 +153,19 @@ export function ProfileForm() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-semibold text-muted-foreground">Address <span className="text-red-400">*</span></label>
+                    <label className="text-xs uppercase font-bold text-muted-foreground tracking-wider ml-1">Address</label>
                     <input
                         type="text"
                         defaultValue="4821 Ridge Top Cir, Anchorage, AK, 99516"
-                        className="w-full px-4 py-3 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                        className="w-full px-4 py-3 rounded-xl bg-muted/40 border border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none font-medium"
                     />
                 </div>
 
-                <div className="pt-6 border-t border-border flex items-center justify-between">
+                <div className="pt-8 flex items-center justify-between">
                     <button
                         type="button"
                         onClick={resetOnboarding}
-                        className="text-sm font-medium text-red-400 hover:text-red-500 transition-colors"
+                        className="text-sm font-medium text-muted-foreground hover:text-red-500 transition-colors"
                     >
                         Redo Onboarding
                     </button>
@@ -167,7 +173,7 @@ export function ProfileForm() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="px-8 py-3 bg-primary text-primary-foreground rounded-full hover:shadow-lg hover:shadow-primary/25 transition-all disabled:opacity-50"
+                        className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:shadow-lg hover:shadow-primary/25 transition-all disabled:opacity-50 active:scale-95"
                     >
                         {isLoading ? "Saving..." : "Save Changes"}
                     </button>

@@ -11,6 +11,8 @@ import { Play, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/user-provider";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { TopBar } from "@/components/top-bar";
 
 export type OnboardingStep = "welcome" | "icebreaker" | "dob" | "quiz" | "traits" | "summary";
 
@@ -33,10 +35,7 @@ export default function OnboardingPage() {
 
     useEffect(() => {
         setMounted(true);
-        if (onboardingCompleted) {
-            router.push("/dashboard");
-        }
-    }, [onboardingCompleted, router]);
+    }, []);
 
     const handleIcebreakerComplete = (data: any) => {
         setUserProfile((prev: any) => ({ ...prev, ...data }));
@@ -95,18 +94,26 @@ export default function OnboardingPage() {
 
     const currentStepIndex = STEPS.findIndex(s => s.id === step);
 
-    return (
-        <div className="min-h-screen w-full bg-background text-foreground transition-colors duration-500 overflow-hidden flex flex-col md:flex-row">
+    const content = (
+        <div className="min-h-screen w-full bg-background text-foreground transition-colors duration-500 overflow-hidden flex flex-col md:flex-row h-full">
 
             {/* Left Panel: Stepper */}
             <div className="w-full md:w-1/3 lg:w-1/4 bg-card border-b md:border-b-0 md:border-r border-border p-6 flex flex-col justify-between z-10">
                 <div>
-                    <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-8 md:mb-12">
-                        <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center">
-                            <Play className="w-3 h-3 fill-primary text-primary" />
+                    {!onboardingCompleted && (
+                        <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-8 md:mb-12">
+                            <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center">
+                                <Play className="w-3 h-3 fill-primary text-primary" />
+                            </div>
+                            2moro
+                        </Link>
+                    )}
+                    {onboardingCompleted && (
+                        <div className="mb-8 md:mb-12">
+                            <h2 className="text-xl font-bold">Recalibration</h2>
+                            <p className="text-sm text-muted-foreground">Update your neural profile</p>
                         </div>
-                        2moro
-                    </Link>
+                    )}
 
                     <div className="space-y-6">
                         {STEPS.map((s, index) => {
@@ -144,7 +151,7 @@ export default function OnboardingPage() {
             </div>
 
             {/* Right Panel: Content */}
-            <div className="flex-1 relative overflow-y-auto overflow-x-hidden md:bg-muted/10">
+            <div className="flex-1 relative overflow-y-auto overflow-x-hidden md:bg-muted/10 h-full">
                 <AnimatePresence mode="wait">
                     {isLoading ? (
                         <motion.div
@@ -167,15 +174,15 @@ export default function OnboardingPage() {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex flex-col items-center justify-center min-h-[50vh] md:h-full p-8 text-center max-w-lg mx-auto"
                                 >
-                                    <h1 className="text-4xl font-bold mb-4">Welcome to 2moro</h1>
-                                    <p className="text-lg text-muted-foreground mb-8">
-                                        A living operating system for your life. Let's calibrate your profile with Neural Analysis.
+                                    <h1 className="text-3xl md:text-4xl font-bold mb-4">Welcome back to 2moro</h1>
+                                    <p className="text-base md:text-lg text-muted-foreground mb-8">
+                                        Let's recalibrate your profile. This will update your Compass and AI interactions.
                                     </p>
                                     <button
                                         onClick={() => setStep("icebreaker")}
                                         className="bg-primary text-primary-foreground px-8 py-3 rounded-full font-medium hover:opacity-90 transition-opacity shadow-lg hover:shadow-primary/20"
                                     >
-                                        Start Setup
+                                        Start Calibration
                                     </button>
                                 </motion.div>
                             )}
@@ -224,4 +231,22 @@ export default function OnboardingPage() {
             </div>
         </div>
     );
+
+    if (onboardingCompleted) {
+        return (
+            <div className="flex min-h-screen bg-background text-foreground font-sans">
+                <div className="hidden md:flex border-r border-border shrink-0 z-40">
+                    <Sidebar />
+                </div>
+                <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+                    <TopBar title="Recalibrate" />
+                    <main className="flex-1 overflow-hidden relative">
+                        {content}
+                    </main>
+                </div>
+            </div>
+        );
+    }
+
+    return content;
 }

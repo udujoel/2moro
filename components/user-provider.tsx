@@ -67,10 +67,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                         }
                     } else {
                         // User needs onboarding
-                        if (path !== "/onboarding") {
+                        // Only redirect if trying to access protected routes
+                        if (path.startsWith("/dashboard") || path.startsWith("/profile") || path.startsWith("/archive") || path.startsWith("/simulation")) {
                             router.push("/onboarding");
                         }
-                        // If on /onboarding, stay there.
                     }
                 }
             } else {
@@ -114,10 +114,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     const resetOnboarding = async () => {
-        if (user) {
-            await updateUser(user.id, { onboardingCompleted: false });
-        }
-        setUser(prev => prev ? { ...prev, onboardingCompleted: false } : null);
+        // We do NOT set onboardingCompleted to false in DB, 
+        // to preserve "Existing User" status for UI logic.
+        // We just redirect them to update their data.
         router.push("/onboarding");
     };
 

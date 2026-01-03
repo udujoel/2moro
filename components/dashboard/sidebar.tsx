@@ -9,7 +9,7 @@ import { useUser } from "@/components/user-provider";
 import { useTheme } from "@/components/theme-provider";
 
 const NAV_ITEMS = [
-    { label: "Compass", icon: Compass, href: "/dashboard" },
+    { label: "Dashboard", icon: Compass, href: "/dashboard" },
     { label: "Oracle", icon: Radio, href: "/simulation" }, // Future module
     { label: "Archive", icon: BookOpen, href: "/archive" }, // Future module
 ];
@@ -43,22 +43,22 @@ export function Sidebar({ className }: { className?: string }) {
 
     return (
         <aside
-            className={cn("flex flex-col py-6 h-screen sticky top-0 ease-in-out border-r border-border bg-card/50",
-                isExpanded ? "w-64 px-6 transition-all duration-300" : "w-20 px-3 transition-all duration-1000",
+            className={cn("flex flex-col py-6 h-screen sticky top-0 ease-in-out border-r border-border bg-card/30 backdrop-blur-xl z-30",
+                isExpanded ? "w-64 px-4 transition-all duration-300" : "w-[4.5rem] px-2 transition-all duration-300",
                 className
             )}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={handleInteraction}
         >
-            <Link href="/" className="flex items-center mb-10 px-2 h-10 overflow-hidden">
-                <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center shrink-0">
-                    <Play className="w-3 h-3 fill-primary text-primary" />
+            <Link href="/" className="flex items-center mb-6 px-1 h-10 overflow-hidden group">
+                <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Play className="w-4 h-4 fill-primary" />
                 </div>
                 <span
                     className={cn(
-                        "font-bold text-xl whitespace-nowrap overflow-hidden transition-all",
-                        isExpanded ? "w-auto opacity-100 ml-3 duration-300" : "w-0 opacity-0 ml-0 duration-1000"
+                        "font-bold text-lg whitespace-nowrap overflow-hidden transition-all",
+                        isExpanded ? "w-auto opacity-100 ml-3 duration-300" : "w-0 opacity-0 ml-0 duration-300"
                     )}
                 >
                     2moro
@@ -71,12 +71,12 @@ export function Sidebar({ className }: { className?: string }) {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                            "flex items-center py-3 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap",
+                            "flex items-center py-2.5 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap group",
                             // Adjust padding and justification for centered icons when collapsed
-                            isExpanded ? "px-4 justify-start" : "px-0 justify-center",
+                            isExpanded ? "px-3 justify-start" : "px-0 justify-center",
                             pathname?.startsWith(item.href)
                                 ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                         )}
                         title={!isExpanded ? item.label : undefined}
                     >
@@ -134,25 +134,25 @@ export function Sidebar({ className }: { className?: string }) {
                 {isExpanded ? (
                     <Link href="/profile" className="block relative group">
                         <div
-                            className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-muted transition-colors text-left"
+                            className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-muted/50 transition-colors text-left border border-transparent hover:border-border"
                         >
-                            <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border">
+                            <div className="w-9 h-9 rounded-full bg-primary/20 overflow-hidden border border-border shrink-0">
                                 {profileImage ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={profileImage} alt="User" className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-primary font-bold">A</div>
+                                    <div className="w-full h-full flex items-center justify-center text-primary font-bold text-xs">A</div>
                                 )}
                             </div>
                             <div className="flex-1 overflow-hidden">
-                                <p className="font-medium text-sm truncate">The Architect</p>
-                                <p className="text-xs text-muted-foreground truncate">View Profile</p>
+                                <p className="font-semibold text-sm truncate">The Architect</p>
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">View Profile</p>
                             </div>
                         </div>
                     </Link>
                 ) : (
-                    <Link href="/profile" className="flex justify-center group relative">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border cursor-pointer transition-transform hover:scale-105">
+                    <Link href="/profile" className="flex justify-center group relative px-1">
+                        <div className="w-9 h-9 rounded-full bg-primary/20 overflow-hidden border border-border cursor-pointer transition-transform hover:scale-105">
                             {profileImage ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={profileImage} alt="User" className="w-full h-full object-cover" />
@@ -161,7 +161,7 @@ export function Sidebar({ className }: { className?: string }) {
                             )}
                         </div>
                         {/* Tooltip for collapsed state */}
-                        <div className="absolute left-full bottom-0 ml-3 px-3 py-1 bg-foreground text-background text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        <div className="absolute left-full bottom-0 ml-4 px-2 py-1 bg-foreground/90 text-background text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                             My Profile
                         </div>
                     </Link>
