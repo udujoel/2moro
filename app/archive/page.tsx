@@ -28,7 +28,7 @@ export default function ArchivePage() {
                 ]);
 
                 // Map DB Memories to UI format
-                const mappedMemories = dbMemories.map(m => ({
+                const mappedMemories = dbMemories.map((m: any) => ({
                     id: m.id,
                     type: m.type,
                     content: m.content,
@@ -40,7 +40,7 @@ export default function ArchivePage() {
                 }));
 
                 // Map DB People to UI format
-                const mappedPeople = dbPeople.map(p => ({
+                const mappedPeople = dbPeople.map((p: any) => ({
                     id: p.id,
                     name: p.name,
                     relationship: p.relationship || "Connection",
