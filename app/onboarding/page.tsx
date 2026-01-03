@@ -3,20 +3,20 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icebreaker } from "@/components/onboarding/icebreaker";
-import { PersonalityQuiz } from "@/components/onboarding/personality-quiz";
+import { AgePicker } from "@/components/onboarding/age-picker";
 import { BaselineSelector } from "@/components/onboarding/baseline-selector";
 import { OnboardingSummary } from "@/components/onboarding/summary";
-import { Play, Check, Circle } from "lucide-react";
+import { Play, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/user-provider";
 
-export type OnboardingStep = "welcome" | "icebreaker" | "quiz" | "baseline" | "summary";
+export type OnboardingStep = "welcome" | "icebreaker" | "dob" | "baseline" | "summary";
 
 const STEPS = [
     { id: "welcome", label: "Welcome", description: "Start your journey" },
-    { id: "icebreaker", label: "The Icebreaker", description: "Analyze your vibe" },
-    { id: "quiz", label: "Vibe Check", description: "Define your archetype" },
+    { id: "icebreaker", label: "Analysis", description: "AI Visual Scan" },
+    { id: "dob", label: "Origins", description: "Cosmic calibration" },
     { id: "baseline", label: "The Baseline", description: "Set your intentions" },
     { id: "summary", label: "Your Profile", description: "Ready to launch" },
 ];
@@ -25,7 +25,7 @@ export default function OnboardingPage() {
     const [step, setStep] = useState<OnboardingStep>("welcome");
     const [userProfile, setUserProfile] = useState<any>({});
     const [mounted, setMounted] = useState(false);
-    const { completeOnboarding, updateProfileImage, onboardingCompleted } = useUser();
+    const { updateProfileImage, onboardingCompleted } = useUser();
     const router = useRouter();
 
     useEffect(() => {
@@ -38,12 +38,12 @@ export default function OnboardingPage() {
     const handleIcebreakerComplete = (data: any) => {
         setUserProfile((prev: any) => ({ ...prev, ...data }));
         if (data.image) {
-            updateProfileImage(data.image);
+            updateProfileImage(data.image); // Update context
         }
-        setStep("quiz");
+        setStep("dob");
     };
 
-    const handleQuizComplete = (data: any) => {
+    const handleDobComplete = (data: any) => {
         setUserProfile((prev: any) => ({ ...prev, ...data }));
         setStep("baseline");
     };
@@ -51,14 +51,6 @@ export default function OnboardingPage() {
     const handleBaselineComplete = (data: any) => {
         setUserProfile((prev: any) => ({ ...prev, ...data }));
         setStep("summary");
-    };
-
-    const handleFinalComplete = () => {
-        localStorage.setItem("onboardingCompleted", "true");
-        // The summary component handles the redirect link, but we set the flag here essentially via the component's unmount or implicitly. 
-        // Actually, let's update the summary component to trigger this if needed, or just set it now since we reached summary.
-        // Better yet, set it when they click "Enter Dashboard" in the summary component.
-        // For now, we assume if they reach summary, they are basically done, but we only lock it on exit.
     };
 
     if (!mounted) return null;
@@ -126,7 +118,7 @@ export default function OnboardingPage() {
                         >
                             <h1 className="text-4xl font-bold mb-4">Welcome to 2moro</h1>
                             <p className="text-lg text-muted-foreground mb-8">
-                                A living operating system for your life. Let's calibrate your profile.
+                                A living operating system for your life. Let's calibrate your profile with Neural Analysis.
                             </p>
                             <button
                                 onClick={() => setStep("icebreaker")}
@@ -143,15 +135,20 @@ export default function OnboardingPage() {
                         </div>
                     )}
 
-                    {step === "quiz" && (
+                    {step === "dob" && (
                         <div className="h-full flex items-center justify-center p-4">
-                            <PersonalityQuiz key="quiz" onComplete={handleQuizComplete} />
+                            {/* Pass data from previous steps if needed */}
+                            <AgePicker key="dob" onComplete={handleDobComplete} currentAge={userProfile.age} />
                         </div>
                     )}
 
                     {step === "baseline" && (
                         <div className="h-full flex items-center justify-center p-4">
-                            <BaselineSelector key="baseline" onComplete={handleBaselineComplete} />
+                            <BaselineSelector
+                                key="baseline"
+                                onComplete={handleBaselineComplete}
+                                generatedTraits={{ negatives: userProfile.negatives, fixes: userProfile.fixes }}
+                            />
                         </div>
                     )}
 

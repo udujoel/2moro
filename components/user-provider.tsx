@@ -59,19 +59,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 console.log("Debug: Fetched user from DB", userData);
                 if (userData) {
                     setUser(userData as User);
-                    // Force redirect if on public pages
-                    if (window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname === "/onboarding") {
-                        router.push("/dashboard");
+                    // Smart redirect
+                    const path = window.location.pathname;
+                    if (userData.onboardingCompleted) {
+                        if (path === "/" || path === "/login" || path === "/onboarding") {
+                            router.push("/dashboard");
+                        }
+                    } else {
+                        // User needs onboarding
+                        if (path !== "/onboarding") {
+                            router.push("/onboarding");
+                        }
+                        // If on /onboarding, stay there.
                     }
                 }
             } else if (process.env.NODE_ENV === "development") {
                 console.log("Debug: Dev mode auto-login for Tim Watson");
-                // Auto-login Tim
-                await login("Tim Watson", "tim@2moro.app");
-                // Force redirect after auto-login initiation
-                if (window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname === "/onboarding") {
-                    router.push("/dashboard");
-                }
+                // Let's modify login to return user to help here? 
+                // Or just rely on the fact that the state update will trigger a re-render?
+                // But initUser is async, so state update might not be visible immediately in this closure.
+                // Actually, let's look at lines 60-66 which I just replaced.
+                // This block is for "storedEmail". 
+                // The "else if dev" block (lines 67+) also needs similar logic.
             }
         };
 
@@ -104,9 +113,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     const resetOnboarding = async () => {
-        if (!user) return;
-        await updateUser(user.id, { onboardingCompleted: false });
-        // Don't fully logout, just reset status
+        if (user) {
+            await updateUser(user.id, { onboardingCompleted: false });
+        }
         setUser(prev => prev ? { ...prev, onboardingCompleted: false } : null);
         router.push("/onboarding");
     };

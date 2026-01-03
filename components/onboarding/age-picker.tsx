@@ -1,79 +1,77 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { analyzeHoroscopeAndTraits } from "@/app/actions/onboarding";
+import { Loader2 } from "lucide-react";
 
 interface AgePickerProps {
-    value: number;
-    onChange: (value: number) => void;
-    min?: number;
-    max?: number;
+    onComplete: (data: any) => void;
+    currentAge?: number;
 }
 
-const ITEM_HEIGHT = 48;
-const VISIBLE_ITEMS = 5;
+export function AgePicker({ onComplete, currentAge = 25 }: AgePickerProps) {
+    // Current Age is passed from previous step AI guess, but we want exact DOB for Horoscope
+    const [dob, setDob] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
-export function AgePicker({ value, onChange, min = 18, max = 99 }: AgePickerProps) {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    // generate range
-    const ages = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    const handleSubmit = async () => {
+        if (!dob) return;
+        setIsLoading(true);
 
-    // Handle scroll to update value
-    const handleScroll = () => {
-        if (scrollRef.current) {
-            const scrollTop = scrollRef.current.scrollTop;
-            const index = Math.round(scrollTop / ITEM_HEIGHT);
-            const newAge = ages[index];
-            if (newAge && newAge !== value) {
-                onChange(newAge);
+        try {
+            const result = await analyzeHoroscopeAndTraits(dob);
+            if (result.success) {
+                onComplete({
+                    dob,
+                    zodiac: result.zodiac,
+                    negatives: result.negatives,
+                    fixes: result.fixes
+                });
+            } else {
+                console.error("Horoscope failed");
+                onComplete({ dob, zodiac: "Unknown", negatives: [], fixes: [] });
             }
+        } catch (e) {
+            console.error(e);
+            onComplete({ dob });
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    // Initial scroll position
-    useEffect(() => {
-        if (scrollRef.current) {
-            const index = ages.indexOf(value);
-            if (index !== -1) {
-                scrollRef.current.scrollTop = index * ITEM_HEIGHT;
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     return (
-        <div className="relative h-[240px] w-32 overflow-hidden flex items-center justify-center">
-            {/* Selection Highlight */}
-            <div className="absolute h-[48px] w-full bg-primary/20 rounded-xl z-0 pointer-events-none" />
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center p-8 max-w-md w-full text-center"
+        >
+            <h2 className="text-3xl font-bold mb-4">When did your journey begin?</h2>
+            <p className="text-muted-foreground mb-8">
+                We use your birth chart to understand your potential strengths and shadows.
+            </p>
 
-            <div
-                ref={scrollRef}
-                className="w-full h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar py-[96px] z-10"
-                onScroll={handleScroll}
-                style={{ scrollBehavior: "smooth" }}
+            <input
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                className="w-full text-center p-4 rounded-2xl bg-secondary/30 text-2xl font-bold border-2 border-transparent focus:border-primary focus:bg-background transition-all outline-none mb-8"
+            />
+
+            <button
+                onClick={handleSubmit}
+                disabled={!dob || isLoading}
+                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-lg hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
-                {ages.map((age) => (
-                    <div
-                        key={age}
-                        className={`h-[48px] flex items-center justify-center snap-center transition-all duration-200 cursor-pointer ${age === value
-                                ? "text-2xl font-bold text-primary scale-110"
-                                : "text-lg text-muted-foreground/50 scale-90"
-                            }`}
-                        onClick={() => {
-                            if (scrollRef.current) {
-                                const index = ages.indexOf(age);
-                                scrollRef.current.scrollTo({ top: index * ITEM_HEIGHT, behavior: 'smooth' });
-                            }
-                        }}
-                    >
-                        {age}
-                    </div>
-                ))}
-            </div>
-
-            {/* Gradients for fade effect */}
-            <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-card to-transparent pointer-events-none z-20" />
-            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-card to-transparent pointer-events-none z-20" />
-        </div>
+                {isLoading ? (
+                    <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Reading Stars...
+                    </>
+                ) : (
+                    "Confirm Date"
+                )}
+            </button>
+        </motion.div>
     );
 }

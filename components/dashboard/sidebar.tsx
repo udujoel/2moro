@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef } from "react";
-import { Compass, Radio, BookOpen, Settings, Play } from "lucide-react";
+import { Compass, Radio, BookOpen, Settings, Play, Moon, Sun, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/components/user-provider";
+import { useTheme } from "@/components/theme-provider";
 
 const NAV_ITEMS = [
     { label: "Compass", icon: Compass, href: "/dashboard" },
@@ -18,6 +19,7 @@ export function Sidebar({ className }: { className?: string }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
     const { profileImage } = useUser();
+    const { theme, setTheme } = useTheme();
 
     const handleMouseEnter = () => {
         hoverTimeout.current = setTimeout(() => {
@@ -82,8 +84,13 @@ export function Sidebar({ className }: { className?: string }) {
                         <span
                             className={cn(
                                 "whitespace-nowrap overflow-hidden transition-all",
-                                isExpanded ? "w-auto opacity-100 ml-3 duration-300" : "w-0 opacity-0 ml-0 duration-1000"
+                                "w-auto opacity-100 ml-3 duration-300"
                             )}
+                            style={{
+                                width: isExpanded ? "auto" : "0",
+                                opacity: isExpanded ? 1 : 0,
+                                marginLeft: isExpanded ? "0.75rem" : "0"
+                            }}
                         >
                             {item.label}
                         </span>
@@ -91,11 +98,33 @@ export function Sidebar({ className }: { className?: string }) {
                 ))}
             </nav>
 
-            <div className="pt-6 border-t border-border mt-auto relative">
+            <div className="pt-6 border-t border-border mt-auto relative space-y-4">
+                {/* Theme Switcher - Bottom Left */}
+                {isExpanded && (
+                    <div className="px-2 flex gap-2">
+                        {[
+                            { id: "daybreak", icon: Sun, label: "Day" },
+                            { id: "midnight", icon: Moon, label: "Night" },
+                            { id: "paperback", icon: Book, label: "Paper" }
+                        ].map((t) => (
+                            <button
+                                key={t.id}
+                                onClick={(e) => { e.stopPropagation(); setTheme(t.id as any); }}
+                                className={cn(
+                                    "p-2 rounded-lg hover:bg-muted text-xs font-medium border border-border flex-1 flex flex-col items-center gap-1 transition-all",
+                                    theme === t.id ? "bg-primary/10 border-primary text-primary" : "text-muted-foreground"
+                                )}
+                                title={t.label}
+                            >
+                                <t.icon className="w-4 h-4" />
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 {isExpanded ? (
-                    <div className="relative group">
-                        <button
-                            onClick={() => setIsExpanded(true)} // Keep sidebar open
+                    <Link href="/profile" className="block relative group">
+                        <div
                             className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-muted transition-colors text-left"
                         >
                             <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border">
@@ -110,19 +139,11 @@ export function Sidebar({ className }: { className?: string }) {
                                 <p className="font-medium text-sm truncate">The Architect</p>
                                 <p className="text-xs text-muted-foreground truncate">View Profile</p>
                             </div>
-                        </button>
-
-                        {/* Hover Dropdown (Simple implementation) */}
-                        <div className="absolute bottom-full left-0 w-full mb-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all translate-y-2 group-hover:translate-y-0">
-                            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-muted text-sm cursor-pointer">
-                                <Settings className="w-4 h-4" />
-                                Settings
-                            </Link>
                         </div>
-                    </div>
+                    </Link>
                 ) : (
-                    <div className="flex justify-center group relative">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border cursor-pointer">
+                    <Link href="/profile" className="flex justify-center group relative">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border border-border cursor-pointer transition-transform hover:scale-105">
                             {profileImage ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={profileImage} alt="User" className="w-full h-full object-cover" />
@@ -130,14 +151,11 @@ export function Sidebar({ className }: { className?: string }) {
                                 <div className="w-full h-full flex items-center justify-center text-primary font-bold">A</div>
                             )}
                         </div>
-                        {/* Tooltip-style dropdown for collapsed state */}
-                        <div className="absolute left-full bottom-0 ml-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                            <Link href="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-muted text-sm cursor-pointer">
-                                <Settings className="w-4 h-4" />
-                                Settings
-                            </Link>
+                        {/* Tooltip for collapsed state */}
+                        <div className="absolute left-full bottom-0 ml-3 px-3 py-1 bg-foreground text-background text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                            My Profile
                         </div>
-                    </div>
+                    </Link>
                 )}
             </div>
         </aside>
