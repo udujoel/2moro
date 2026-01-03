@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, ArrowRight } from "lucide-react";
+import { Loader2, Zap, Coffee, Map, Heart, Brain, Smile, Meh, CheckCircle2 } from "lucide-react";
 
 interface PersonalityQuizProps {
     onComplete: (data: any) => void;
@@ -10,75 +10,91 @@ interface PersonalityQuizProps {
 
 const QUESTIONS = [
     {
-        id: 1,
-        question: "Pick the office you'd rather work in",
+        id: "energy",
+        question: "Recharging your batteries looks like...",
         options: [
-            { id: "a", label: "Minimalist & Quiet", vibe: "Architect" },
-            { id: "b", label: "Collaborative & Busy", vibe: "Connector" },
-        ],
+            { label: "Crowded House Party", icon: Zap, value: "Extrovert" },
+            { label: "Solo Cozy Night", icon: Coffee, value: "Introvert" }
+        ]
     },
     {
-        id: 2,
-        question: "A free Saturday looks like...",
+        id: "perception",
+        question: "When learning something new...",
         options: [
-            { id: "a", label: "Hiking a mountain", vibe: "Explorer" },
-            { id: "b", label: "Reading in bed", vibe: "Thinker" },
-        ],
+            { label: "Theory & Concepts", icon: Brain, value: "Intuitive" },
+            { label: "Facts & Hands-on", icon: Map, value: "Sensing" }
+        ]
     },
-    // Add more questions as needed
+    {
+        id: "decisions",
+        question: "In a heated argument, you value...",
+        options: [
+            { label: "Logic & Truth", icon: Brain, value: "Thinking" },
+            { label: "Harmony & Feelings", icon: Heart, value: "Feeling" }
+        ]
+    },
+    {
+        id: "structure",
+        question: "Your approach to deadlines...",
+        options: [
+            { label: "Done Early & Planned", icon: CheckCircle2, value: "Judging" },
+            { label: "Panic & Inspiration", icon: Zap, value: "Perceiving" }
+        ]
+    }
 ];
 
 export function PersonalityQuiz({ onComplete }: PersonalityQuizProps) {
-    const [currentQuestion, setCurrentQuestion] = useState(0);
-    const [answers, setAnswers] = useState<any[]>([]);
+    const [currentStep, setCurrentStep] = useState(0);
+    const [answers, setAnswers] = useState<Record<string, string>>({});
 
-    const handleAnswer = (option: any) => {
-        const newAnswers = [...answers, option];
+    const handleAnswer = (value: string) => {
+        const question = QUESTIONS[currentStep];
+        const newAnswers = { ...answers, [question.id]: value };
         setAnswers(newAnswers);
 
-        if (currentQuestion < QUESTIONS.length - 1) {
-            setCurrentQuestion(currentQuestion + 1);
+        if (currentStep < QUESTIONS.length - 1) {
+            setCurrentStep(prev => prev + 1);
         } else {
-            // Analyze results mock
-            onComplete({
-                archetype: "The " + option.vibe, // Simplistic logic for MVP
-                mbti: "INTJ" // Mock
-            });
+            // Finished
+            onComplete({ quizResult: newAnswers });
         }
     };
 
-    const question = QUESTIONS[currentQuestion];
+    const question = QUESTIONS[currentStep];
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col items-center justify-center min-h-screen p-6 max-w-lg mx-auto"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            key={currentStep} // Animate between steps
+            className="flex flex-col items-center justify-center p-8 max-w-md w-full text-center"
         >
-            <div className="w-full space-y-8">
-                <div className="flex justify-between items-center text-sm font-medium text-muted-foreground mb-4">
-                    <span>Question {currentQuestion + 1} of {QUESTIONS.length}</span>
-                    <span>Vibe Check</span>
+            <div className="mb-8 w-full max-w-xs">
+                <div className="flex justify-between text-xs uppercase tracking-widest text-muted-foreground mb-2">
+                    <span>Question {currentStep + 1}</span>
+                    <span>{QUESTIONS.length} Total</span>
                 </div>
-
-                <h2 className="text-3xl font-bold mb-8 leading-tight">{question.question}</h2>
-
-                <div className="grid grid-cols-1 gap-4">
-                    {question.options.map((option, index) => (
-                        <motion.button
-                            key={option.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            onClick={() => handleAnswer(option)}
-                            className="group flex items-center justify-between p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
-                        >
-                            <span className="text-lg font-medium group-hover:text-primary transition-colors">{option.label}</span>
-                            <ArrowRight className="w-5 h-5 text-transparent group-hover:text-primary transition-colors -translate-x-2 group-hover:translate-x-0" />
-                        </motion.button>
-                    ))}
+                <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                        className="h-full bg-primary transition-all duration-300 ease-out"
+                        style={{ width: `${((currentStep + 1) / QUESTIONS.length) * 100}%` }}
+                    />
                 </div>
+            </div>
+
+            <h2 className="text-3xl font-bold mb-12 min-h-[80px] flex items-center justify-center">{question.question}</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                {question.options.map((opt) => (
+                    <button
+                        key={opt.label}
+                        onClick={() => handleAnswer(opt.value)}
+                        className="flex flex-col items-center justify-center p-6 rounded-2xl bg-secondary/30 border-2 border-transparent hover:border-primary hover:bg-primary/5 transition-all group active:scale-95"
+                    >
+                        <opt.icon className="w-10 h-10 mb-3 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+                        <span className="font-semibold text-lg">{opt.label}</span>
+                    </button>
+                ))}
             </div>
         </motion.div>
     );

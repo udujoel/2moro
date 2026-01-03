@@ -72,6 +72,7 @@ export function ProfileDropdown() {
                             Settings
                         </Link>
 
+                        {/* Logout Hidden
                         <button
                             onClick={() => {
                                 logout();
@@ -82,6 +83,7 @@ export function ProfileDropdown() {
                             <LogOut className="w-4 h-4" />
                             Log Out
                         </button>
+                        */}
                     </motion.div>
                 )}
             </AnimatePresence>

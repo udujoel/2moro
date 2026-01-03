@@ -11,8 +11,12 @@ interface AgePickerProps {
 }
 
 export function AgePicker({ onComplete, currentAge = 25 }: AgePickerProps) {
-    // Current Age is passed from previous step AI guess, but we want exact DOB for Horoscope
-    const [dob, setDob] = useState("");
+    // Calculate default DOB based on predicted age
+    // e.g. Age 25 in 2026 -> Born in 2001
+    const defaultYear = new Date().getFullYear() - currentAge;
+    const defaultDob = `${defaultYear}-01-01`;
+
+    const [dob, setDob] = useState(defaultDob);
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async () => {
@@ -47,8 +51,12 @@ export function AgePicker({ onComplete, currentAge = 25 }: AgePickerProps) {
             className="flex flex-col items-center justify-center p-8 max-w-md w-full text-center"
         >
             <h2 className="text-3xl font-bold mb-4">When did your journey begin?</h2>
-            <p className="text-muted-foreground mb-8">
-                We use your birth chart to understand your potential strengths and shadows.
+            <p className="text-muted-foreground mb-4">
+                AI estimated you are around <span className="text-primary font-bold">{currentAge}</span>.
+                <br />We've estimated your birth year. Is this correct?
+            </p>
+            <p className="text-xs text-muted-foreground/80 mb-8 max-w-xs mx-auto">
+                We use your exact birth chart to understand your potential strengths and shadows.
             </p>
 
             <input

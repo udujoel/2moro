@@ -1,11 +1,8 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateContentWithFallback } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function analyzeImageAndCreateMemory(userId: string, formData: FormData) {
     const file = formData.get("file") as File;
@@ -33,8 +30,9 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
         };
 
         const prompt = "Analyze this profile picture. Predict the person's age (just a number) and give me 3 personality keywords that describe the vibe, comma separated. Format: Age: [number], Vibe: [word, word, word].";
-        const result = await model.generateContent([prompt, imagePart]);
-        const responseText = result.response.text();
+
+        // USE FALLBACK
+        const responseText = await generateContentWithFallback([prompt, imagePart]);
 
         console.log("AI Image Analysis:", responseText);
 
@@ -55,6 +53,7 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
                 userId,
                 type: "image",
                 content: `Uploaded profile picture. AI Analysis: ${responseText}`,
+                mediaUrl: base64Image, // CRITICAL FIX: Save the image data here for Archive
                 memoryDate: new Date()
             }
         });
@@ -66,46 +65,80 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
             predictedVibe: vibe
         };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in analyzeImageAndCreateMemory:", error);
-        return { error: "Failed to process image." };
+        // Log specific Gemini error details if available
+        if (error.response) {
+            console.error("Gemini Response Error:", JSON.stringify(error.response, null, 2));
+        }
+        return { error: `Failed to process image: ${error.message || "Unknown error"}` };
     }
 }
 
-export async function analyzeHoroscopeAndTraits(dobString: string) {
-    if (!dobString) return { error: "No DOB" };
+// ... existing imports ...
 
+// New function for Personality + Traits generation
+export async function analyzePersonalityAndTraits(zodiac: string, quizResults: any) {
     try {
         const prompt = `
-            The user was born on ${dobString}. 
-            1. Determine their Zodiac sign.
-            2. List 6 potential "negative" traits or struggles associated with this sign (short phrases, e.g., "Impulsive decision making").
-            3. List 6 corresponding "fixes" or habits to counter them (short phrases, e.g., "Wait 2 minutes before deciding").
-            
-            Return ONLY JSON format like this:
+            User Profile:
+            - Zodiac: ${zodiac}
+            - Quiz Answers: ${JSON.stringify(quizResults)}
+
+            Task:
+            1. Determine the user's MBTI-style personality type (e.g., INFJ, ENFP) and a 1-line description.
+            2. Generate a "Me Now" list (5 current flaws/struggles based on this profile).
+            3. Generate a "Me 2moro" list (5 future habits/strengths to cultivate).
+
+            Return ONLY JSON:
             {
-                "zodiac": "Aries",
-                "negatives": ["trait1", "trait2", "trait3", "trait4", "trait5", "trait6"],
-                "fixes": ["fix1", "fix2", "fix3", "fix4", "fix5", "fix6"]
+                "personalityType": "INFJ - The Advocate",
+                "personalityDescription": "Deeply empathetic and visionary...",
+                "meNow": ["Overthinking", "People Pleasing", ...],
+                "me2moro": ["Boundary Setting", "Daily Meditation", ...]
             }
         `;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+        const text = await generateContentWithFallback(prompt);
 
-        // Clean markdown code blocks if present
+        // Usage cleaning
         const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
         const data = JSON.parse(jsonStr);
 
         return { success: true, ...data };
     } catch (error) {
-        console.error("Gemini Horoscope Error:", error);
-        // Fallback
+        console.error("Gemini Personality Error:", error);
         return {
-            success: true,
-            zodiac: "Unknown",
-            negatives: ["Stress", "Procrastination", "Anxiety", "Disorganization", "Lack of Sleep"],
-            fixes: ["Meditate", "Pomodoro Timer", "Breathwork", "Planner", "No screens after 10PM"]
+            success: false,
+            personalityType: "Explorer",
+            personalityDescription: "Navigating life with curiosity.",
+            meNow: ["Uncertainty", "Stress"],
+            me2moro: ["Clarity", "Peace"]
         };
+    }
+}
+
+export async function analyzeHoroscopeAndTraits(dobString: string) {
+    // ... keepting existing for now, but strictly returning Zodiac only might be cleaner 
+    // since we do traits later. But existing flow expects negatives/fixes. 
+    // We can simplify this to just return Zodiac if we want, OR keep it as a fallback/first pass.
+    // The user requirement says "after reading the horoscope... personality check... THEN generate Me Now".
+    // So this function should primarily return the ZODIAC sign now.
+
+    if (!dobString) return { error: "No DOB" };
+
+    try {
+        const prompt = `
+            The user was born on ${dobString}. 
+            Determine their Zodiac sign.
+            Return ONLY the sign name (e.g. "Aries").
+        `;
+
+        const text = await generateContentWithFallback(prompt);
+        const zodiac = text.trim().replace(/\*/g, "").replace(/\./g, "");
+
+        return { success: true, zodiac };
+    } catch (error) {
+        return { success: true, zodiac: "Unknown" }; // Fail graceful
     }
 }

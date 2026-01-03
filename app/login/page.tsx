@@ -1,15 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/components/user-provider";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-    const { login } = useUser();
+    const { login, user } = useUser();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const router = useRouter(); // Import needed
+
+    useEffect(() => {
+        if (user) {
+            router.push("/dashboard");
+        }
+    }, [user, router]);
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();

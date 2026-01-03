@@ -34,13 +34,9 @@ export default function ArchivePage() {
                     id: m.id,
                     type: m.type as "text" | "image",
                     content: m.content,
-                    caption: m.type === 'image' ? m.content : undefined, // Check if this was intended
-                    // Fix: Use a placeholder or check if content is a valid URL for image type
-                    // Ideally, we should have a separate 'mediaUrl' field, but for now, let's assume content IS the url if image.
-                    // If the seed data put text in content for type=image, that's the issue.
-                    // Seed data: { type: "image", content: "Sunrise...", ... } -> This is a description, not a URL.
-                    // We need a real image source.
-                    imageSrc: m.type === 'image' ? (m.content.startsWith('http') ? m.content : `https://placehold.co/600x400?text=${encodeURIComponent(m.content.substring(0, 20))}`) : undefined,
+                    caption: m.type === 'image' ? m.content : undefined,
+                    // Fix: Use mediaUrl if available. fallback to checking content if it's a URL.
+                    imageSrc: m.type === 'image' ? (m.mediaUrl || (m.content.startsWith('http') ? m.content : undefined)) : undefined,
                     date: new Date(m.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     createdAt: new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     chapter: "Chapter 1", // Mock

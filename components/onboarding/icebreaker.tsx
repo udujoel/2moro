@@ -14,10 +14,14 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
     const { user } = useUser();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [preview, setPreview] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
+
+        // Reset state
+        setError(null);
 
         // Preview immediately
         const objectUrl = URL.createObjectURL(file);
@@ -31,6 +35,15 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
         try {
             const result = await analyzeImageAndCreateMemory(user.id, formData);
             if (result.success && result.avatar) {
+                // Update global context immediately so everything uses the DB image (which we just returned)
+                // Note: we need to access updateProfileImage from context? 
+                // We don't have it destructured right now. Let's get it.
+                // Actually we can just wait for onComplete? 
+                // But validation "Pull from DB" might mean: "Don't show the previewBlob, show the result.avatar".
+
+                // Update the local view to use the "result.avatar" (which is base64 string that was saved)
+                setPreview(result.avatar);
+
                 // Wait a bit to show the "Analyzing" animation
                 setTimeout(() => {
                     setIsAnalyzing(false);
@@ -42,10 +55,12 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
                 }, 1500);
             } else {
                 console.error(result.error);
+                setError(result.error || "Failed to analyze image.");
                 setIsAnalyzing(false);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            setError(err.message || "An unexpected error occurred.");
             setIsAnalyzing(false);
         }
     };
@@ -65,7 +80,7 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
             <div className="relative group cursor-pointer w-64 h-64">
                 <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png, image/jpeg, image/webp"
                     onChange={handleFileChange}
                     className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
                 />
@@ -100,6 +115,12 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
                     <span>Personality Inference</span>
                 </div>
             </div>
+
+            {error && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm max-w-sm">
+                    ⚠️ {error}
+                </div>
+            )}
         </motion.div>
     );
 }

@@ -24,7 +24,7 @@ export function Sidebar({ className }: { className?: string }) {
     const handleMouseEnter = () => {
         hoverTimeout.current = setTimeout(() => {
             setIsExpanded(true);
-        }, 2000);
+        }, 500);
     };
 
     const handleMouseLeave = () => {
@@ -100,8 +100,13 @@ export function Sidebar({ className }: { className?: string }) {
 
             <div className="pt-6 border-t border-border mt-auto relative space-y-4">
                 {/* Theme Switcher - Bottom Left */}
+                {/* Always render, hide with css if needed, or better: show simplified when collapsed? 
+                    Design says "bottom-left of sidebar". 
+                    If collapsed, we can show a single cycle button or just hide it.
+                    Let's revert to showing it ONLY when expanded as per request "above profile".
+                */}
                 {isExpanded && (
-                    <div className="px-2 flex gap-2">
+                    <div className="px-2 flex gap-2 mb-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         {[
                             { id: "daybreak", icon: Sun, label: "Day" },
                             { id: "midnight", icon: Moon, label: "Night" },
@@ -109,7 +114,11 @@ export function Sidebar({ className }: { className?: string }) {
                         ].map((t) => (
                             <button
                                 key={t.id}
-                                onClick={(e) => { e.stopPropagation(); setTheme(t.id as any); }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setTheme(t.id as any);
+                                }}
                                 className={cn(
                                     "p-2 rounded-lg hover:bg-muted text-xs font-medium border border-border flex-1 flex flex-col items-center gap-1 transition-all",
                                     theme === t.id ? "bg-primary/10 border-primary text-primary" : "text-muted-foreground"

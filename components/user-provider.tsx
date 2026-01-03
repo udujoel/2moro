@@ -73,14 +73,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                         // If on /onboarding, stay there.
                     }
                 }
-            } else if (process.env.NODE_ENV === "development") {
-                console.log("Debug: Dev mode auto-login for Tim Watson");
-                // Let's modify login to return user to help here? 
-                // Or just rely on the fact that the state update will trigger a re-render?
-                // But initUser is async, so state update might not be visible immediately in this closure.
-                // Actually, let's look at lines 60-66 which I just replaced.
-                // This block is for "storedEmail". 
-                // The "else if dev" block (lines 67+) also needs similar logic.
+            } else {
+                // PERMANENT AUTO-LOGIN (User Request)
+                // Always log in as default user if nothing found
+                console.log("Debug: Permanent auto-login for Default Account");
+                await login("Tim Watson", "tim@2moro.app");
             }
         };
 
@@ -95,14 +92,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("userEmail", email);
             if (dbUser.onboardingCompleted) {
                 // Router push handled by consumer or standard flow
+                // For direct login calls, let's ensure we are on dashboard if safe
+                if (window.location.pathname === "/login") {
+                    router.push("/dashboard");
+                }
             }
         }
     };
 
     const logout = () => {
-        setUser(null);
-        localStorage.removeItem("userEmail");
-        router.push("/login");
+        // Disabled per user request
+        console.log("Logout is disabled.");
+        // Optional: Show a toast? For now, no-op.
     };
 
     const completeOnboarding = async () => {
