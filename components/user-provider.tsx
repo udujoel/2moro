@@ -19,6 +19,7 @@ interface UserContextType {
     completeOnboarding: () => void;
     resetOnboarding: () => void;
     updateProfileImage: (url: string) => void;
+    updateProfile: (data: Partial<User>) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -105,6 +106,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const updateProfile = (data: Partial<User>) => {
+        if (!user) return;
+        const updatedUser = { ...user, ...data };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+    };
+
     return (
         <UserContext.Provider value={{
             user,
@@ -114,7 +122,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             onboardingCompleted,
             completeOnboarding,
             resetOnboarding,
-            updateProfileImage
+            updateProfileImage,
+            updateProfile
         }}>
             {children}
         </UserContext.Provider>
