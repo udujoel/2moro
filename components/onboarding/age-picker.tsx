@@ -28,13 +28,11 @@ export function AgePicker({ onComplete, currentAge = 25 }: AgePickerProps) {
             if (result.success) {
                 onComplete({
                     dob,
-                    zodiac: result.zodiac,
-                    negatives: result.negatives,
-                    fixes: result.fixes
+                    zodiac: result.zodiac
                 });
             } else {
                 console.error("Horoscope failed");
-                onComplete({ dob, zodiac: "Unknown", negatives: [], fixes: [] });
+                onComplete({ dob, zodiac: "Unknown" });
             }
         } catch (e) {
             console.error(e);
