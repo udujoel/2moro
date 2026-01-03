@@ -4,13 +4,14 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { OmniJournal } from "@/components/archive/omni-journal";
 import { ArchiveGrid } from "@/components/archive/archive-grid";
 import { TimelineView } from "@/components/archive/timeline-view";
+import { PeopleView } from "@/components/archive/people-view";
 import { Play } from "lucide-react";
 import Link from "next/link";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { useState } from "react";
 
 export default function ArchivePage() {
-    const [viewMode, setViewMode] = useState<"grid" | "timeline">("grid");
+    const [viewMode, setViewMode] = useState<"grid" | "timeline" | "people">("grid");
 
     // Updated Mock Data with distinct dates and colors
     // In a real app, colors could be derived from tags or sentiment analysis
@@ -88,18 +89,24 @@ export default function ArchivePage() {
                         </div>
 
                         {/* View Switcher */}
-                        <div className="bg-muted p-1 rounded-xl flex self-start md:self-auto">
+                        <div className="bg-muted p-1 rounded-xl flex self-start md:self-auto overflow-x-auto">
                             <button
                                 onClick={() => setViewMode("grid")}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${viewMode === "grid" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                             >
                                 Date Added
                             </button>
                             <button
                                 onClick={() => setViewMode("timeline")}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === "timeline" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${viewMode === "timeline" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                             >
                                 Timeline View
+                            </button>
+                            <button
+                                onClick={() => setViewMode("people")}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${viewMode === "people" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                                People
                             </button>
                         </div>
                     </div>
@@ -109,6 +116,8 @@ export default function ArchivePage() {
                             <div className="overflow-y-auto h-full">
                                 <ArchiveGrid entries={entries as any} />
                             </div>
+                        ) : viewMode === "people" ? (
+                            <PeopleView entries={entries as any} />
                         ) : (
                             <TimelineView entries={entries as any} />
                         )}
