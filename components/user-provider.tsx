@@ -2,115 +2,110 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getOrCreateUser, updateUser } from "@/lib/actions";
 
 interface User {
-    name: string;
+    id: string; // Add ID for DB operations
+    name: string | null;
     email: string;
-    title?: string;
+    title?: string | null;
     avatar?: string | null;
+    bio?: string | null;
+    onboardingCompleted: boolean;
 }
 
 interface UserContextType {
     user: User | null;
-    login: (name?: string, email?: string) => void;
+    login: (name?: string, email?: string) => Promise<void>;
     logout: () => void;
+    // Helper to keep UI consistent, though strictly we use user object now
     profileImage: string | null;
     onboardingCompleted: boolean;
     completeOnboarding: () => void;
     resetOnboarding: () => void;
     updateProfileImage: (url: string) => void;
-    updateProfile: (data: Partial<User>) => void;
+    updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [profileImage, setProfileImage] = useState<string | null>(null);
-    const [onboardingCompleted, setOnboardingCompleted] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
-        // Load state from localStorage on mount
-        const storedUser = localStorage.getItem("user");
-        const storedImage = localStorage.getItem("profileImage");
-        const storedStatus = localStorage.getItem("onboardingCompleted");
+        // Hydrate from localStorage for valid session check? 
+        // OR better: check for a simple "userId" in local storage to fetch fresh data?
+        // For this hybrid approach (Client Component + Server Actions), we'll do:
+        // 1. Check if we have a userId in localStorage.
+        // 2. If yes, fetch that user from DB to get latest state.
+        // 3. If no, and DEV, do auto-login.
 
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        } else if (process.env.NODE_ENV === "development") {
-            // Auto-login as Tim Watson in Dev if no user found
-            const devUser: User = {
-                name: "Tim Watson",
-                email: "tim@2moro.app",
-                title: "The Architect",
-                avatar: null
-            };
-            setUser(devUser);
-            // In dev, we can treat onboarding as done for Tim by default? 
-            // The prompt says "Tim's account should open". 
-            // So let's ensure onboarding is true if it wasn't set.
-            if (!storedStatus) {
-                setOnboardingCompleted(true);
+        const initUser = async () => {
+            const storedEmail = localStorage.getItem("userEmail");
+
+            if (storedEmail) {
+                // Refresh data
+                const userData = await getOrCreateUser(storedEmail, "User"); // Name is fallback
+                if (userData) setUser(userData);
+            } else if (process.env.NODE_ENV === "development") {
+                // Auto-login Tim
+                await login("Tim Watson", "tim@2moro.app");
             }
-        }
+        };
 
-        if (storedImage) setProfileImage(storedImage);
-        if (storedStatus === "true") setOnboardingCompleted(true);
+        initUser();
     }, []);
 
-    const login = (name: string = "Tim Watson", email: string = "tim@2moro.app") => {
-        const newUser: User = {
-            name,
-            email,
-            title: "The Architect",
-            avatar: profileImage
-        };
-        setUser(newUser);
-        localStorage.setItem("user", JSON.stringify(newUser));
-        setOnboardingCompleted(true);
-        localStorage.setItem("onboardingCompleted", "true");
-        router.push("/dashboard");
+    const login = async (name: string = "Tim Watson", email: string = "tim@2moro.app") => {
+        // Call Server Action
+        const dbUser = await getOrCreateUser(email, name);
+        if (dbUser) {
+            setUser(dbUser);
+            localStorage.setItem("userEmail", email);
+            if (dbUser.onboardingCompleted) {
+                // router.push("/dashboard"); // Optional: let the page handle redirect logic based on state
+            }
+        }
     };
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem("user");
-        // We might want to keep onboarding status or reset it? 
-        // Usually logout just clears the session.
-        // But for this app, let's redirect to a login/onboarding page.
+        localStorage.removeItem("userEmail");
         router.push("/login");
     };
 
-    const completeOnboarding = () => {
-        localStorage.setItem("onboardingCompleted", "true");
-        setOnboardingCompleted(true);
+    const completeOnboarding = async () => {
+        if (!user) return;
+        await updateUser(user.id, { onboardingCompleted: true });
+        setUser(prev => prev ? { ...prev, onboardingCompleted: true } : null);
         router.push("/dashboard");
     };
 
-    const resetOnboarding = () => {
-        localStorage.removeItem("onboardingCompleted");
-        localStorage.removeItem("user");
-        setUser(null);
-        setOnboardingCompleted(false);
+    const resetOnboarding = async () => {
+        if (!user) return;
+        await updateUser(user.id, { onboardingCompleted: false });
+        // Don't fully logout, just reset status
+        setUser(prev => prev ? { ...prev, onboardingCompleted: false } : null);
         router.push("/onboarding");
     };
 
-    const updateProfileImage = (url: string) => {
-        setProfileImage(url);
-        localStorage.setItem("profileImage", url);
-        if (user) {
-            const updatedUser = { ...user, avatar: url };
-            setUser(updatedUser);
-            localStorage.setItem("user", JSON.stringify(updatedUser));
-        }
+    const updateProfileImage = async (url: string) => {
+        if (!user) return;
+        await updateUser(user.id, { avatar: url });
+        setUser(prev => prev ? { ...prev, avatar: url } : null);
     };
 
-    const updateProfile = (data: Partial<User>) => {
+    const updateProfileAction = async (data: Partial<User>) => {
         if (!user) return;
-        const updatedUser = { ...user, ...data };
-        setUser(updatedUser);
-        localStorage.setItem("user", JSON.stringify(updatedUser));
+        // Clean data for Prisma (undefined instead of null)
+        const cleanData: any = { ...data };
+        Object.keys(cleanData).forEach(key => {
+            if (cleanData[key] === null) cleanData[key] = undefined;
+        });
+
+        await updateUser(user.id, cleanData);
+        setUser(prev => prev ? { ...prev, ...data } : null);
     };
 
     return (
@@ -118,12 +113,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             user,
             login,
             logout,
-            profileImage,
-            onboardingCompleted,
+            profileImage: user?.avatar || null,
+            onboardingCompleted: user?.onboardingCompleted || false,
             completeOnboarding,
             resetOnboarding,
             updateProfileImage,
-            updateProfile
+            updateProfile: updateProfileAction
         }}>
             {children}
         </UserContext.Provider>

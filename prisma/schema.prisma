@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  name                String?
+  title               String?   @default("Traveler")
+  avatar              String?
+  bio                 String?
+  onboardingCompleted Boolean   @default(false)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  memories            Memory[]
+  people              Person[]
+  habits              Habit[]
+}
+
+model Memory {
+  id          String   @id @default(cuid())
+  content     String   // The text or caption
+  type        String   @default("text") // text, image, voice
+  mediaUrl    String?  // Optional image/audio URL
+  
+  memoryDate  DateTime // The actual date of the memory (can be in past)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  people      Person[] // Implicit many-to-many
+}
+
+model Person {
+  id           String   @id @default(cuid())
+  name         String
+  relationship String?
+  avatar       String?
+  color        String?  @default("bg-blue-500")
+  
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  memories     Memory[] // Implicit many-to-many
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Habit {
+  id          String   @id @default(cuid())
+  title       String
+  frequency   String   // daily, weekly
+  streak      Int      @default(0)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

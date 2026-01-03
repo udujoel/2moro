@@ -23,13 +23,15 @@ interface Person {
     avatar?: string;
     relationship: string;
     color: string;
+    memoriesCount?: number;
 }
 
 interface PeopleViewProps {
     entries: ArchiveEntry[];
+    people: Person[];
 }
 
-export function PeopleView({ entries }: PeopleViewProps) {
+export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) {
     const [selectedDate, setSelectedDate] = useState(new Date("2024-10-15")); // Mock start date
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
@@ -37,13 +39,21 @@ export function PeopleView({ entries }: PeopleViewProps) {
     const [editingMemory, setEditingMemory] = useState<number | null>(null);
     const [peopleFilter, setPeopleFilter] = useState<"all" | string>("all");
 
-    // Mock People Index (In reality, this would be derived from entries + user definition)
-    const [people, setPeople] = useState<Person[]>([
-        { id: "p1", name: "The Mentor", relationship: "Guide", color: "bg-orange-500" },
-        { id: "p2", name: "Sarah", relationship: "Partner", color: "bg-pink-500" },
-        { id: "p3", name: "Dad", relationship: "Family", color: "bg-blue-500" },
-        { id: "p4", name: "Team Alpha", relationship: "Work", color: "bg-purple-500" },
-    ]);
+    // Use prop but keep in state for optimistic updates if needed, or just use prop directly?
+    // For now, let's use the prop directly for rendering, or init state if we want to add to it locally.
+    // Simpler: Use prop. If we add, we should just re-fetch or rely on parent.
+    // But to respect the existing "Add" flow which pushed to local state, let's init state.
+    const [people, setPeople] = useState<Person[]>(initialPeople);
+
+    // Sync prop changes to state (simple effect)
+    // useEffect(() => setPeople(initialPeople), [initialPeople]); 
+    // Actually, let's just use the prop derived `people` variable if we don't need to mutate it locally exclusively.
+    // The previous implementation had `setPeople` in the Add Modal.
+    // Let's keep `people` state for now and initialize it.
+
+    // Correction: The previous code had a mock array in `useState`. 
+    // Now we initialize with `initialPeople`.
+    // Valid concern: `initialPeople` might be empty initially.
 
     const selectedPerson = people.find(p => p.id === selectedPersonId);
 

@@ -8,62 +8,60 @@ import { PeopleView } from "@/components/archive/people-view";
 import { Play } from "lucide-react";
 import Link from "next/link";
 import { ProfileDropdown } from "@/components/profile-dropdown";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getMemories, getPeople } from "@/lib/actions";
+import { useUser } from "@/components/user-provider";
 
 export default function ArchivePage() {
+    const { user } = useUser();
     const [viewMode, setViewMode] = useState<"grid" | "timeline" | "people">("grid");
+    const [memories, setMemories] = useState<any[]>([]); // Using any for transition, ideally typed
+    const [people, setPeople] = useState<any[]>([]);
 
-    // Updated Mock Data with distinct dates and colors
-    // In a real app, colors could be derived from tags or sentiment analysis
-    const entries = [
-        {
-            id: 1,
-            type: "text",
-            content: "Today I realized that my fear of failure is just a fear of learning.",
-            date: "2025-10-26",
-            createdAt: "Oct 26, 2025",
-            chapter: "Chapter 24: The Shift",
-            color: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-900 dark:text-yellow-100"
-        },
-        {
-            id: 2,
-            type: "image",
-            content: "https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=1935&auto=format&fit=crop",
-            caption: "The old coffee shop where it all started.",
-            date: "2015-09-15",
-            createdAt: "Yesterday",
-            chapter: "Chapter 14: The Early Days",
-            context: "Found in upload metadata",
-            color: "bg-orange-100 dark:bg-orange-900/20 text-orange-900 dark:text-orange-100"
-        },
-        {
-            id: 3,
-            type: "text",
-            content: "Met with the mentor. He said 'Focus on the inputs, not the outputs'. Changed my perspective entirely.",
-            date: "2020-03-12",
-            createdAt: "2 days ago",
-            chapter: "Chapter 19: Guidance",
-            color: "bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100"
-        },
-        {
-            id: 4,
-            type: "text",
-            content: "First major breakthrough on the project. It works!",
-            date: "2023-11-05",
-            createdAt: "Today",
-            chapter: "Chapter 22: Success",
-            color: "bg-green-100 dark:bg-green-900/20 text-green-900 dark:text-green-100"
-        },
-        {
-            id: 5,
-            type: "text",
-            content: "Feeling lost. The path isn't clear anymore.",
-            date: "2018-06-21",
-            createdAt: "Last Week",
-            chapter: "Chapter 17: The Valley",
-            color: "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-        }
-    ];
+    useEffect(() => {
+        if (!user) return;
+        const fetchData = async () => {
+            try {
+                const [dbMemories, dbPeople] = await Promise.all([
+                    getMemories(user.id),
+                    getPeople(user.id)
+                ]);
+
+                // Map DB Memories to UI format
+                const mappedMemories = dbMemories.map(m => ({
+                    id: m.id,
+                    type: m.type,
+                    content: m.content,
+                    date: new Date(m.memoryDate).toISOString().split('T')[0],
+                    createdAt: new Date(m.createdAt).toLocaleDateString(),
+                    chapter: "Chapter ??", // Placeholder
+                    color: "bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100", // Default color
+                    people: m.people // Pass linked people
+                }));
+
+                // Map DB People to UI format
+                const mappedPeople = dbPeople.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    relationship: p.relationship || "Connection",
+                    color: p.color || "bg-gray-500",
+                    avatar: p.avatar,
+                    memoriesCount: (p as any)._count?.memories || 0
+                }));
+
+                setMemories(mappedMemories);
+                setPeople(mappedPeople);
+            } catch (e) {
+                console.error("Failed to fetch archive data", e);
+            }
+        };
+
+        fetchData();
+    }, [user]);
+
+    // Fallback if no memories (optional: show empty state or keep mock for demo if preferred? -> Let's show empty/loading state or handle in children)
+    // Actually, if we just migrated, it's empty. Let's provide at least one "Welcome" memory if empty?
+    // Nah, let's stick to true data.
 
     return (
         <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
@@ -114,17 +112,22 @@ export default function ArchivePage() {
                     <div className="flex-1 mt-6 relative overflow-hidden flex flex-col rounded-3xl border border-border bg-card/50">
                         {viewMode === "grid" ? (
                             <div className="overflow-y-auto h-full">
-                                <ArchiveGrid entries={entries as any} />
+                                <ArchiveGrid entries={memories} />
                             </div>
                         ) : viewMode === "people" ? (
-                            <PeopleView entries={entries as any} />
+                            <PeopleView entries={memories} people={people} />
                         ) : (
-                            <TimelineView entries={entries as any} />
+                            <TimelineView entries={memories} />
                         )}
                     </div>
                 </main>
 
-                <OmniJournal onNewEntry={(e) => console.log(e)} />
+                <OmniJournal onNewEntry={(e) => {
+                    // In real app, this would optimistic update or re-fetch
+                    // For now, let's just log
+                    console.log(e);
+                    // Trigger refresh if we could
+                }} />
             </div>
         </div>
     );
