@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef } from "react";
-import { Compass, Radio, BookOpen, Settings, Play, Moon, Sun, Book } from "lucide-react";
+import { Compass, Radio, BookOpen, Settings, Play, Moon, Sun, Book, Navigation, Sparkles, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/components/user-provider";
 import { useTheme } from "@/components/theme-provider";
 
 const NAV_ITEMS = [
-    { label: "Dashboard", icon: Compass, href: "/dashboard" },
-    { label: "Oracle", icon: Radio, href: "/simulation" }, // Future module
-    { label: "Archive", icon: BookOpen, href: "/archive" }, // Future module
+    { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { label: "Compass", icon: Compass, href: "/compass" },
+    { label: "Oracle", icon: Sparkles, href: "/simulation" },
+    { label: "Diary", icon: Book, href: "/archive" },
 ];
 
 export function Sidebar({ className }: { className?: string }) {
