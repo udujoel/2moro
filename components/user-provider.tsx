@@ -43,21 +43,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // 3. If no, and DEV, do auto-login.
 
         const initUser = async () => {
-            const initUser = async () => {
-                // PERMANENT AUTO-LOGIN (User Request)
-                // Always log in as default user regardless of stored state
-                console.log("Debug: Permanent auto-login for Default Account (Forced)");
-                await login("Tim Watson", "tim@2moro.app");
+            // PERMANENT AUTO-LOGIN (User Request)
+            // Always log in as default user regardless of stored state
+            console.log("Debug: Permanent auto-login for Default Account (Forced)");
+            await login("Tim Watson", "tim@2moro.app");
 
-                /*
-                const storedEmail = localStorage.getItem("userEmail");
-                console.log("Debug: Checking stored user", storedEmail);
-    
-                if (storedEmail) {
-                    // ... (rest of logic disabled)
-                }
-                */
-            };
+            /*
+            const storedEmail = localStorage.getItem("userEmail");
+            console.log("Debug: Checking stored user", storedEmail);
+
+            if (storedEmail) {
+                // ... (rest of logic disabled)
+            }
+            */
         };
 
         initUser();

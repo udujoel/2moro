@@ -9,6 +9,7 @@ interface ArchiveEntry {
     type: "text" | "image";
     content: string;
     caption?: string;
+    imageSrc?: string; // Explicit image source
     date: string; // The memory's date
     createdAt: string; // Date added
     chapter: string;
@@ -42,14 +43,14 @@ export function ArchiveGrid({ entries }: ArchiveGridProps) {
                         {/* Card Content Preview */}
                         <div className="z-10">
                             <p className="text-xs font-bold uppercase opacity-70 mb-2">{entry.chapter}</p>
-                            {entry.type === "text" ? (
+                            {entry.type === "text" || !entry.imageSrc ? (
                                 <p className="font-semibold text-lg line-clamp-4 leading-relaxed">"{entry.content}"</p>
                             ) : (
                                 <div className="w-full h-full absolute inset-0">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={entry.content} alt={entry.caption} className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
+                                    <img src={entry.imageSrc} alt={entry.caption || "Memory"} className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end">
-                                        <p className="text-white font-medium line-clamp-2">{entry.caption}</p>
+                                        <p className="text-white font-medium line-clamp-2">{entry.caption || entry.content}</p>
                                     </div>
                                 </div>
                             )}
@@ -92,17 +93,17 @@ export function ArchiveGrid({ entries }: ArchiveGridProps) {
                                         <span>{entry.date}</span>
                                     </div>
 
-                                    {entry.type === "image" && (
+                                    {entry.type === "image" && entry.imageSrc && (
                                         <div className="w-full rounded-2xl overflow-hidden shadow-lg mb-6">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={entry.content} alt={entry.caption} className="w-full h-auto" />
+                                            <img src={entry.imageSrc} alt={entry.caption || "Memory"} className="w-full h-auto" />
                                         </div>
                                     )}
 
-                                    {entry.type === "text" ? (
+                                    {(!entry.imageSrc || entry.type === "text") ? (
                                         <h2 className="text-3xl md:text-4xl font-bold leading-tight">"{entry.content}"</h2>
                                     ) : (
-                                        <p className="text-2xl md:text-3xl font-medium leading-tight">{entry.caption}</p>
+                                        <p className="text-2xl md:text-3xl font-medium leading-tight">{entry.caption || entry.content}</p>
                                     )}
 
                                     <div className="pt-8 border-t border-black/10 mt-8 flex flex-col gap-2 opacity-60">
