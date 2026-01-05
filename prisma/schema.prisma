@@ -23,22 +23,52 @@ model User {
   memories            Memory[]
   people              Person[]
   habits              Habit[]
+  biographyChapters   BiographyChapter[]
 }
 
 model Memory {
   id          String   @id @default(cuid())
   content     String   // The text or caption
-  type        String   @default("text") // text, image, voice
-  mediaUrl    String?  // Optional image/audio URL
+  type        String   @default("text") // text, image, voice, video
+  mediaUrl    String?  // Primary media URL (backward compatibility)
   
   memoryDate  DateTime // The actual date of the memory (can be in past)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Location Data
+  locationName String?
+  latitude     Float?
+  longitude    Float?
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   people      Person[] // Implicit many-to-many
+  media       MemoryMedia[]
+}
+
+model MemoryMedia {
+  id        String   @id @default(cuid())
+  url       String
+  type      String   // image, video, audio
+  memoryId  String
+  memory    Memory   @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model BiographyChapter {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  order     Int
+  startDate DateTime? // Optional: cover a range
+  endDate   DateTime?
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lastGeneratedAt DateTime @default(now())
 }
 
 model Person {

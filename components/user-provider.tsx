@@ -43,42 +43,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // 3. If no, and DEV, do auto-login.
 
         const initUser = async () => {
-            const storedEmail = localStorage.getItem("userEmail");
-            console.log("Debug: Checking stored user", storedEmail);
-
-            if (storedEmail) {
-                // Check if we effectively have the right user in Dev
-                if (process.env.NODE_ENV === "development" && storedEmail !== "tim@2moro.app") {
-                    console.log("Debug: Stored user mismatch in Dev. Switching to Tim.");
-                    await login("Tim Watson", "tim@2moro.app");
-                    return;
-                }
-
-                // Refresh session (set cookie) and data
-                const userData = await loginAction(storedEmail, "User");
-                console.log("Debug: Fetched user from DB", userData);
-                if (userData) {
-                    setUser(userData as User);
-                    // Smart redirect
-                    const path = window.location.pathname;
-                    if (userData.onboardingCompleted) {
-                        if (path === "/" || path === "/login" || path === "/onboarding") {
-                            router.push("/dashboard");
-                        }
-                    } else {
-                        // User needs onboarding
-                        // Only redirect if trying to access protected routes
-                        if (path.startsWith("/dashboard") || path.startsWith("/profile") || path.startsWith("/archive") || path.startsWith("/simulation")) {
-                            router.push("/onboarding");
-                        }
-                    }
-                }
-            } else {
+            const initUser = async () => {
                 // PERMANENT AUTO-LOGIN (User Request)
-                // Always log in as default user if nothing found
-                console.log("Debug: Permanent auto-login for Default Account");
+                // Always log in as default user regardless of stored state
+                console.log("Debug: Permanent auto-login for Default Account (Forced)");
                 await login("Tim Watson", "tim@2moro.app");
-            }
+
+                /*
+                const storedEmail = localStorage.getItem("userEmail");
+                console.log("Debug: Checking stored user", storedEmail);
+    
+                if (storedEmail) {
+                    // ... (rest of logic disabled)
+                }
+                */
+            };
         };
 
         initUser();

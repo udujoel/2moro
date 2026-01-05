@@ -57,7 +57,15 @@ export async function getMemories(userId: string) {
     }
 }
 
-export async function createMemory(userId: string, content: string, date: Date, type: string = "text", personIds: string[] = []) {
+export async function createMemory(
+    userId: string,
+    content: string,
+    date: Date,
+    type: string = "text",
+    personIds: string[] = [],
+    location?: { name?: string; lat?: number; lng?: number },
+    media?: { url: string; type: "image" | "video" | "audio" }[]
+) {
     try {
         return await prisma.memory.create({
             data: {
@@ -65,9 +73,20 @@ export async function createMemory(userId: string, content: string, date: Date, 
                 content,
                 memoryDate: date,
                 type,
+                locationName: location?.name,
+                latitude: location?.lat,
+                longitude: location?.lng,
                 people: {
                     connect: personIds.map(id => ({ id })),
                 },
+                media: media ? {
+                    create: media.map(m => ({
+                        url: m.url,
+                        type: m.type
+                    }))
+                } : undefined,
+                // Backwards compatibility for single media
+                mediaUrl: media && media.length > 0 ? media[0].url : undefined
             },
         });
     } catch (error) {

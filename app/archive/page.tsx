@@ -9,7 +9,7 @@ import { Play } from "lucide-react";
 import Link from "next/link";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { useState, useEffect } from "react";
-import { getMemories, getPeople } from "@/lib/actions";
+import { getMemories, getPeople, createMemory } from "@/lib/actions";
 import { useUser } from "@/components/user-provider";
 
 export default function ArchivePage() {
@@ -87,7 +87,12 @@ export default function ArchivePage() {
                 <main className="flex-1 p-0 md:p-6 overflow-hidden flex flex-col relative">
                     <div className="p-6 md:p-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold">Archive</h1>
+                            <div className="flex items-center gap-4 mb-1">
+                                <h1 className="text-3xl font-bold">Archive</h1>
+                                <Link href="/archive/mystory" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
+                                    Read MyStory
+                                </Link>
+                            </div>
                             <p className="text-muted-foreground">Your living autobiography.</p>
                         </div>
 
@@ -127,12 +132,41 @@ export default function ArchivePage() {
                     </div>
                 </main>
 
-                <OmniJournal onNewEntry={(e) => {
-                    // In real app, this would optimistic update or re-fetch
-                    // For now, let's just log
-                    console.log(e);
-                    // Trigger refresh if we could
-                }} />
+                <OmniJournal
+                    people={people}
+                    onNewEntry={async (entry) => {
+                        if (!user) return;
+
+                        // Optimistic update (optional, but good for UX) - skipping for now to rely on server response
+
+                        const newMemory = await createMemory(
+                            user.id,
+                            entry.content,
+                            new Date(), // use current date
+                            entry.type,
+                            entry.personIds || [], // passed from OmniJournal
+                            undefined, // no location yet
+                            entry.media // pass media array
+                        );
+
+                        if (newMemory) {
+                            // Map to UI format
+                            const mappedMemory = {
+                                id: newMemory.id,
+                                type: newMemory.type as "text" | "image",
+                                content: newMemory.content,
+                                caption: newMemory.type === 'image' ? newMemory.content : undefined,
+                                imageSrc: newMemory.mediaUrl || (newMemory.type === 'image' ? (newMemory.content.startsWith('http') ? newMemory.content : undefined) : undefined),
+                                date: new Date(newMemory.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                createdAt: new Date(newMemory.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                chapter: "New Entry", // Mock
+                                color: "bg-blue-500", // Mock
+                                people: []
+                            };
+
+                            setMemories([mappedMemory, ...memories]);
+                        }
+                    }} />
             </div>
         </div>
     );
