@@ -13,6 +13,7 @@ interface User {
     avatar?: string | null;
     bio?: string | null;
     onboardingCompleted: boolean;
+    preferences?: any;
 }
 
 interface UserContextType {

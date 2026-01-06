@@ -8,14 +8,16 @@ import { Mic, Image as ImageIcon, Video, Type, Plus, X, Send } from "lucide-reac
 interface OmniJournalProps {
     onNewEntry: (entry: any) => void;
     people?: { id: string; name: string; avatar?: string }[];
+    locationEnabled?: boolean;
 }
 
-export function OmniJournal({ onNewEntry, people = [] }: OmniJournalProps) {
+export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }: OmniJournalProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [mode, setMode] = useState<"menu" | "text" | "voice" | "camera">("menu");
     const [textInput, setTextInput] = useState("");
     const [media, setMedia] = useState<File[]>([]);
     const [mediaPreview, setMediaPreview] = useState<string[]>([]);
+    const [location, setLocation] = useState<{ name?: string, lat?: number, lng?: number } | undefined>(undefined);
 
     // Tagging State
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -72,6 +74,22 @@ export function OmniJournal({ onNewEntry, people = [] }: OmniJournalProps) {
     const handleTextSubmit = async () => {
         if (!textInput.trim() && media.length === 0) return;
 
+        // Fetch location if enabled
+        let currentLocation = location;
+        if (locationEnabled && !currentLocation) {
+            try {
+                const pos: GeolocationPosition = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject);
+                });
+                currentLocation = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude
+                };
+            } catch (e) {
+                console.warn("Location fetch failed", e);
+            }
+        }
+
         // Mock upload
         const mockMedia = media.map((file, i) => ({
             url: "https://images.unsplash.com/photo-1501854140884-074bf6bfaedf?auto=format&fit=crop&w=800&q=80",
@@ -82,7 +100,8 @@ export function OmniJournal({ onNewEntry, people = [] }: OmniJournalProps) {
             content: textInput,
             type: media.length > 0 ? "image" : "text",
             media: mockMedia,
-            personIds: taggedPeople
+            personIds: taggedPeople,
+            location: currentLocation
         });
 
         setTextInput("");

@@ -40,6 +40,10 @@ model Memory {
   locationName String?
   latitude     Float?
   longitude    Float?
+  
+  // Metadata
+  title       String?   // Auto-generated if not provided
+  weather     Json?     // Stores { temp: number, condition: string, icon: string }
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -57,6 +57,49 @@ export async function getMemories(userId: string) {
     }
 }
 
+// ... imports
+import { generateEntryTitle } from './ai';
+
+// ... (other functions)
+
+async function fetchWeather(lat: number, lng: number, date: Date) {
+    try {
+        // Open-Meteo Archive API for historical data (or near past)
+        // Format date as YYYY-MM-DD
+        const dateStr = date.toISOString().split('T')[0];
+        const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${dateStr}&end_date=${dateStr}&daily=weather_code,temperature_2m_max&timezone=auto`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.daily && data.daily.weather_code) {
+            const code = data.daily.weather_code[0];
+            const temp = data.daily.temperature_2m_max[0];
+
+            // Map WMO codes to simple icons/conditions
+            // 0=Clear, 1-3=Cloudy, 45-48=Fog, 51-67=Rain, 71-77=Snow, 95-99=Storm
+            let condition = "Sunny";
+            let icon = "sun";
+
+            if (code > 0 && code <= 3) { condition = "Cloudy"; icon = "cloud"; }
+            else if (code >= 45 && code <= 48) { condition = "Foggy"; icon = "cloud-fog"; }
+            else if (code >= 51 && code <= 67) { condition = "Rainy"; icon = "cloud-rain"; }
+            else if (code >= 71 && code <= 77) { condition = "Snowy"; icon = "snowflake"; }
+            else if (code >= 80 && code <= 99) { condition = "Stormy"; icon = "cloud-lightning"; }
+
+            return {
+                temp,
+                condition,
+                icon,
+                code
+            };
+        }
+    } catch (e) {
+        console.error("Weather fetch failed:", e);
+    }
+    return null;
+}
+
 export async function createMemory(
     userId: string,
     content: string,
@@ -67,6 +110,29 @@ export async function createMemory(
     media?: { url: string; type: "image" | "video" | "audio" }[]
 ) {
     try {
+        // 1. Generate Title if text
+        let title = null;
+        try {
+            if (type === "text" && content.length > 10) {
+                title = await generateEntryTitle(content, "text");
+            } else if (type === "image") {
+                title = "Visual Memory";
+                if (content && content.length > 5) title = await generateEntryTitle(content, "image");
+            }
+        } catch (err) {
+            console.warn("AI Title generation failed, falling back.", err);
+        }
+
+        // 2. Fetch Weather
+        let weather = null;
+        try {
+            if (location?.lat && location?.lng) {
+                weather = await fetchWeather(location.lat, location.lng, date);
+            }
+        } catch (err) {
+            console.warn("Weather fetch failed.", err);
+        }
+
         return await prisma.memory.create({
             data: {
                 userId,
@@ -76,6 +142,8 @@ export async function createMemory(
                 locationName: location?.name,
                 latitude: location?.lat,
                 longitude: location?.lng,
+                title: title || "New Memory",
+                weather: weather || undefined,
                 people: {
                     connect: personIds.map(id => ({ id })),
                 },

@@ -3,8 +3,10 @@ import { getOrCreateUser } from "@/lib/actions";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeCustomizer } from "@/components/settings/theme-customizer";
+import { LocationToggle } from "@/components/settings/location-toggle";
 import { redirect } from "next/navigation";
 import { LogOut, User } from "lucide-react";
+import { prisma } from "@/lib/db";
 
 export default async function SettingsPage() {
     const userId = await getSessionUser();
@@ -12,14 +14,10 @@ export default async function SettingsPage() {
         redirect("/login");
     }
 
-    // We don't have a direct getUserById action yet, reuse getOrCreate or add one. 
-    // Actually we have getUserPreferences, but we want full profile. 
-    // Let's assume we can fetch it via prisma or just use a new action if needed.
-    // Ideally we should have `getUser(id)`.
-    // I'll update `app/actions/user.ts` to include `getUser(id)` or just use `getOrCreateUser` if I have email... 
-    // Wait, cookie only store ID. 
-    // I need `getUser` by ID. I will implement it inline or update actions. 
-    // Let's update `app/actions/user.ts` to export `getUser`.
+    // Fetch full user data to get preferences
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
 
     return (
         <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
@@ -43,6 +41,15 @@ export default async function SettingsPage() {
                         <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                             <h2 className="text-xl font-semibold mb-6">Appearance</h2>
                             <ThemeCustomizer />
+                        </section>
+
+                        {/* Privacy & Data */}
+                        <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                            <h2 className="text-xl font-semibold mb-6">Privacy & Data</h2>
+                            <LocationToggle
+                                userId={userId}
+                                initialEnabled={(user?.preferences as any)?.locationEnabled ?? false}
+                            />
                         </section>
 
                         {/* App Info */}

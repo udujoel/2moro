@@ -2,43 +2,79 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY as string);
 
-// Fallback hierarchy: User Request (3 Pro) -> Pro Fallback (2 Pro) -> Speed/Quota Fallback (1.5 Flash)
-// Fallback hierarchy: User Request (3 Pro) -> Pro Fallback (2 Pro) -> Speed/Quota Fallback (2.0 Flash -> Flash Latest)
-const MODELS_TO_TRY = [
-    "gemini-3-pro-preview",
-    "gemini-exp-1206",
-    "gemini-2.0-flash-exp",
-    "gemini-flash-latest"
+// Comprehensive model lists for robust fallback
+// Tiers:
+// - FAST: Good for titles, simple classifications, quick summaries. Priority: Speed & Quota.
+// - SMART: Good for storytelling, deep analysis, complex reasoning. Priority: Quality.
+
+const FAST_MODELS = [
+    "gemini-2.0-flash-exp",      // User Priority
+    "gemini-flash-latest",       // User Priority
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.0-pro",
 ];
 
-// Helper to handle fallback across models
-export async function generateContentWithFallback(prompt: string | any[]): Promise<string> {
+const SMART_MODELS = [
+    "gemini-3-pro-preview",      // User Priority (Top)
+    "gemini-exp-1206",           // User Priority
+    "gemini-2.0-flash-exp",      // User Priority
+    "gemini-1.5-pro",
+    "gemini-1.5-pro-latest",
+    "gemini-1.0-pro",
+    "gemini-pro"
+];
+
+type ModelTier = 'fast' | 'smart';
+
+export async function generateContentWithSmartRouter(prompt: string, tier: ModelTier = 'fast'): Promise<string> {
+    const modelsToTry = tier === 'fast' ? FAST_MODELS : SMART_MODELS;
     let lastError;
 
-    for (const modelName of MODELS_TO_TRY) {
-        try {
-            console.log(`[AI] Attempting generation with model: ${modelName}`);
-            const model = genAI.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(prompt);
-            return result.response.text();
-        } catch (error: any) {
-            // Check for Rate Limit (429) or Overload (503)
-            // Error structure might vary, often "status" or "statusText" or message
-            const isQuotaError = error.message?.includes("429") || error.message?.includes("Quota") || error.status === 429;
-            const isOverloadError = error.message?.includes("503") || error.status === 503;
+    // Remove duplicates just in case
+    const uniqueModels = [...new Set(modelsToTry)];
 
-            if (isQuotaError || isOverloadError) {
-                console.warn(`[AI] Model ${modelName} failed (Quota/Overload). Retrying with next model...`);
-                lastError = error;
-                continue; // Try next model
-            } else {
-                console.error(`[AI] Model ${modelName} failed with non-retriable error.`);
-                throw error; // Other errors (e.g. Invalid Argument) should probably fail fast
+    console.log(`[AI Router] Starting generation. Tier: ${tier}. Candidates: ${uniqueModels.length}`);
+
+    for (const modelName of uniqueModels) {
+        try {
+            // console.log(`[AI Router] Trying model: ${modelName}`); // Verbose log, maybe comment out for prod
+            const model = genAI.getGenerativeModel({ model: modelName });
+
+            // Set a timeout for the request to avoid hanging? (Optional optimization)
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+
+            if (text) {
+                console.log(`[AI Router] Success using model: ${modelName}`);
+                return text;
             }
+        } catch (error: any) {
+            // Analyze Error
+            const isQuota = error.message?.includes("429") || error.message?.includes("Quota") || error.status === 429;
+            const isOverload = error.message?.includes("503") || error.status === 503;
+
+            if (isQuota || isOverload) {
+                console.warn(`[AI Router] Rate Limit/Overload on ${modelName}. Switching...`);
+                lastError = error;
+                continue; // Proceed to next model
+            }
+
+            // If it's a completely different error (Safety, Bad Request), we might still want to try another model?
+            // Sometimes one model triggers safety where another doesn't.
+            // Let's be aggressive and retry for almost everything except maybe Auth errors.
+            console.warn(`[AI Router] Error on ${modelName}: ${error.message}. Switching...`);
+            lastError = error;
         }
     }
 
-    throw new Error(`All AI models failed. Last error: ${lastError?.message || "Unknown"}`);
+    console.error(`[AI Router] All ${uniqueModels.length} models failed for tier ${tier}.`);
+    throw new Error(`AI Router failed all attempts. Last error: ${lastError?.message}`);
+}
+
+// Backwards compatibility alias if needed, or we just update callers.
+export async function generateContentWithFallback(prompt: string) {
+    return generateContentWithSmartRouter(prompt, 'smart');
 }
 
 export async function summarizePeopleInternal(peopleNames: string[], memoriesContent: string[]) {
@@ -57,11 +93,30 @@ export async function summarizePeopleInternal(peopleNames: string[], memoriesCon
       Memories: ${memoriesContent.join(" | ")}
     `;
 
-        // Use the fallback mechanism
-        return await generateContentWithFallback(prompt);
+        // Use Smart Router with SMART tier for insights
+        return await generateContentWithSmartRouter(prompt, 'smart');
 
     } catch (error: any) {
         console.error("Gemini AI Error:", error);
         return "Unable to generate insight at this moment.";
+    }
+}
+
+export async function generateEntryTitle(content: string, type: "text" | "image" = "text") {
+    if (!process.env.GEMINI_KEY) return null;
+
+    try {
+        const prompt = `
+        Read the following ${type} memory entry: "${content.substring(0, 500)}..."
+        Generate a short, catchy, 3-5 word title for this memory.
+        Do not use quotes. Just the title.
+        `;
+
+        // Use Smart Router with FAST tier for titles
+        // This will cycle through ~6 fast models to avoid quota issues
+        return await generateContentWithSmartRouter(prompt, 'fast');
+    } catch (error) {
+        console.error("Error generating title:", error);
+        return null;
     }
 }

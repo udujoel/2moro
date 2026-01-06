@@ -41,6 +41,8 @@ export default function ArchivePage() {
                     createdAt: new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     chapter: "Chapter 1", // Mock
                     color: "bg-blue-500", // Mock
+                    title: m.title,
+                    weather: m.weather,
                     people: m.people.map((p: any) => p.name)
                 }));
 
@@ -134,6 +136,7 @@ export default function ArchivePage() {
 
                 <OmniJournal
                     people={people}
+                    locationEnabled={user?.preferences?.locationEnabled}
                     onNewEntry={async (entry) => {
                         if (!user) return;
 
@@ -145,7 +148,7 @@ export default function ArchivePage() {
                             new Date(), // use current date
                             entry.type,
                             entry.personIds || [], // passed from OmniJournal
-                            undefined, // no location yet
+                            entry.location, // passed from OmniJournal
                             entry.media // pass media array
                         );
 
@@ -161,6 +164,8 @@ export default function ArchivePage() {
                                 createdAt: new Date(newMemory.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                                 chapter: "New Entry", // Mock
                                 color: "bg-blue-500", // Mock
+                                title: newMemory.title,
+                                weather: newMemory.weather as any, // Cast json
                                 people: []
                             };
 
