@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Your digital biography and memory timeline.",
 };
 
+import { ToastProvider } from "@/components/ui/toast-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,7 +35,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <UserProvider>
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
           </UserProvider>
         </ThemeProvider>
       </body>

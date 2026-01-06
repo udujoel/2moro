@@ -44,12 +44,21 @@ export async function updateUser(id: string, data: { name?: string; title?: stri
 
 // --- Memory Actions ---
 
-export async function getMemories(userId: string) {
+export async function getMemories(userId: string, page: number = 1, limit: number = 30, personId?: string) {
     try {
+        const skip = (page - 1) * limit;
+        const where: any = { userId };
+
+        if (personId) {
+            where.people = { some: { id: personId } };
+        }
+
         return await prisma.memory.findMany({
-            where: { userId },
+            where,
             orderBy: { memoryDate: 'desc' },
             include: { people: true },
+            skip,
+            take: limit,
         });
     } catch (error) {
         console.error("Error fetching memories:", error);
@@ -109,6 +118,7 @@ export async function createMemory(
     location?: { name?: string; lat?: number; lng?: number },
     media?: { url: string; type: "image" | "video" | "audio" }[]
 ) {
+    console.log("Debug: createMemory called", { userId, type, mediaCount: media?.length, personIds });
     try {
         // 1. Generate Title if text
         let title = null;
@@ -163,6 +173,19 @@ export async function createMemory(
     }
 }
 
+export async function deleteMemory(memoryId: string) {
+    try {
+        await prisma.memory.delete({
+            where: { id: memoryId },
+        });
+        revalidatePath("/archive");
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting memory:", error);
+        return { success: false, error };
+    }
+}
+
 // --- Person Actions ---
 
 export async function getPeople(userId: string) {
@@ -195,24 +218,58 @@ export async function createPerson(userId: string, data: any) {
     }
 }
 
-export async function generateRelationshipInsight(userId: string) {
-    console.log("Debug AI: Generating insight for user", userId);
+export async function generateRelationshipInsight(userId: string, personId?: string, timeRange: "all" | "6m" | "1y" = "all") {
+    console.log("Debug AI: Generating insight", { userId, personId, timeRange });
     try {
-        const people = await prisma.person.findMany({ where: { userId } });
-        const memories = await prisma.memory.findMany({
-            where: { userId },
-            take: 10,
-            orderBy: { createdAt: 'desc' }
-        });
-
-        console.log(`Debug AI: Found ${people.length} people and ${memories.length} memories`);
-
-        if (people.length === 0 && memories.length === 0) {
-            return "No data available to analyze yet. Start adding memories and people to generate insights.";
+        // 1. Calculate Date Cutoff
+        let dateFilter = {};
+        if (timeRange !== "all") {
+            const now = new Date();
+            const past = new Date();
+            if (timeRange === "6m") past.setMonth(now.getMonth() - 6);
+            if (timeRange === "1y") past.setFullYear(now.getFullYear() - 1);
+            dateFilter = {
+                gte: past
+            };
         }
 
-        const peopleNames = people.map(p => p.name);
-        const memoryContext = memories.map(m => m.content);
+        // 2. Fetch People (Single or All)
+        let peopleNames = [];
+        if (personId) {
+            const p = await prisma.person.findUnique({ where: { id: personId } });
+            if (p) peopleNames.push(p.name);
+        } else {
+            const ppl = await prisma.person.findMany({ where: { userId } });
+            peopleNames = ppl.map(p => p.name);
+        }
+
+        // 3. Fetch Memories
+        // If personId is set, we MUST filter memories that include this person.
+        // Prisma limitation: 'people' is a many-to-many relation.
+        const memoryWhere: any = {
+            userId,
+            memoryDate: dateFilter, // Apply time range
+        };
+
+        if (personId) {
+            memoryWhere.people = {
+                some: { id: personId }
+            };
+        }
+
+        const memories = await prisma.memory.findMany({
+            where: memoryWhere,
+            take: 50, // Increase context size for "All Memories" summary
+            orderBy: { memoryDate: 'desc' }
+        });
+
+        console.log(`Debug AI: Found ${peopleNames.length} names and ${memories.length} memories`);
+
+        if (memories.length === 0) {
+            return "No memories found for this period.";
+        }
+
+        const memoryContext = memories.map(m => `[${m.memoryDate.toLocaleDateString()}] ${m.content}`);
 
         return await summarizePeopleInternal(peopleNames, memoryContext);
     } catch (error) {

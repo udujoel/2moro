@@ -1,8 +1,9 @@
-"use client";
-
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { X, Cloud, Sun, CloudRain, CloudLightning, Snowflake, CloudFog } from "lucide-react";
+import { X, Cloud, Sun, CloudRain, CloudLightning, Snowflake, CloudFog, Trash2 } from "lucide-react";
+import { deleteMemory } from "@/lib/actions";
+
+// ... (WeatherIcon function)
 
 function WeatherIcon({ icon, className }: { icon: string, className?: string }) {
     switch (icon) {
@@ -17,7 +18,7 @@ function WeatherIcon({ icon, className }: { icon: string, className?: string }) 
 }
 
 interface ArchiveEntry {
-    id: number;
+    id: string; // Updated to match Prisma Schema (CUID)
     type: "text" | "image";
     content: string;
     caption?: string;
@@ -33,24 +34,63 @@ interface ArchiveEntry {
 
 interface ArchiveGridProps {
     entries: ArchiveEntry[];
+    onDelete?: () => void;
 }
 
-export function ArchiveGrid({ entries }: ArchiveGridProps) {
-    const [selectedId, setSelectedId] = useState<number | null>(null);
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast-context";
+
+// ... (imports)
+
+export function ArchiveGrid({ entries, onDelete }: ArchiveGridProps) {
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const router = useRouter();
+    const { showToast } = useToast();
+
+    const executeDelete = async (id: string) => {
+        setIsDeleting(true);
+        try {
+            const result = await deleteMemory(id);
+            console.log("Delete result:", result);
+            if (result && result.success) {
+                setSelectedId(null);
+                setIsConfirmingDelete(false);
+                showToast("Memory deleted successfully", "success");
+
+                // Trigger reload from DB via parent
+                if (onDelete) {
+                    onDelete();
+                } else {
+                    router.refresh();
+                }
+            } else {
+                showToast("Failed to delete memory", "error");
+            }
+        } catch (error) {
+            console.error("Delete failed in component:", error);
+            showToast("An error occurred while deleting", "error");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     return (
         <div className="w-full">
+            {/* ... Grid Map ... */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4">
                 {entries.map((entry) => (
+                    // ... Card ...
                     <motion.div
                         key={entry.id}
                         layoutId={`card-${entry.id}`}
-                        onClick={() => setSelectedId(entry.id)}
+                        onClick={() => { setSelectedId(entry.id); setIsConfirmingDelete(false); }}
                         className="bg-card rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group border border-border/50"
                         whileHover={{ y: -4 }}
                         whileTap={{ scale: 0.98 }}
                     >
-                        {/* Premium Header - Colored or Gradient */}
+                        {/* ... Card Content ... */}
                         <div className={`p-5 ${entry.color || "bg-gradient-to-br from-indigo-500 to-purple-600"} text-white relative`}>
                             <div className="flex justify-between items-start">
                                 <div>
@@ -116,12 +156,48 @@ export function ArchiveGrid({ entries }: ArchiveGridProps) {
                                 `}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <button
-                                    onClick={() => setSelectedId(null)}
-                                    className="absolute top-6 right-6 p-2 rounded-full bg-black/10 hover:bg-black/20 transition-colors"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
+                                <div className="absolute top-6 right-6 flex gap-2 items-center">
+                                    {isConfirmingDelete ? (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="flex items-center gap-2 bg-white/90 backdrop-blur-md rounded-full p-1 pr-2 shadow-lg"
+                                        >
+                                            <span className="text-sm font-medium ml-3 mr-2 text-black/70 whitespace-nowrap">Are you sure?</span>
+                                            <button
+                                                onClick={() => executeDelete(entry.id)}
+                                                disabled={isDeleting}
+                                                className="px-4 py-1.5 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
+                                            >
+                                                {isDeleting ? "..." : "Yes"}
+                                            </button>
+                                            <button
+                                                onClick={() => setIsConfirmingDelete(false)}
+                                                disabled={isDeleting}
+                                                className="px-3 py-1.5 rounded-full bg-black/10 text-black/70 text-xs font-bold hover:bg-black/20 transition-colors"
+                                            >
+                                                No
+                                            </button>
+                                        </motion.div>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={() => setIsConfirmingDelete(true)}
+                                                className="p-2 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 transition-colors"
+                                                title="Delete Memory"
+                                            >
+                                                <Trash2 className="w-6 h-6" />
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedId(null)}
+                                                className="p-2 rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+                                            >
+                                                <X className="w-6 h-6" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
 
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-4 text-sm font-medium opacity-60 uppercase tracking-widest">

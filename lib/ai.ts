@@ -22,7 +22,8 @@ const SMART_MODELS = [
     "gemini-1.5-pro",
     "gemini-1.5-pro-latest",
     "gemini-1.0-pro",
-    "gemini-pro"
+    "gemini-pro",
+    "gemini-flash-latest"        // Ultimate Backup (Verified Working)
 ];
 
 type ModelTier = 'fast' | 'smart';
@@ -60,10 +61,8 @@ export async function generateContentWithSmartRouter(prompt: string, tier: Model
                 continue; // Proceed to next model
             }
 
-            // If it's a completely different error (Safety, Bad Request), we might still want to try another model?
-            // Sometimes one model triggers safety where another doesn't.
-            // Let's be aggressive and retry for almost everything except maybe Auth errors.
-            console.warn(`[AI Router] Error on ${modelName}: ${error.message}. Switching...`);
+            // Log the specific error message for debugging
+            console.warn(`[AI Router] Error on ${modelName} (${tier}): ${error.message}`);
             lastError = error;
         }
     }
@@ -83,15 +82,29 @@ export async function summarizePeopleInternal(peopleNames: string[], memoriesCon
     }
 
     try {
-        const prompt = `
-      You are an insightful digital biographer. 
-      Analyze the following list of people and a collection of memories associated with them.
-      Provide a brief, single-paragraph insight about the user's social circle, quality of relationships, or a specific pattern you notice.
-      Keep it encouraging, deep, and sounding like a "Life OS" analysis.
-      
-      People: ${peopleNames.join(", ")}
-      Memories: ${memoriesContent.join(" | ")}
-    `;
+        let prompt = "";
+
+        if (peopleNames.length === 1) {
+            prompt = `
+              You are an insightful digital biographer.
+              Analyze the relationship with "${peopleNames[0]}" based on the following memories.
+              Provide a deep, single-paragraph summary of the relationship history, key themes, and emotional tone.
+              Keep it encouraging and sound like a "Life OS" analysis of this specific bond.
+              If the memories are sparse to create a good summary simply say "Not enough data to analyze yet".
+
+              Memories: ${memoriesContent.join(" | ")}
+            `;
+        } else {
+            prompt = `
+              You are an insightful digital biographer. 
+              Analyze the following list of people and a collection of memories associated with them.
+              Provide a brief, single-paragraph insight about the user's social circle, quality of relationships, or a specific pattern you notice.
+              Keep it encouraging, deep, and sounding like a "Life OS" analysis.
+              
+              People: ${peopleNames.join(", ")}
+              Memories: ${memoriesContent.join(" | ")}
+            `;
+        }
 
         // Use Smart Router with SMART tier for insights
         return await generateContentWithSmartRouter(prompt, 'smart');

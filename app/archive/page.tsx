@@ -8,45 +8,86 @@ import { PeopleView } from "@/components/archive/people-view";
 import { Play } from "lucide-react";
 import Link from "next/link";
 import { ProfileDropdown } from "@/components/profile-dropdown";
+import { useToast } from "@/components/ui/toast-context";
 import { useState, useEffect } from "react";
 import { getMemories, getPeople, createMemory } from "@/lib/actions";
 import { useUser } from "@/components/user-provider";
 
 export default function ArchivePage() {
     const { user } = useUser();
+    const { showToast } = useToast();
     const [viewMode, setViewMode] = useState<"grid" | "timeline" | "people">("grid");
     const [memories, setMemories] = useState<any[]>([]); // Using any for transition, ideally typed
     const [people, setPeople] = useState<any[]>([]);
 
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const LIMIT = 30;
+
+    const fetchMemories = async (pageNum: number, reset: boolean = false) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const dbMemories = await getMemories(user.id, pageNum, LIMIT);
+
+            // Map DB Memories to UI format
+            const mappedMemories = dbMemories.map((m: any) => ({
+                id: m.id,
+                type: m.type as "text" | "image",
+                content: m.content,
+                caption: m.type === 'image' ? m.content : undefined,
+                imageSrc: m.mediaUrl || (m.type === 'image' ? (m.content.startsWith('http') ? m.content : undefined) : undefined),
+                date: new Date(m.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                createdAt: new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                chapter: "Chapter 1", // Mock
+                color: "bg-blue-500", // Mock
+                title: m.title,
+                weather: m.weather,
+                people: m.people.map((p: any) => p.name)
+            }));
+
+            if (mappedMemories.length < LIMIT) {
+                setHasMore(false);
+            } else {
+                setHasMore(true);
+            }
+
+            if (reset) {
+                setMemories(mappedMemories);
+            } else {
+                setMemories(prev => [...prev, ...mappedMemories]);
+            }
+        } catch (e) {
+            console.error("Failed to fetch memories", e);
+            showToast("Failed to load memories", "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRefresh = () => {
+        // Reload page from DB (reset to page 1)
+        setPage(1);
+        fetchMemories(1, true);
+    };
+
+    const handleLoadMore = () => {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchMemories(nextPage, false);
+    };
+
     useEffect(() => {
         if (!user) return;
-        const fetchData = async () => {
+        // Initial fetch logic
+
+        const initData = async () => {
+            // Fetch people separately as they are not paginated yet (or logic differs)
             try {
-                const [dbMemories, dbPeople] = await Promise.all([
-                    getMemories(user.id),
-                    getPeople(user.id)
-                ]);
-
-                console.log(`Debug Archive: Parsed ${dbMemories.length} memories and ${dbPeople.length} people for user ${user.id}`);
-
-                // Map DB Memories to UI format
-                const mappedMemories = dbMemories.map((m: any) => ({
-                    id: m.id,
-                    type: m.type as "text" | "image",
-                    content: m.content,
-                    caption: m.type === 'image' ? m.content : undefined,
-                    // Fix: Use mediaUrl if available. fallback to checking content if it's a URL.
-                    imageSrc: m.type === 'image' ? (m.mediaUrl || (m.content.startsWith('http') ? m.content : undefined)) : undefined,
-                    date: new Date(m.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    createdAt: new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    chapter: "Chapter 1", // Mock
-                    color: "bg-blue-500", // Mock
-                    title: m.title,
-                    weather: m.weather,
-                    people: m.people.map((p: any) => p.name)
-                }));
-
-                // Map DB People to UI format
+                const dbPeople = await getPeople(user.id);
+                // Map DB People...
                 const mappedPeople = dbPeople.map((p: any) => ({
                     id: p.id,
                     name: p.name,
@@ -55,15 +96,14 @@ export default function ArchivePage() {
                     avatar: p.avatar,
                     memoriesCount: (p as any)._count?.memories || 0
                 }));
-
-                setMemories(mappedMemories);
                 setPeople(mappedPeople);
-            } catch (e) {
-                console.error("Failed to fetch archive data", e);
-            }
+            } catch (e) { console.error(e) }
+
+            // Fetch memories page 1
+            fetchMemories(1, true);
         };
 
-        fetchData();
+        initData();
     }, [user]);
 
     // Fallback if no memories (optional: show empty state or keep mock for demo if preferred? -> Let's show empty/loading state or handle in children)
@@ -123,8 +163,25 @@ export default function ArchivePage() {
 
                     <div className="flex-1 mt-6 relative overflow-hidden flex flex-col rounded-3xl border border-border bg-card/50">
                         {viewMode === "grid" ? (
-                            <div className="overflow-y-auto h-full">
-                                <ArchiveGrid entries={memories} />
+                            <div className="overflow-y-auto h-full p-4">
+                                <ArchiveGrid entries={memories} onDelete={handleRefresh} />
+
+                                {hasMore && (
+                                    <div className="flex justify-center py-8">
+                                        <button
+                                            onClick={handleLoadMore}
+                                            disabled={isLoading}
+                                            className="px-6 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                                        >
+                                            {isLoading ? "Loading..." : "Load More Memories"}
+                                        </button>
+                                    </div>
+                                )}
+                                {!hasMore && memories.length > 0 && (
+                                    <div className="text-center py-8 text-muted-foreground text-sm opacity-60">
+                                        You've reached the beginning of time.
+                                    </div>
+                                )}
                             </div>
                         ) : viewMode === "people" ? (
                             <PeopleView entries={memories} people={people} />
@@ -138,7 +195,11 @@ export default function ArchivePage() {
                     people={people}
                     locationEnabled={user?.preferences?.locationEnabled}
                     onNewEntry={async (entry) => {
-                        if (!user) return;
+                        console.log("ArchivePage: onNewEntry called", { userExists: !!user, entry });
+                        if (!user) {
+                            console.error("ArchivePage: User is missing during save!");
+                            return;
+                        }
 
                         // Optimistic update (optional, but good for UX) - skipping for now to rely on server response
 
@@ -154,18 +215,19 @@ export default function ArchivePage() {
 
                         if (newMemory) {
                             // Map to UI format
+                            const m = newMemory as any;
                             const mappedMemory = {
-                                id: newMemory.id,
-                                type: newMemory.type as "text" | "image",
-                                content: newMemory.content,
-                                caption: newMemory.type === 'image' ? newMemory.content : undefined,
-                                imageSrc: newMemory.mediaUrl || (newMemory.type === 'image' ? (newMemory.content.startsWith('http') ? newMemory.content : undefined) : undefined),
-                                date: new Date(newMemory.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                                createdAt: new Date(newMemory.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                id: m.id,
+                                type: m.type as "text" | "image",
+                                content: m.content,
+                                caption: m.type === 'image' ? m.content : undefined,
+                                imageSrc: m.mediaUrl || (m.type === 'image' ? (m.content.startsWith('http') ? m.content : undefined) : undefined),
+                                date: new Date(m.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                createdAt: new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                                 chapter: "New Entry", // Mock
                                 color: "bg-blue-500", // Mock
-                                title: newMemory.title,
-                                weather: newMemory.weather as any, // Cast json
+                                title: m.title,
+                                weather: m.weather as any, // Cast json
                                 people: []
                             };
 

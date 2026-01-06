@@ -24,30 +24,65 @@ export function TimelineView({ entries }: TimelineViewProps) {
     const [timeRange, setTimeRange] = useState<"30d" | "6m" | "2y" | "all">("all");
     const [hoveredId, setHoveredId] = useState<number | null>(null);
 
+    // Filter based on TimeRange
+    const now = new Date();
+    const filteredEntries = entries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        if (timeRange === "30d") {
+            const cutoff = new Date();
+            cutoff.setDate(now.getDate() - 30);
+            return entryDate >= cutoff;
+        }
+        if (timeRange === "6m") {
+            const cutoff = new Date();
+            cutoff.setMonth(now.getMonth() - 6);
+            return entryDate >= cutoff;
+        }
+        if (timeRange === "2y") {
+            const cutoff = new Date();
+            cutoff.setFullYear(now.getFullYear() - 2);
+            return entryDate >= cutoff;
+        }
+        return true;
+    });
+
     // Sort chronologically
-    const sortedEntries = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedEntries = [...filteredEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // Helper to position dots
     // X axis = Date
     // Y axis = Time of day (simulated or real) or just spread
     const getCoordinates = (entry: ArchiveEntry, index: number) => {
-        // X Position: Distribution across the timeline
-        // In a real app, this would be proportional to the date within the range
-        // For visual distribution in this demo, we can just spread them or simulate date math
+        if (sortedEntries.length === 0) return { x: '50%', y: '50%' };
 
         const dateScore = new Date(entry.date).getTime();
-        const minDate = new Date(sortedEntries[0].date).getTime();
-        const maxDate = new Date(sortedEntries[sortedEntries.length - 1].date).getTime();
+        const minDate = sortedEntries.length > 0 ? new Date(sortedEntries[0].date).getTime() : 0;
+        const maxDate = sortedEntries.length > 0 ? new Date(sortedEntries[sortedEntries.length - 1].date).getTime() : 0;
 
         let xPercent = 50;
-        if (maxDate !== minDate) {
-            xPercent = ((dateScore - minDate) / (maxDate - minDate)) * 80 + 10; // 10-90% padding
+        // Avoid division by zero
+        if (maxDate > minDate) {
+            xPercent = ((dateScore - minDate) / (maxDate - minDate)) * 90 + 5; // 5-95% padding
+        } else {
+            // If only one date or all same, spread by index if possible or center
+            if (sortedEntries.length > 1) {
+                xPercent = (index / (sortedEntries.length - 1)) * 90 + 5;
+            }
         }
 
-        // Y Position: Random-ish spread or based on ID/Length to prevent collision
-        // Simulating "Time of Day" spread (top=morning, bottom=night)
-        const pseudoTime = (entry.id * 17) % 100; // Deterministic random
-        const yPercent = 20 + (pseudoTime * 0.6); // 20% to 80% height
+        // Y Position: Time of Day extraction
+        // Assuming entry.date or createdAt has time. If it's just a date string, we might need a better heuristic.
+        // Let's try to extract time from createdAt if available
+        const dateObj = new Date(entry.createdAt || entry.date);
+        const hours = dateObj.getHours();
+        const minutes = dateObj.getMinutes();
+        const totalMinutes = hours * 60 + minutes;
+
+        // Map 0 (midnight) to 1440 (midnight) -> 10% to 90%
+        let yPercent = (totalMinutes / 1440) * 80 + 10;
+
+        // Fallback or jitter to prevent exact overlap
+        if (Number.isNaN(yPercent)) yPercent = 50 + (Math.sin(index) * 20);
 
         return { x: `${xPercent}%`, y: `${yPercent}%` };
     };

@@ -98,7 +98,8 @@ export async function getAiGreeting(userId: string, timeOfDay: string): Promise<
         const cleanJson = result.replace(/```json/g, '').replace(/```/g, '').trim();
         return JSON.parse(cleanJson);
     } catch (e) {
-        console.error("AI Greeting Failed", e);
+        console.warn("AI Greeting Failed (Using Router Fallback).", e);
+        // Fallback
         return {
             greeting: `Good ${timeOfDay}, ${name}`,
             message: "Ready to capture a new day?"
@@ -140,11 +141,12 @@ export async function getAutobiographySnippets(userId: string): Promise<string[]
         const parsed = JSON.parse(cleanJson);
         return Array.isArray(parsed) ? parsed : ["Writing your story..."];
     } catch (e) {
-        console.error("Autobiography Gen Failed", e);
+        // Fallback to default snippets if AI fails
+        console.warn("Autobiography Gen Failed (Using Router Fallback).", e);
         return [
-            "Reflecting on recent days...",
-            "The journey continues...",
-            "Every moment counts."
+            "Your story is unfolding day by day.",
+            "Capture the moments that matter.",
+            "Reflect on your journey here."
         ];
     }
 }
@@ -157,7 +159,12 @@ export async function handleAiQueryAction(query: string): Promise<string> {
         Provide a concise, helpful, and warm spoken response (text that will be spoken).
         Keep it under 2 sentences.
     `;
-    return await generateContentWithFallback(prompt);
+    try {
+        return await generateContentWithFallback(prompt);
+    } catch (e) {
+        console.warn("AI Audio Query Failed.", e);
+        return "I'm having trouble connecting to my thought process right now. Please try again later.";
+    }
 }
 
 export interface ActivityData {
@@ -198,7 +205,7 @@ export async function getActivityData(userId: string): Promise<ActivityData> {
             id: h.id,
             title: h.title,
             streak: h.streak,
-            completedToday: h.lastCompletedAt ? new Date(h.lastCompletedAt) >= today : false
+            completedToday: (h as any).lastCompletedAt ? new Date((h as any).lastCompletedAt) >= today : false
         })),
         recentMemories: memories.map(m => ({
             id: m.id,

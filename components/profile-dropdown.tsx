@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from "react";
 export function ProfileDropdown() {
     const { user, profileImage, logout, resetOnboarding } = useUser();
     const [isOpen, setIsOpen] = useState(false);
+    const [imgError, setImgError] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Close on click outside
@@ -37,9 +38,14 @@ export function ProfileDropdown() {
                     <p className="text-xs text-muted-foreground">{user?.title || "Level 1"}</p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-primary/20 overflow-hidden border-2 border-background shadow-sm">
-                    {profileImage || user?.avatar ? (
+                    {(!imgError && (profileImage || user?.avatar)) ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={profileImage || user?.avatar || ""} alt="User" className="w-full h-full object-cover" />
+                        <img
+                            src={profileImage || user?.avatar || ""}
+                            alt="User"
+                            className="w-full h-full object-cover"
+                            onError={() => setImgError(true)}
+                        />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-primary">
                             <span className="text-lg font-bold">{user?.name?.[0] || <User className="w-5 h-5" />}</span>

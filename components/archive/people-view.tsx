@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Mic, Image as ImageIcon, ChevronLeft, ChevronRight, X, Calendar, RefreshCw } from "lucide-react";
-import { generateRelationshipInsight } from "@/lib/actions";
+import { generateRelationshipInsight, getMemories } from "@/lib/actions";
+import { useUser } from "@/components/user-provider";
 
 interface ArchiveEntry {
     id: number;
@@ -16,6 +17,7 @@ interface ArchiveEntry {
     color?: string;
     context?: string;
     people?: string[]; // Names of people involved
+    title?: string;
 }
 
 interface Person {
@@ -33,7 +35,7 @@ interface PeopleViewProps {
 }
 
 export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) {
-    const [selectedDate, setSelectedDate] = useState(new Date("2024-10-15")); // Mock start date
+    const [selectedDate, setSelectedDate] = useState(new Date()); // Default to today
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
     const [hoveredMemory, setHoveredMemory] = useState<number | null>(null);
@@ -61,15 +63,44 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
     const [insight, setInsight] = useState<string | null>(null);
     const [insightLoading, setInsightLoading] = useState(false);
 
+    // New State for Person History
+    const [personTimeRange, setPersonTimeRange] = useState<"all" | "6m" | "1y">("all");
+    const [personMemories, setPersonMemories] = useState<ArchiveEntry[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+
+    const { user } = useUser();
+
     useEffect(() => {
-        if (selectedPerson) {
+        if (selectedPerson && user?.id) {
             setInsightLoading(true);
-            generateRelationshipInsight(selectedPerson.id).then(res => {
+            setHistoryLoading(true);
+
+            // Fetch Insight
+            generateRelationshipInsight(user.id, selectedPerson.id, personTimeRange).then(res => {
                 setInsight(res);
                 setInsightLoading(false);
             });
+
+            // Fetch Memories (Load up to 50 for now)
+            // Note: reusing getMemories action which we updated to support personId
+            getMemories(user.id, 1, 50, selectedPerson.id).then((mems: any) => {
+                // Filter by date locally for display if needed
+                const now = new Date();
+                const filtered = mems.filter((m: any) => {
+                    const d = new Date(m.memoryDate);
+                    if (personTimeRange === "6m") {
+                        return d >= new Date(now.setMonth(now.getMonth() - 6));
+                    }
+                    if (personTimeRange === "1y") {
+                        return d >= new Date(now.setFullYear(now.getFullYear() - 1));
+                    }
+                    return true;
+                });
+                setPersonMemories(filtered);
+                setHistoryLoading(false);
+            });
         }
-    }, [selectedPerson]);
+    }, [selectedPerson, personTimeRange, user?.id]);
 
     // Generate dates for the header (e.g., 7 days window)
     const dates = Array.from({ length: 7 }).map((_, i) => {
@@ -94,36 +125,55 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
         <div className="flex flex-col h-full gap-4">
             {/* Top Control Bar */}
             <div className="flex items-center justify-between px-2">
-                <div className="relative z-20">
-                    <select
-                        value={peopleFilter}
-                        onChange={(e) => setPeopleFilter(e.target.value)}
-                        className="appearance-none bg-card border border-border rounded-full px-6 py-2.5 pr-10 text-sm font-semibold shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer min-w-[200px]"
-                    >
-                        <option value="all">All People</option>
-                        {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronRight className="w-3 h-3 rotate-90" />
-                    </div>
+                <div className="relative z-20 flex items-center gap-4">
+                    {!selectedPerson && (
+                        <div className="relative">
+                            <select
+                                value={peopleFilter}
+                                onChange={(e) => setPeopleFilter(e.target.value)}
+                                className="appearance-none bg-card border border-border rounded-full px-6 py-2.5 pr-10 text-sm font-semibold shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer min-w-[200px]"
+                            >
+                                <option value="all">All People</option>
+                                {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                                <ChevronRight className="w-3 h-3 rotate-90" />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-4 bg-card border border-border rounded-full p-1 shadow-sm">
-                    <button onClick={handlePrevious} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors">
-                        <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                    <div className="flex items-center gap-2 px-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">{selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <div className="flex items-center gap-4">
+                    {/* Time Range Selector - Always Visible */}
+                    <div className="flex bg-card border border-border p-1 rounded-full shadow-sm">
+                        {(['all', '6m', '1y'] as const).map(range => (
+                            <button
+                                key={range}
+                                onClick={() => setPersonTimeRange(range)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all ${personTimeRange === range ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                                {range === 'all' ? 'All Time' : range.toUpperCase()}
+                            </button>
+                        ))}
                     </div>
-                    <button onClick={handleNext} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors">
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </button>
+
+                    <div className="flex items-center gap-4 bg-card border border-border rounded-full p-1 shadow-sm">
+                        <button onClick={handlePrevious} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors">
+                            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                        <div className="flex items-center gap-2 px-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">{selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                        <button onClick={handleNext} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors">
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div className="flex-1 flex bg-background/50 rounded-3xl overflow-hidden border border-border">
-                {/* Sidebar: People List or Detail */}
+                {/* Sidebar */}
                 <div className="w-80 bg-card border-r border-border flex flex-col z-10 transition-all duration-300">
                     <AnimatePresence mode="wait">
                         {selectedPerson ? (
@@ -139,10 +189,10 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                         onClick={() => setSelectedPersonId(null)}
                                         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                                     >
-                                        <ChevronLeft className="w-4 h-4" /> Back to List
+                                        <ChevronLeft className="w-4 h-4" /> Back to Planner
                                     </button>
                                 </div>
-                                <div className="p-6 text-center space-y-4">
+                                <div className="p-6 text-center space-y-4 overflow-y-auto">
                                     <div className={`w-24 h-24 mx-auto rounded-full ${selectedPerson.color} bg-opacity-20 flex items-center justify-center text-2xl font-bold ring-4 ring-background shadow-xl`}>
                                         {selectedPerson.avatar ? (
                                             // eslint-disable-next-line @next/next/no-img-element
@@ -155,41 +205,45 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                         <h2 className="text-xl font-bold">{selectedPerson.name}</h2>
                                         <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">{selectedPerson.relationship}</p>
                                     </div>
+
+                                    {/* AI Insight Box */}
                                     <div className="bg-muted/50 rounded-xl p-4 text-left text-sm text-muted-foreground leading-relaxed min-h-[100px] flex items-center justify-center relative group">
                                         {insightLoading ? (
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                                <span className="text-xs">Consulting the Oracle...</span>
+                                                <span className="text-xs">Analyzing History...</span>
                                             </div>
                                         ) : (
                                             <p>{insight || "No analysis available yet."}</p>
                                         )}
-                                        {!insightLoading && (
-                                            <button
-                                                onClick={() => {
-                                                    setInsightLoading(true);
-                                                    generateRelationshipInsight(selectedPerson.id).then(res => {
-                                                        setInsight(res);
-                                                        setInsightLoading(false);
-                                                    });
-                                                }}
-                                                className="absolute top-2 right-2 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background rounded-full shadow-sm hover:scale-110"
-                                                title="Regenerate Insight"
-                                            >
-                                                <RefreshCw className="w-3 h-3 text-muted-foreground" />
-                                            </button>
-                                        )}
                                     </div>
+
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-muted/30 p-2 rounded-lg text-center">
-                                            <p className="text-xs text-muted-foreground">First Met</p>
-                                            <p className="font-semibold text-sm">Oct 2023</p>
-                                        </div>
-                                        <div className="bg-muted/30 p-2 rounded-lg text-center">
+                                        <div className="bg-muted/30 p-2 rounded-lg text-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setPersonTimeRange('all')}>
+                                            {/* Make Memories clickable as requested */}
                                             <p className="text-xs text-muted-foreground">Memories</p>
                                             <p className="font-semibold text-sm">{selectedPerson.memoriesCount || 0}</p>
                                         </div>
+                                        <div className="bg-muted/30 p-2 rounded-lg text-center">
+                                            <p className="text-xs text-muted-foreground">Status</p>
+                                            <p className="font-semibold text-sm">Active</p>
+                                        </div>
                                     </div>
+
+                                    {/* Time Range Selector (Restored) */}
+                                    <div className="flex bg-muted/30 p-1 rounded-lg">
+                                        {(['all', '6m', '1y'] as const).map(range => (
+                                            <button
+                                                key={range}
+                                                onClick={() => setPersonTimeRange(range)}
+                                                className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all ${personTimeRange === range ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                                            >
+                                                {range === 'all' ? 'All Time' : range.toUpperCase()}
+                                            </button>
+                                        ))}
+                                    </div>
+
+
                                 </div>
                             </motion.div>
                         ) : (
@@ -235,7 +289,7 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                         onClick={() => setIsAddModalOpen(true)}
                                         className="w-full py-2 bg-primary text-primary-foreground rounded-xl flex items-center justify-center gap-2 font-medium hover:opacity-90 transition-opacity"
                                     >
-                                        <Plus className="w-4 h-4" /> Add New Person
+                                        <Plus className="w-4 h-4" /> Add Person
                                     </button>
                                 </div>
                             </motion.div>
@@ -243,96 +297,121 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                     </AnimatePresence>
                 </div>
 
-                {/* Main Scheduler Area */}
+                {/* Main Content Area: Scheduler vs History */}
                 <div className="flex-1 flex flex-col overflow-hidden relative">
-                    {/* Date Header */}
-                    <div className="h-16 flex border-b border-border">
-                        {dates.map((date, i) => (
-                            <div key={i} className={`flex-1 flex flex-col items-center justify-center border-r border-border/50 ${i === 3 ? "bg-primary/5" : ""}`}>
-                                <span className="text-[10px] text-muted-foreground uppercase font-bold">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                                <span className={`text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full mt-1 ${i === 3 ? "bg-primary text-primary-foreground" : ""}`}>
-                                    {date.getDate()}
-                                </span>
+                    {selectedPerson ? (
+                        // Person History View
+                        <div className="flex-1 flex flex-col overflow-hidden bg-background">
+                            <div className="h-16 flex items-center px-6 border-b border-border justify-between">
+                                <h3 className="font-bold text-lg">Memory History</h3>
+                                <span className="text-xs text-muted-foreground">{personMemories.length} entries shown</span>
                             </div>
-                        ))}
-                    </div>
-
-                    {/* Grid */}
-                    <div className="flex-1 overflow-y-auto relative bg-grid-pattern">
-                        {/* Horizontal Rows for People */}
-                        {people.filter(p => peopleFilter === 'all' || p.id === peopleFilter).map((person, rowIndex) => (
-                            <div key={person.id} className={`h-24 border-b border-border/50 relative flex items-center ${selectedPersonId && selectedPersonId !== person.id ? "opacity-30 grayscale" : "opacity-100"}`}>
-
-                                {/* Simulation: Placing random interactive memories */}
-                                {rowIndex === 0 && (
-                                    <div
-                                        className="absolute left-[28.5%] w-[14%] h-16 z-10 m-0.5 group"
-                                        onMouseEnter={() => setHoveredMemory(1)}
-                                        onMouseLeave={() => setHoveredMemory(null)}
-                                        onClick={() => setEditingMemory(1)}
-                                    >
-                                        <div className="w-full h-full bg-orange-100 dark:bg-orange-900/40 border border-orange-200 dark:border-orange-800 rounded-xl p-2 flex flex-col justify-center shadow-sm cursor-pointer hover:scale-[1.05] transition-transform">
-                                            <p className="text-xs font-bold text-orange-900 dark:text-orange-100 truncate">Mentorship Call</p>
-                                        </div>
-
-                                        {/* Hover Popup */}
-                                        <AnimatePresence>
-                                            {hoveredMemory === 1 && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-xl p-3 z-50 pointer-events-none"
-                                                >
-                                                    <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Oct 18 • 2:00 PM</p>
-                                                    <p className="text-sm font-medium">"Focus on inputs, not outputs."</p>
-                                                    <p className="text-xs text-muted-foreground mt-2">Click to edit details.</p>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                            <div className="flex-1 overflow-y-auto p-6">
+                                {historyLoading ? (
+                                    <div className="flex h-full items-center justify-center space-x-2">
+                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                                    </div>
+                                ) : personMemories.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                                        <p>No memories found for this period.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {personMemories.map(memory => (
+                                            <div key={memory.id} className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setEditingMemory(memory.id)}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <span className="text-xs font-bold text-muted-foreground uppercase">{new Date(memory.date).toLocaleDateString()}</span>
+                                                        <h4 className="font-bold text-base mt-0.5">{memory.title || "Untitled Memory"}</h4>
+                                                    </div>
+                                                    {memory.type === 'image' && <ImageIcon className="w-4 h-4 text-muted-foreground" />}
+                                                </div>
+                                                <p className="text-sm text-foreground/80 line-clamp-3">{memory.content}</p>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
-
-                                {rowIndex === 3 && (
-                                    <div
-                                        className="absolute left-[57%] w-[14%] h-14 z-10 m-0.5 group"
-                                        onMouseEnter={() => setHoveredMemory(2)}
-                                        onMouseLeave={() => setHoveredMemory(null)}
-                                        onClick={() => setEditingMemory(2)}
-                                    >
-                                        <div className="w-full h-full bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800 rounded-xl p-2 flex flex-col justify-center shadow-sm cursor-pointer hover:scale-[1.05] transition-transform">
-                                            <p className="text-xs font-bold text-purple-900 dark:text-purple-100 truncate">Launch</p>
-                                        </div>
-
-                                        <AnimatePresence>
-                                            {hoveredMemory === 2 && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                    className="absolute bottom-full left-0 mb-2 w-64 bg-card border border-border rounded-xl shadow-xl p-3 z-50 pointer-events-none"
-                                                >
-                                                    <p className="text-xs font-bold uppercase text-muted-foreground mb-1">Oct 21 • 9:00 AM</p>
-                                                    <p className="text-sm font-medium">Project Alpha official launch.</p>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                            </div>
+                        </div>
+                    ) : (
+                        // Scheduler Grid (Existing Code)
+                        <>
+                            {/* Date Header */}
+                            <div className="h-16 flex border-b border-border">
+                                {dates.map((date, i) => (
+                                    <div key={i} className={`flex-1 flex flex-col items-center justify-center border-r border-border/50 ${i === 3 ? "bg-primary/5" : ""}`}>
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                                        <span className={`text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full mt-1 ${i === 3 ? "bg-primary text-primary-foreground" : ""}`}>
+                                            {date.getDate()}
+                                        </span>
                                     </div>
-                                )}
-
-                                {/* Vertical Grid Lines (Background) */}
-                                {dates.map((_, colIndex) => (
-                                    <div key={colIndex} className="absolute top-0 bottom-0 border-r border-dashed border-border/30 w-px pointer-events-none" style={{ left: `${((colIndex + 1) / 7) * 100}%` }} />
                                 ))}
                             </div>
-                        ))}
-                    </div>
+
+                            {/* Grid */}
+                            <div className="flex-1 overflow-y-auto relative bg-grid-pattern">
+                                {people.filter(p => peopleFilter === 'all' || p.id === peopleFilter).map((person, rowIndex) => (
+                                    <div key={person.id} className={`h-24 border-b border-border/50 relative flex items-center ${selectedPersonId && selectedPersonId !== person.id ? "opacity-30 grayscale" : "opacity-100"}`}>
+                                        {dates.map((date, colIndex) => {
+                                            const dayMemories = entries.filter(e => {
+                                                const entryDate = new Date(e.date);
+                                                return entryDate.getDate() === date.getDate() &&
+                                                    entryDate.getMonth() === date.getMonth() &&
+                                                    entryDate.getFullYear() === date.getFullYear() &&
+                                                    e.people?.includes(person.name);
+                                            });
+
+                                            return (
+                                                <div key={colIndex} className="absolute top-0 bottom-0 border-r border-dashed border-border/30 w-px" style={{ left: `${((colIndex + 1) / 7) * 100}%`, pointerEvents: 'none' }}>
+                                                    {dayMemories.map((memory, mIndex) => (
+                                                        <div
+                                                            key={memory.id}
+                                                            className="absolute w-24 h-12 z-20 group pointer-events-auto"
+                                                            style={{
+                                                                top: `${10 + (mIndex * 15)}px`,
+                                                                left: `-12px`
+                                                            }}
+                                                            onMouseEnter={() => setHoveredMemory(memory.id)}
+                                                            onMouseLeave={() => setHoveredMemory(null)}
+                                                            onClick={() => setEditingMemory(memory.id)}
+                                                        >
+                                                            <div className={`
+                                                                w-full h-full rounded-xl p-2 flex flex-col justify-center shadow-sm cursor-pointer hover:scale-[1.05] transition-transform border
+                                                                ${mIndex % 2 === 0 ? "bg-orange-100 dark:bg-orange-900/40 border-orange-200" : "bg-purple-100 dark:bg-purple-900/40 border-purple-200"}
+                                                            `}>
+                                                                <p className="text-[10px] font-bold opacity-80 truncate">{memory.title || "Memory"}</p>
+                                                            </div>
+                                                            <AnimatePresence>
+                                                                {hoveredMemory === memory.id && (
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                                        className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-xl p-3 z-50 pointer-events-none"
+                                                                    >
+                                                                        <p className="text-xs font-bold uppercase text-muted-foreground mb-1">{memory.date}</p>
+                                                                        <p className="text-sm font-medium line-clamp-2">{memory.content}</p>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
-
-            {/* Add Person Modal */}
+            {/* ... Modals (Keep existing) ... */}
             <AnimatePresence>
                 {isAddModalOpen && (
+                    // ... keep existing
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
@@ -344,15 +423,14 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                 <h2 className="text-xl font-bold">Add Person</h2>
                                 <button onClick={() => setIsAddModalOpen(false)}><X className="w-5 h-5" /></button>
                             </div>
-
                             <div className="p-6 space-y-6">
                                 <div className="flex gap-4">
                                     <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border cursor-pointer hover:border-primary transition-colors">
                                         <ImageIcon className="w-6 h-6 text-muted-foreground" />
                                     </div>
                                     <div className="flex-1 space-y-3">
-                                        <input type="text" placeholder="Name (e.g. Alex)" className="w-full bg-muted/50 p-3 rounded-xl border border-border" />
-                                        <input type="text" placeholder="Relationship (e.g. Mentor)" className="w-full bg-muted/50 p-3 rounded-xl border border-border" />
+                                        <input type="text" placeholder="Name" className="w-full bg-muted/50 p-3 rounded-xl border border-border" />
+                                        <input type="text" placeholder="Relationship" className="w-full bg-muted/50 p-3 rounded-xl border border-border" />
                                     </div>
                                 </div>
 
@@ -376,54 +454,25 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
 
                             <div className="p-6 pt-0">
                                 <button onClick={() => setIsAddModalOpen(false)} className="w-full py-4 bg-foreground text-background rounded-xl font-bold hover:opacity-90 transition-opacity">
-                                    Save Profile
+                                    Save
                                 </button>
                             </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
-
-            {/* Edit/Add Memory Modal */}
             <AnimatePresence>
                 {editingMemory && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                        {/* Simplified Mock for keeping code valid short term */}
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="bg-card w-full max-w-md rounded-2xl shadow-2xl border border-border overflow-hidden"
+                            className="bg-card w-full max-w-md rounded-2xl p-4"
                         >
-                            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/30">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                    <h3 className="font-bold text-sm">Mentorship Call</h3>
-                                </div>
-                                <button onClick={() => setEditingMemory(null)}><X className="w-4 h-4" /></button>
-                            </div>
-
-                            <div className="p-4 space-y-4">
-                                <div className="flex gap-2 text-xs">
-                                    <div className="flex-1 bg-muted p-2 rounded-lg text-center">
-                                        <p className="text-muted-foreground mb-1">Date</p>
-                                        <p className="font-semibold">Oct 18, 2024</p>
-                                    </div>
-                                    <div className="flex-1 bg-muted p-2 rounded-lg text-center">
-                                        <p className="text-muted-foreground mb-1">Time</p>
-                                        <p className="font-semibold">2:00 PM</p>
-                                    </div>
-                                </div>
-
-                                <textarea
-                                    className="w-full h-32 bg-muted/30 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                                    defaultValue="Focus on inputs, not outputs. Control what you can control."
-                                />
-
-                                <div className="flex justify-end gap-2">
-                                    <button onClick={() => setEditingMemory(null)} className="px-4 py-2 text-xs font-medium hover:bg-muted rounded-lg transition-colors">Delete</button>
-                                    <button onClick={() => setEditingMemory(null)} className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:opacity-90 transition-opacity">Save Changes</button>
-                                </div>
-                            </div>
+                            <div className="flex justify-between mb-4"><h3 className="font-bold">Memory Details</h3><button onClick={() => setEditingMemory(null)}><X className="w-4 h-4" /></button></div>
+                            <p className="text-sm text-muted-foreground">Detailed editing is available in Archive view.</p>
                         </motion.div>
                     </div>
                 )}
