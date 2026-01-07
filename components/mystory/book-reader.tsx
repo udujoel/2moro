@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, Minimize2, Settings, Sparkles, BookOpen } from "lucide-react";
-import { regenerateStory } from "@/app/actions/mystory";
+import { Maximize2, Minimize2, Settings, Sparkles, BookOpen, Play, Pause, Loader2, Volume2 } from "lucide-react";
+import { regenerateStory, generateAudiobook } from "@/app/actions/mystory";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface Chapter {
     id: string;
@@ -52,6 +54,12 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
     const [showSettings, setShowSettings] = useState(false);
     const [isTurning, setIsTurning] = useState(false);
     const [turnDirection, setTurnDirection] = useState<"forward" | "backward">("forward");
+    const [isAudioLoading, setIsAudioLoading] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const bookRef = useRef<HTMLDivElement>(null);
+    const exportRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
     // Force demo content for now as requested by the user
@@ -176,6 +184,81 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
         }
     };
 
+    const handlePlayAudio = async () => {
+        if (isPlaying) {
+            audioRef.current?.pause();
+            setIsPlaying(false);
+            return;
+        }
+
+        if (audioRef.current && audioRef.current.readyState >= 2) {
+            audioRef.current.play().catch(e => console.error("Audio: Resume failed", e));
+            setIsPlaying(true);
+            return;
+        }
+
+        setIsAudioLoading(true);
+        try {
+            // Find current chapter content
+            const currentSpreadData = pages[currentSpread];
+            let contentToRead = "";
+
+            if (currentSpreadData.type === "chapter-start" || currentSpreadData.type === "chapter-continue") {
+                const chapter = chapters.find(ch => ch.id === currentSpreadData.chapterId);
+                contentToRead = chapter?.content || "";
+            } else {
+                contentToRead = "Table of contents.";
+            }
+
+            const result = await generateAudiobook(contentToRead);
+
+            if (result.success && result.audio) {
+                const audio = new Audio(result.audio);
+                audioRef.current = audio;
+
+                audio.onended = () => setIsPlaying(false);
+                audio.onerror = () => setIsPlaying(false);
+
+                await audio.play().catch(err => {
+                    console.error("Audio: Play error (likely autoplay policy)", err);
+                });
+                setIsPlaying(true);
+            }
+        } catch (error) {
+            console.error("Audio: Error in handlePlayAudio", error);
+        }
+        setIsAudioLoading(false);
+    };
+
+    // Stop audio when turning page or closing book
+    const handleExportPDF = async () => {
+        if (!exportRef.current) return;
+        setIsExporting(true);
+        try {
+            const pdf = new jsPDF("p", "mm", "a4");
+            const exportElement = exportRef.current;
+            exportElement.style.display = "block";
+
+            // Render cover
+            const coverCanvas = await html2canvas(exportElement.querySelector("#pdf-cover") as HTMLElement, { scale: 2 });
+            pdf.addImage(coverCanvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297);
+
+            // Render chapters
+            const chapterElements = exportElement.querySelectorAll(".pdf-chapter");
+            for (let i = 0; i < chapterElements.length; i++) {
+                pdf.addPage();
+                const canvas = await html2canvas(chapterElements[i] as HTMLElement, { scale: 2 });
+                pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297);
+            }
+
+            pdf.save(`${chapters[0].title.replace(/\s+/g, "_")}_Autobiography.pdf`);
+            exportElement.style.display = "none";
+        } catch (error) {
+            console.error("PDF Export error:", error);
+        }
+        setIsExporting(false);
+    };
+
     const themeStyles = {
         classic: { bg: "#fdfaf7", text: "#000000", font: "Lora, Georgia, serif" },
         modern: { bg: "#ffffff", text: "#000000", font: "Inter, sans-serif" },
@@ -200,6 +283,21 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
                 </div>
 
                 <div className="flex items-center gap-6">
+                    <button
+                        onClick={handlePlayAudio}
+                        disabled={isAudioLoading}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-all text-[10px] font-black shadow-sm active:scale-95 disabled:opacity-50 tracking-wider group"
+                    >
+                        {isAudioLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : isPlaying ? (
+                            <Pause className="w-3.5 h-3.5 fill-current" />
+                        ) : (
+                            <Volume2 className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+                        )}
+                        {isAudioLoading ? "GENERATING..." : isPlaying ? "PAUSE AUDIO" : "PLAY AUDIOBOOK"}
+                    </button>
+
                     <button
                         onClick={handleUpdateStory}
                         disabled={isUpdating}
@@ -231,6 +329,15 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
                         <div className="fixed inset-0 z-40" onClick={() => setShowSettings(false)} />
                         <div className="absolute right-10 top-16 w-48 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-gray-50 z-50 py-3 animate-in fade-in zoom-in-95 duration-200">
                             <div className="px-5 py-1.5 text-[9px] font-black text-gray-300 uppercase tracking-[0.3em] mb-1">Appearance</div>
+                            <button
+                                onClick={handleExportPDF}
+                                disabled={isExporting}
+                                className="w-full px-5 py-2 text-left text-xs hover:bg-gray-50 transition-colors flex items-center justify-between"
+                            >
+                                <span className="text-gray-500 font-medium">Export PDF</span>
+                                {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
+                            </button>
+                            <div className="mx-2 my-1 border-t border-gray-50" />
                             {(["classic", "modern", "dark", "vintage"] as ThemeType[]).map((t) => (
                                 <button
                                     key={t}
@@ -267,23 +374,30 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
                                 style={{ transformStyle: "preserve-3d", width: "47.5vw", height: SPREAD_HEIGHT }}
                             >
                                 <div
-                                    className="relative rounded-r-[2.5rem] shadow-[0_50px_120px_rgba(0,0,0,0.35)] group-hover:shadow-[0_70px_150px_rgba(0,0,0,0.45)] transition-all duration-700 h-full w-full"
+                                    className="relative rounded-r-[2.5rem] shadow-[0_50px_120px_rgba(0,0,0,0.35)] group-hover:shadow-[0_70px_150px_rgba(0,0,0,0.45)] transition-all duration-700 h-full w-full overflow-hidden"
                                     style={{
-                                        background: "linear-gradient(135deg, #121212 0%, #000000 100%)",
                                         transformStyle: "preserve-3d"
                                     }}
                                 >
+                                    <Image
+                                        src="/images/mystory/cover_v6.png"
+                                        alt="Cover"
+                                        fill
+                                        className="object-cover"
+                                        priority
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 z-10" />
                                     <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-black/80 via-transparent to-transparent z-20" />
 
-                                    <div className="absolute inset-x-16 inset-y-20 flex flex-col items-center justify-between text-center border-4 border-white/5 p-16 bg-white/[0.01]">
-                                        <div className="space-y-10">
-                                            <div className="text-xs font-black text-white/30 uppercase tracking-[0.6em]">A Personal Anthology</div>
-                                            <h1 className="text-7xl font-serif text-white font-black leading-tight tracking-tighter italic">My story.</h1>
+                                    <div className="absolute inset-x-12 inset-y-16 flex flex-col items-center justify-between text-center border-4 border-white/10 p-12 bg-black/20 backdrop-blur-[2px] z-30">
+                                        <div className="space-y-4">
+                                            <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.6em]">A Personal Anthology</div>
+                                            <h1 className="text-6xl font-serif text-white font-black leading-tight tracking-tighter italic drop-shadow-2xl">The Weight of Time</h1>
                                         </div>
-                                        <div className="space-y-12">
-                                            <div className="w-20 h-px bg-white/10 mx-auto" />
-                                            <p className="text-white/40 text-lg italic font-serif leading-relaxed px-8">An attempt to capture the ephemeral nature of a life lived across moments.</p>
-                                            <div className="text-xs text-white/20 font-black uppercase tracking-[0.4em] animate-pulse">Touch to open</div>
+                                        <div className="space-y-8">
+                                            <div className="w-16 h-px bg-white/20 mx-auto" />
+                                            <p className="text-white/60 text-base italic font-serif leading-relaxed px-4 drop-shadow-lg">An attempt to capture the ephemeral nature of a life lived across moments.</p>
+                                            <div className="text-[10px] text-white/40 font-black uppercase tracking-[0.4em] animate-pulse">Touch to open</div>
                                         </div>
                                     </div>
                                     <div className="absolute right-0 top-6 bottom-6 w-5 bg-white/5 rounded-r-3xl shadow-inner z-10" />
@@ -343,7 +457,7 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
 
                                                     <div className="flex-1 w-full relative rounded-[2rem] overflow-hidden shadow-2xl border border-black/5 grayscale hover:grayscale-0 transition-all duration-1000 min-h-[400px]">
                                                         <Image
-                                                            src="/images/mystory/demo-illustration.png"
+                                                            src={`/images/mystory/ch${currentPage.order}_illustration_v6.png`}
                                                             alt="Illustration"
                                                             fill
                                                             className="object-cover scale-105 group-hover:scale-100 transition-transform duration-[2s]"
@@ -453,6 +567,45 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
                         )}
                     </AnimatePresence>
                 </div>
+            </div>
+            {/* Hidden Export Container */}
+            <div ref={exportRef} className="fixed left-[-9999px] top-0 w-[210mm] bg-white text-black" style={{ display: "none" }}>
+                <div id="pdf-cover" className="w-[210mm] h-[297mm] relative flex flex-col items-center justify-center p-20 bg-black text-white text-center">
+                    <Image src="/images/mystory/cover_v6.png" alt="Cover" fill className="object-cover opacity-60 border-0" />
+                    <div
+                        className="relative z-10 space-y-10 border-4 p-16"
+                        style={{
+                            borderColor: "rgba(255, 255, 255, 0.2)",
+                            backgroundColor: "rgba(0, 0, 0, 0.4)",
+                            backdropFilter: "blur(10px)"
+                        }}
+                    >
+                        <h1 className="text-6xl font-serif italic" style={{ color: "#ffffff" }}>The Weight of Time</h1>
+                        <p className="text-xl font-serif opacity-70" style={{ color: "#ffffff" }}>An Autobiography</p>
+                    </div>
+                </div>
+                {chapters.map((ch, idx) => (
+                    <div
+                        key={ch.id}
+                        className="pdf-chapter w-[210mm] h-[297mm] p-20 flex flex-col items-center text-black"
+                        style={{ backgroundColor: "#fdfaf7" }}
+                    >
+                        <div className="text-center mb-10">
+                            <h2 className="text-3xl font-serif italic mb-2" style={{ color: "#000000" }}>{ch.title}</h2>
+                            <div className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: "#000000" }}>Chapter {idx + 1}</div>
+                        </div>
+                        <div
+                            className="w-full h-64 relative mb-10 overflow-hidden rounded-xl border"
+                            style={{ borderColor: "rgba(0, 0, 0, 0.05)" }}
+                        >
+                            <Image src={`/images/mystory/ch${idx + 1}_illustration_v6.png`} alt="Illustration" fill className="object-cover" />
+                        </div>
+                        <div className="text-base font-serif leading-relaxed text-justify indent-8" style={{ color: "#000000" }}>
+                            {ch.content}
+                        </div>
+                        <div className="mt-auto pt-10 text-[10px] opacity-30" style={{ color: "#000000" }}>Page {idx + 2}</div>
+                    </div>
+                ))}
             </div>
         </div>
     );

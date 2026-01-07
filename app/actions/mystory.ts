@@ -2,6 +2,7 @@
 
 import { generateMyStory } from "@/lib/mystory";
 import { revalidatePath } from "next/cache";
+import { generateTTS } from "@/lib/elevenlabs";
 
 export async function regenerateStory(userId: string) {
     try {
@@ -19,8 +20,31 @@ export async function regenerateStory(userId: string) {
     }
 }
 
+export async function generateAudiobook(text: string) {
+    try {
+        const audioBuffer = await generateTTS(text);
+        const base64Audio = audioBuffer.toString("base64");
+        return {
+            success: true,
+            audio: `data:audio/mpeg;base64,${base64Audio}`
+        };
+    } catch (error: any) {
+        console.error("Audio generation failed:", error);
+        return { success: false, message: error.message || "Failed to generate audio" };
+    }
+}
+
+export async function generateCoverAction(userId: string, title: string) {
+    // Phase 9: Implement DALL-E cover generation
+    return { success: false, message: "Cover generation not yet implemented" };
+}
+
+export async function generateIllustrationAction(chapterId: string, prompt: string) {
+    // Phase 9: Implement chapter illustration generation
+    return { success: false, message: "Illustration generation not yet implemented" };
+}
+
 export async function exportStoryAsPDF(userId: string) {
-    // TODO: Implement PDF export
-    // This will require jsPDF library
+    // Phase 9: Implement PDF export
     return { success: false, message: "PDF export not yet implemented" };
 }
