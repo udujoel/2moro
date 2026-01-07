@@ -99,7 +99,35 @@ export function Sidebar({ className }: { className?: string }) {
                 ))}
             </nav>
 
-            <div className="pt-6 border-t border-border mt-auto relative space-y-4">
+            {/* MyStory Quick Link - Above horizontal line */}
+            <Link
+                href="/mystory"
+                className={cn(
+                    "flex items-center py-2.5 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap group mt-auto mb-2",
+                    isExpanded ? "px-3 justify-start" : "px-0 justify-center",
+                    pathname === "/mystory"
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                )}
+                title={!isExpanded ? "MyStory" : undefined}
+            >
+                <BookOpen className="w-5 h-5 shrink-0" />
+                <span
+                    className={cn(
+                        "whitespace-nowrap overflow-hidden transition-all",
+                        "w-auto opacity-100 ml-3 duration-300"
+                    )}
+                    style={{
+                        width: isExpanded ? "auto" : "0",
+                        opacity: isExpanded ? 1 : 0,
+                        marginLeft: isExpanded ? "0.75rem" : "0"
+                    }}
+                >
+                    MyStory
+                </span>
+            </Link>
+
+            <div className="pt-6 border-t border-border relative space-y-4">
                 {/* Theme Switcher - Bottom Left */}
                 {/* Always render, hide with css if needed, or better: show simplified when collapsed? 
                     Design says "bottom-left of sidebar". 

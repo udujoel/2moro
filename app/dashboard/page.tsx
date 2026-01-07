@@ -13,6 +13,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 // Calendar is tricky to build from scratch quickly with "adjustable" features mentioned in prompt.
 // We'll use a placeholder or simple calendar for now to meet the visual layout.
 import { Calendar } from "lucide-react";
+import { CalendarWidget } from "@/components/dashboard/calendar-widget";
 
 export default async function DashboardPage() {
     const userId = await getSessionUser();
@@ -64,25 +65,16 @@ export default async function DashboardPage() {
             {/* 3. Right Panel (Right) */}
             <aside className="hidden xl:flex w-96 flex-col border-l border-border bg-card p-6 space-y-8 overflow-y-auto z-20 shadow-sm">
 
-                {/* Profile / Work History Section */}
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-lg">Work History</h3>
-                        <button className="p-2 hover:bg-muted rounded-full transition-colors"><Calendar className="w-4 h-4" /></button>
-                    </div>
-                </div>
+
 
                 {/* Calendar */}
                 <div>
-                    <h3 className="font-bold text-lg mb-4">Schedule Calendar</h3>
-                    <div className="bg-secondary/20 rounded-2xl p-4 border border-border flex flex-col items-center justify-center min-h-[200px]">
-                        <Calendar className="w-10 h-10 text-primary mb-2 opacity-50" />
-                        <span className="text-sm font-medium">Calendar Module</span>
-                    </div>
+                    <h3 className="font-bold text-lg mb-4">Calendar</h3>
+                    <CalendarWidget />
                 </div>
 
                 {/* Autobiography / Earnings */}
-                <div className="min-h-[250px]">
+                <div className="h-[280px] flex flex-col">
                     <h3 className="font-bold text-lg mb-4">Autobiography</h3>
                     <AutobiographyWidget snippets={autobiography} />
                 </div>

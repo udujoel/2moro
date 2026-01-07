@@ -70,8 +70,12 @@ export async function generateContentWithSmartRouter(prompt: string | Array<stri
         }
     }
 
-    console.error(`[AI Router] All ${uniqueModels.length} models failed for tier ${tier}.`);
-    throw new Error(`AI Router failed all attempts. Last error: ${lastError?.message}`);
+
+    console.warn(`[AI Router] All ${uniqueModels.length} models failed for tier ${tier}.`);
+    console.warn(`[AI Router] Last error: ${lastError?.message}`);
+
+    // Return a fallback instead of throwing to prevent dashboard crashes
+    return "Unable to generate AI content at this time. Please try again later.";
 }
 
 // Backwards compatibility alias if needed, or we just update callers.
