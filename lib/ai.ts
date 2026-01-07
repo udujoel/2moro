@@ -28,7 +28,10 @@ const SMART_MODELS = [
 
 type ModelTier = 'fast' | 'smart';
 
-export async function generateContentWithSmartRouter(prompt: string, tier: ModelTier = 'fast'): Promise<string> {
+// Define the Part type if not exported by library, or import it. 
+// For simplicity we can use 'any' or better yet, the library's types.
+// But prompt can be string | Array<string | Part>
+export async function generateContentWithSmartRouter(prompt: string | Array<string | any>, tier: ModelTier = 'fast'): Promise<string> {
     const modelsToTry = tier === 'fast' ? FAST_MODELS : SMART_MODELS;
     let lastError;
 
@@ -72,7 +75,7 @@ export async function generateContentWithSmartRouter(prompt: string, tier: Model
 }
 
 // Backwards compatibility alias if needed, or we just update callers.
-export async function generateContentWithFallback(prompt: string) {
+export async function generateContentWithFallback(prompt: string | Array<string | any>) {
     return generateContentWithSmartRouter(prompt, 'smart');
 }
 

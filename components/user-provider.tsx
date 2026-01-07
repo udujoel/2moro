@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getOrCreateUser, updateUser } from "@/lib/actions";
 import { loginAction } from "@/app/actions/auth";
@@ -35,34 +35,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const router = useRouter();
 
-    useEffect(() => {
-        // Hydrate from localStorage for valid session check? 
-        // OR better: check for a simple "userId" in local storage to fetch fresh data?
-        // For this hybrid approach (Client Component + Server Actions), we'll do:
-        // 1. Check if we have a userId in localStorage.
-        // 2. If yes, fetch that user from DB to get latest state.
-        // 3. If no, and DEV, do auto-login.
-
-        const initUser = async () => {
-            // PERMANENT AUTO-LOGIN (User Request)
-            // Always log in as default user regardless of stored state
-            console.log("Debug: Permanent auto-login for Default Account (Forced)");
-            await login("Tim Watson", "tim@2moro.app");
-
-            /*
-            const storedEmail = localStorage.getItem("userEmail");
-            console.log("Debug: Checking stored user", storedEmail);
-
-            if (storedEmail) {
-                // ... (rest of logic disabled)
-            }
-            */
-        };
-
-        initUser();
-    }, []);
-
-    const login = async (name: string = "Tim Watson", email: string = "tim@2moro.app") => {
+    const login = useCallback(async (name: string = "Tim Watson", email: string = "tim@2moro.app") => {
         // Call Server Action
         const dbUser = await loginAction(email, name);
         if (dbUser) {
@@ -76,7 +49,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 }
             }
         }
-    };
+    }, [router]);
 
     const logout = () => {
         // Disabled per user request
@@ -115,6 +88,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         await updateUser(user.id, cleanData);
         setUser(prev => prev ? { ...prev, ...data } : null);
     };
+
+    useEffect(() => {
+        // Hydrate from localStorage for valid session check? 
+        // OR better: check for a simple "userId" in local storage to fetch fresh data?
+        // For this hybrid approach (Client Component + Server Actions), we'll do:
+        // 1. Check if we have a userId in localStorage.
+        // 2. If yes, fetch that user from DB to get latest state.
+        // 3. If no, and DEV, do auto-login.
+
+        const initUser = async () => {
+            // PERMANENT AUTO-LOGIN (User Request)
+            // Always log in as default user regardless of stored state
+            console.log("Debug: Permanent auto-login for Default Account (Forced)");
+            await login("Tim Watson", "tim@2moro.app");
+
+            /*
+            const storedEmail = localStorage.getItem("userEmail");
+            console.log("Debug: Checking stored user", storedEmail);
+
+            if (storedEmail) {
+                // ... (rest of logic disabled)
+            }
+            */
+        };
+
+        initUser();
+    }, []);
 
     return (
         <UserContext.Provider value={{
