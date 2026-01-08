@@ -21,18 +21,30 @@ import { StreakTracker } from "@/components/compass/streak-tracker";
 import { InvestmentProjection } from "@/components/compass/investment-projection";
 import { PortfolioChart } from "@/components/compass/portfolio-chart";
 import { FinancialHealth } from "@/components/compass/financial-health";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function CompassPage() {
     const { user } = useUser();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [hasPersonalityTest, setHasPersonalityTest] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [forceRefresh, setForceRefresh] = useState(false);
 
     useEffect(() => {
         if (user) {
             checkPersonalityTest();
         }
-    }, [user]);
+
+        // Check for refresh param from assessment completion
+        const shouldRefresh = searchParams.get("refresh") === "true";
+        if (shouldRefresh) {
+            setForceRefresh(true);
+            // Clear the param from URL
+            router.replace("/compass", { scroll: false });
+        }
+    }, [user, searchParams]);
 
     const checkPersonalityTest = async () => {
         if (!user) return;
@@ -45,6 +57,8 @@ export default function CompassPage() {
 
     const handleTodoUpdate = () => {
         setRefreshTrigger((prev) => prev + 1);
+        // Reset forceRefresh after initial load
+        if (forceRefresh) setForceRefresh(false);
     };
 
     if (!user) {
@@ -150,7 +164,11 @@ export default function CompassPage() {
                                         <Sparkles className="w-5 h-5 text-primary" />
                                         AI Recommendations
                                     </h3>
-                                    <AIRecommendations userId={user.id} onAccept={handleTodoUpdate} />
+                                    <AIRecommendations
+                                        userId={user.id}
+                                        onAccept={handleTodoUpdate}
+                                        forceRefresh={forceRefresh}
+                                    />
                                 </div>
                             )}
 

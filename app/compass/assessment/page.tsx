@@ -37,7 +37,8 @@ export default function AssessmentPage() {
 
         if (response.success) {
             setTimeout(() => {
-                router.push("/compass");
+                // Add refresh=true to trigger new recommendations
+                router.push("/compass?refresh=true");
             }, 1500);
         } else {
             setIsSaving(false);

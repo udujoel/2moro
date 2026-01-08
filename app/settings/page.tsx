@@ -4,8 +4,9 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeCustomizer } from "@/components/settings/theme-customizer";
 import { LocationToggle } from "@/components/settings/location-toggle";
+import { CalendarIntegration } from "@/components/settings/calendar-integration";
 import { redirect } from "next/navigation";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Calendar } from "lucide-react";
 import { prisma } from "@/lib/db";
 
 export default async function SettingsPage() {
@@ -16,8 +17,13 @@ export default async function SettingsPage() {
 
     // Fetch full user data to get preferences
     const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
+        include: {
+            userPreferences: true,
+        },
     });
+
+    const isCalendarConnected = user?.userPreferences?.googleCalendarEnabled ?? false;
 
     return (
         <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
@@ -41,6 +47,18 @@ export default async function SettingsPage() {
                         <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
                             <h2 className="text-xl font-semibold mb-6">Appearance</h2>
                             <ThemeCustomizer />
+                        </section>
+
+                        {/* Integrations Section */}
+                        <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center gap-3 mb-6">
+                                <Calendar className="w-5 h-5 text-primary" />
+                                <h2 className="text-xl font-semibold">Integrations</h2>
+                            </div>
+                            <CalendarIntegration
+                                userId={userId}
+                                isConnected={isCalendarConnected}
+                            />
                         </section>
 
                         {/* Privacy & Data */}

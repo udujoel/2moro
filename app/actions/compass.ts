@@ -4,6 +4,7 @@ import { generateContentWithSmartRouter } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 import { getMonthlyHoroscope, getZodiacSign } from "@/lib/horoscope";
 import { calculateFinancialHealthScore } from "@/lib/finance";
+import { createCalendarEvent, calculateDueDate } from "@/lib/google-calendar";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -124,9 +125,35 @@ export async function getMonthlyHoroscopeForUser(userId: string) {
 
 /**
  * Generate AI-powered recommendations based on personality and horoscope
+ * Caches recommendations to DB and only regenerates when forced
  */
-export async function generateAIRecommendations(userId: string) {
+export async function generateAIRecommendations(userId: string, forceRefresh: boolean = false) {
     try {
+        // Check for cached recommendations first (unless force refresh)
+        if (!forceRefresh) {
+            const cachedRecs = await prisma.aIRecommendation.findMany({
+                where: {
+                    userId,
+                    type: "personality",
+                    status: "pending"
+                },
+                orderBy: { createdAt: "desc" },
+            });
+
+            if (cachedRecs.length > 0) {
+                return {
+                    success: true,
+                    recommendations: cachedRecs.map(r => ({
+                        id: r.id,
+                        category: r.category,
+                        task: r.task,
+                        description: r.description,
+                    })),
+                    cached: true,
+                };
+            }
+        }
+
         // Fetch latest personality test
         const { test } = await getLatestPersonalityTest(userId);
         if (!test) {
@@ -176,10 +203,48 @@ Return ONLY valid JSON in this exact format:
         const response = await generateContentWithSmartRouter(prompt, "smart");
 
         // Parse JSON response
-        const jsonStr = response.replace(/```json/g, "").replace(/```/g, "").trim();
+        const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
         const data = JSON.parse(jsonStr);
 
-        return { success: true, recommendations: data.recommendations };
+        // Clear old pending recommendations before saving new ones
+        await prisma.aIRecommendation.deleteMany({
+            where: { userId, type: "personality", status: "pending" },
+        });
+
+        // Save recommendations to DB
+        const savedRecs = await Promise.all(
+            data.recommendations.map((rec: any) =>
+                prisma.aIRecommendation.create({
+                    data: {
+                        userId,
+                        type: "personality",
+                        category: rec.category,
+                        task: rec.task,
+                        description: rec.description,
+                        status: "pending",
+                    },
+                })
+            )
+        );
+
+        // Update generation timestamp
+        await prisma.userPreferences.upsert({
+            where: { userId },
+            create: { userId, personalityRecsGeneratedAt: new Date() },
+            update: { personalityRecsGeneratedAt: new Date() },
+        });
+
+        revalidatePath("/compass");
+        return {
+            success: true,
+            recommendations: savedRecs.map(r => ({
+                id: r.id,
+                category: r.category,
+                task: r.task,
+                description: r.description,
+            })),
+            cached: false,
+        };
     } catch (error: any) {
         console.error("Error generating AI recommendations:", error);
         return {
@@ -197,6 +262,7 @@ Return ONLY valid JSON in this exact format:
 export async function acceptRecommendation(
     userId: string,
     recommendation: {
+        id?: string; // AIRecommendation ID if from cache
         category: string;
         task: string;
         description?: string;
@@ -261,6 +327,14 @@ Return ONLY valid JSON:
             })
         );
 
+        // Mark the recommendation as accepted if it has an ID
+        if (recommendation.id) {
+            await prisma.aIRecommendation.update({
+                where: { id: recommendation.id },
+                data: { status: "accepted" },
+            });
+        }
+
         revalidatePath("/compass");
         return {
             success: true,
@@ -269,6 +343,24 @@ Return ONLY valid JSON:
         };
     } catch (error: any) {
         console.error("Error accepting recommendation:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Dismiss a recommendation (marks as dismissed in DB)
+ */
+export async function dismissRecommendation(recommendationId: string) {
+    try {
+        await prisma.aIRecommendation.update({
+            where: { id: recommendationId },
+            data: { status: "dismissed" },
+        });
+
+        revalidatePath("/compass");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error dismissing recommendation:", error);
         return { success: false, error: error.message };
     }
 }
@@ -602,4 +694,111 @@ export async function getUserPreferences(userId: string) {
         console.error("Error fetching user preferences:", error);
         return { success: false, error: error.message };
     }
+}
+
+/**
+ * Check if user has Google Calendar connected
+ */
+export async function isCalendarConnected(userId: string) {
+    try {
+        const prefs = await prisma.userPreferences.findUnique({
+            where: { userId },
+            select: {
+                googleCalendarEnabled: true,
+                googleAccessToken: true,
+                googleRefreshToken: true,
+            }
+        });
+
+        const isConnected = !!(
+            prefs?.googleCalendarEnabled &&
+            prefs?.googleAccessToken &&
+            prefs?.googleRefreshToken
+        );
+
+        return { success: true, isConnected };
+    } catch (error: any) {
+        console.error("Error checking calendar connection:", error);
+        return { success: false, isConnected: false, error: error.message };
+    }
+}
+
+/**
+ * Add a todo to Google Calendar
+ */
+export async function addTodoToCalendar(todoId: string) {
+    try {
+        // Get the todo
+        const todo = await prisma.compassTodo.findUnique({
+            where: { id: todoId },
+            include: { user: true },
+        });
+
+        if (!todo) {
+            return { success: false, error: "Todo not found" };
+        }
+
+        // Get user's calendar tokens
+        const prefs = await prisma.userPreferences.findUnique({
+            where: { userId: todo.userId },
+        });
+
+        if (!prefs?.googleCalendarEnabled || !prefs.googleAccessToken || !prefs.googleRefreshToken) {
+            return { success: false, error: "Google Calendar not connected. Please connect in Settings." };
+        }
+
+        // Calculate due date based on timeframe
+        const dueDate = calculateDueDate(todo.timeframe);
+
+        // Create calendar event
+        const event = await createCalendarEvent(
+            prefs.googleAccessToken,
+            prefs.googleRefreshToken,
+            {
+                summary: `📋 ${todo.task}`,
+                description: `${todo.description || ''}\n\nCategory: ${todo.category}\nFrom: 2moro Compass`,
+                startDate: dueDate,
+                allDay: true,
+            }
+        );
+
+        // Update todo with Google event ID
+        await prisma.compassTodo.update({
+            where: { id: todoId },
+            data: { googleEventId: event.id },
+        });
+
+        revalidatePath("/compass");
+        return { success: true, eventId: event.id };
+    } catch (error: any) {
+        console.error("Error adding todo to calendar:", error);
+
+        // Handle token expiration
+        if (error.message?.includes('invalid_grant') || error.message?.includes('Token')) {
+            return {
+                success: false,
+                error: "Calendar connection expired. Please reconnect in Settings."
+            };
+        }
+
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Add multiple todos to calendar at once
+ */
+export async function addMultipleTodosToCalendar(todoIds: string[]) {
+    const results = await Promise.all(
+        todoIds.map(id => addTodoToCalendar(id))
+    );
+
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    return {
+        success: failed === 0,
+        message: `Added ${successful} task${successful !== 1 ? 's' : ''} to calendar${failed > 0 ? `, ${failed} failed` : ''}`,
+        results,
+    };
 }

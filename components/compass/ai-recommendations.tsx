@@ -15,17 +15,19 @@ import {
     ChevronUp,
     Zap,
 } from "lucide-react";
-import { generateAIRecommendations, acceptRecommendation } from "@/app/actions/compass";
+import { generateAIRecommendations, acceptRecommendation, dismissRecommendation } from "@/app/actions/compass";
 
 interface Recommendation {
+    id?: string;
     category: string;
     task: string;
-    description?: string;
+    description?: string | null;
 }
 
 interface AIRecommendationsProps {
     userId: string;
     onAccept?: () => void;
+    forceRefresh?: boolean;
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -49,26 +51,28 @@ const CATEGORY_TEXT_COLORS: Record<string, string> = {
     "Personal Development": "text-purple-500",
 };
 
-export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) {
+export function AIRecommendations({ userId, onAccept, forceRefresh = false }: AIRecommendationsProps) {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
-    const [acceptingIds, setAcceptingIds] = useState<Set<number>>(new Set());
+    const [acceptingIds, setAcceptingIds] = useState<Set<string>>(new Set());
+    const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
     const [isExpanded, setIsExpanded] = useState(true);
+    const [isCached, setIsCached] = useState(false);
 
     useEffect(() => {
-        loadRecommendations();
-    }, [userId]);
+        loadRecommendations(forceRefresh);
+    }, [userId, forceRefresh]);
 
-    const loadRecommendations = async () => {
+    const loadRecommendations = async (force: boolean = false) => {
         setIsLoading(true);
         setError(null);
 
-        const result = await generateAIRecommendations(userId);
+        const result = await generateAIRecommendations(userId, force);
 
         if (result.success) {
             setRecommendations(result.recommendations || []);
+            setIsCached(result.cached || false);
         } else {
             setError(result.error || "Failed to load recommendations");
         }
@@ -76,18 +80,19 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
         setIsLoading(false);
     };
 
-    const handleAccept = async (recommendation: Recommendation, index: number) => {
-        setAcceptingIds((prev) => new Set(prev).add(index));
+    const handleAccept = async (recommendation: Recommendation) => {
+        const recId = recommendation.id || `temp-${Date.now()}`;
+        setAcceptingIds((prev) => new Set(prev).add(recId));
 
         const result = await acceptRecommendation(userId, recommendation);
 
         if (result.success) {
             // Remove from list after accepting
             setTimeout(() => {
-                setDismissedIds((prev) => new Set(prev).add(index));
+                setRecommendations((prev) => prev.filter((r) => r.id !== recommendation.id));
                 setAcceptingIds((prev) => {
                     const next = new Set(prev);
-                    next.delete(index);
+                    next.delete(recId);
                     return next;
                 });
                 onAccept?.();
@@ -95,24 +100,41 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
         } else {
             setAcceptingIds((prev) => {
                 const next = new Set(prev);
-                next.delete(index);
+                next.delete(recId);
                 return next;
             });
             alert("Failed to adopt recommendation. Please try again.");
         }
     };
 
-    const handleDismiss = (index: number) => {
-        setDismissedIds((prev) => new Set(prev).add(index));
+    const handleDismiss = async (recommendation: Recommendation) => {
+        if (!recommendation.id) {
+            // For non-persisted recommendations, just remove from UI
+            setRecommendations((prev) => prev.filter((r) => r.task !== recommendation.task));
+            return;
+        }
+
+        setDismissingIds((prev) => new Set(prev).add(recommendation.id!));
+
+        const result = await dismissRecommendation(recommendation.id);
+
+        if (result.success) {
+            setRecommendations((prev) => prev.filter((r) => r.id !== recommendation.id));
+        }
+
+        setDismissingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(recommendation.id!);
+            return next;
+        });
     };
 
     // Group by category
-    const groupedRecommendations = recommendations.reduce((acc, rec, idx) => {
-        if (dismissedIds.has(idx)) return acc;
+    const groupedRecommendations = recommendations.reduce((acc, rec) => {
         if (!acc[rec.category]) acc[rec.category] = [];
-        acc[rec.category].push({ ...rec, originalIndex: idx });
+        acc[rec.category].push(rec);
         return acc;
-    }, {} as Record<string, Array<Recommendation & { originalIndex: number }>>);
+    }, {} as Record<string, Recommendation[]>);
 
     // Get category counts for collapsed summary
     const categoryCounts = Object.entries(groupedRecommendations).map(([category, items]) => ({
@@ -134,7 +156,9 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
                 >
                     <Sparkles className="w-12 h-12 text-primary" />
                 </motion.div>
-                <p className="text-muted-foreground">Generating personalized recommendations...</p>
+                <p className="text-muted-foreground">
+                    {forceRefresh ? "Generating fresh recommendations..." : "Loading recommendations..."}
+                </p>
             </div>
         );
     }
@@ -144,7 +168,7 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
             <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-6 text-center">
                 <p className="text-destructive mb-4">{error}</p>
                 <button
-                    onClick={loadRecommendations}
+                    onClick={() => loadRecommendations(true)}
                     className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
                 >
                     Try Again
@@ -173,6 +197,9 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
                 <p className="text-sm text-muted-foreground">
                     Click <span className="text-primary font-medium">Adopt</span> to adopt a recommendation.
                     It will be broken down into practical, atomic steps and integrated into your Action Plan.
+                    {isCached && (
+                        <span className="text-xs text-muted-foreground/70 ml-1">(cached)</span>
+                    )}
                 </p>
             </div>
 
@@ -202,12 +229,14 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
                                     </div>
 
                                     <div className="space-y-3">
-                                        {items.map((rec) => {
-                                            const isAccepting = acceptingIds.has(rec.originalIndex);
+                                        {items.map((rec, idx) => {
+                                            const recKey = rec.id || `${category}-${idx}`;
+                                            const isAccepting = acceptingIds.has(rec.id || recKey);
+                                            const isDismissing = dismissingIds.has(rec.id || "");
 
                                             return (
                                                 <motion.div
-                                                    key={rec.originalIndex}
+                                                    key={recKey}
                                                     initial={{ opacity: 0, y: 10 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, x: -20 }}
@@ -222,8 +251,8 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
 
                                                     <div className="flex gap-2 items-center">
                                                         <button
-                                                            onClick={() => handleAccept(rec, rec.originalIndex)}
-                                                            disabled={isAccepting}
+                                                            onClick={() => handleAccept(rec)}
+                                                            disabled={isAccepting || isDismissing}
                                                             className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-1.5"
                                                         >
                                                             {isAccepting ? (
@@ -239,12 +268,16 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
                                                             )}
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDismiss(rec.originalIndex)}
-                                                            disabled={isAccepting}
+                                                            onClick={() => handleDismiss(rec)}
+                                                            disabled={isAccepting || isDismissing}
                                                             className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50"
                                                             title="Dismiss"
                                                         >
-                                                            <X className="w-4 h-4" />
+                                                            {isDismissing ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                <X className="w-4 h-4" />
+                                                            )}
                                                         </button>
                                                     </div>
                                                 </motion.div>
@@ -260,14 +293,8 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
                                 <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
                                 <h3 className="font-semibold text-lg mb-2">All Done! 🎉</h3>
                                 <p className="text-muted-foreground mb-4">
-                                    You've reviewed all recommendations. Check back next month for fresh insights!
+                                    You've reviewed all recommendations. Redo your assessment to get fresh insights!
                                 </p>
-                                <button
-                                    onClick={loadRecommendations}
-                                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-                                >
-                                    Refresh Recommendations
-                                </button>
                             </div>
                         )}
                     </motion.div>
