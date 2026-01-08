@@ -24,6 +24,10 @@ model User {
   people              Person[]
   habits              Habit[]
   biographyChapters   BiographyChapter[]
+  personalityTests    PersonalityTest[]
+  compassTodos        CompassTodo[]
+  financialSnapshots  FinancialSnapshot[]
+  userPreferences     UserPreferences?
 }
 
 model Memory {
@@ -103,4 +107,88 @@ model Habit {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model PersonalityTest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // MBTI Results
+  mbtiType    String   // e.g., "INFJ"
+  description String   @db.Text
+  traits      Json     // Detailed breakdown
+  
+  // Test metadata
+  testType    String   @default("mbti") // Future: enneagram, big5, etc.
+  responses   Json     // Store raw quiz responses
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId, createdAt])
+}
+
+model CompassTodo {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  task          String
+  description   String?  @db.Text
+  category      String   // Career, Relationships, Health, Personal Development
+  timeframe     String   // today, week, month
+  status        String   @default("pending") // pending, completed, dismissed
+  source        String   @default("ai") // ai, manual, calendar
+  
+  // Calendar integration
+  googleEventId String?  @unique
+  dueDate       DateTime?
+  
+  completedAt   DateTime?
+  dismissedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([userId, status, timeframe])
+}
+
+model FinancialSnapshot {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Financial data
+  dataJson      Json     // Stores all financial inputs
+  
+  // AI Analysis
+  healthScore   Int?     // 0-100
+  aiReport      String?  @db.Text
+  recommendations Json?  // Array of advice items
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+model UserPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Calendar
+  googleCalendarEnabled Boolean  @default(false)
+  googleRefreshToken    String?  @db.Text
+  googleAccessToken     String?  @db.Text
+  
+  // Financial
+  monthlyInvestment     Int      @default(100) // In dollars
+  expectedReturn        Float    @default(0.07) // 7% default
+  
+  // Horoscope
+  lastHoroscopeFetch    DateTime?
+  cachedHoroscope       String?  @db.Text
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }

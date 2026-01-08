@@ -1,20 +1,62 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { motion } from "framer-motion";
-import { Book, Compass, LayoutDashboard, Sparkles } from "lucide-react";
+import {
+    Brain,
+    DollarSign,
+    RefreshCw,
+    Sparkles,
+    TrendingUp,
+    Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/components/user-provider";
+import { getLatestPersonalityTest } from "@/app/actions/compass";
+import { AIRecommendations } from "@/components/compass/ai-recommendations";
+import { TodoSections } from "@/components/compass/todo-sections";
+import { StreakTracker } from "@/components/compass/streak-tracker";
 
 export default function CompassPage() {
     const { user } = useUser();
+    const [hasPersonalityTest, setHasPersonalityTest] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    const modules = [
-        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, color: "bg-blue-500", desc: "Your daily overview" },
-        { label: "Oracle", href: "/simulation", icon: Sparkles, color: "bg-purple-500", desc: "Explore futures" },
-        { label: "Diary", href: "/archive", icon: Book, color: "bg-pink-500", desc: "Past memories" },
-    ];
+    useEffect(() => {
+        if (user) {
+            checkPersonalityTest();
+        }
+    }, [user]);
+
+    const checkPersonalityTest = async () => {
+        if (!user) return;
+
+        setIsLoading(true);
+        const result = await getLatestPersonalityTest(user.id);
+        setHasPersonalityTest(!!result.test);
+        setIsLoading(false);
+    };
+
+    const handleTodoUpdate = () => {
+        setRefreshTrigger((prev) => prev + 1);
+    };
+
+    if (!user) {
+        return (
+            <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden">
+                <Sidebar className="hidden md:flex shrink-0 z-30" />
+                <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-muted/10">
+                    <TopBar title="The Compass" />
+                    <main className="flex-1 p-6 md:p-8 flex items-center justify-center">
+                        <p className="text-muted-foreground">Loading...</p>
+                    </main>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden">
@@ -23,44 +65,174 @@ export default function CompassPage() {
             <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-muted/10">
                 <TopBar title="The Compass" />
 
-                <main className="flex-1 p-6 md:p-8 flex items-center justify-center relative overflow-hidden">
-                    {/* Background Ambience */}
-                    <div className="absolute inset-0 z-0">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 blur-[100px] rounded-full opacity-50 animate-pulse" />
+                <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+                    {/* Header */}
+                    <div className="max-w-7xl mx-auto mb-8">
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-center mb-6"
+                        >
+                            <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                                Your Life Compass 🧭
+                            </h1>
+                            <p className="text-muted-foreground text-lg">
+                                Navigate your personal growth and financial wellness
+                            </p>
+                        </motion.div>
                     </div>
 
-                    <div className="relative z-10 max-w-4xl w-full">
-                        <div className="text-center mb-12">
-                            <motion.h1
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="text-4xl md:text-5xl font-bold mb-4"
-                            >
-                                Where to next, {user?.name?.split(' ')[0] || "Traveler"}?
-                            </motion.h1>
-                            <p className="text-muted-foreground text-lg">Navigate your life system.</p>
-                        </div>
+                    {/* Two-Section Layout */}
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* SECTION 1: Personal Growth */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="space-y-6"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                                        <Brain className="w-6 h-6 text-purple-500" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold">Personal Growth</h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            AI-powered insights & actions
+                                        </p>
+                                    </div>
+                                </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {modules.map((mod, idx) => (
-                                <Link key={mod.href} href={mod.href}>
-                                    <motion.div
-                                        whileHover={{ scale: 1.05, y: -5 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.1 }}
-                                        className="bg-card border border-border p-8 rounded-3xl shadow-lg hover:shadow-xl transition-all h-full group flex flex-col items-center text-center backdrop-blur-sm"
-                                    >
-                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${mod.color} shadow-inner`}>
-                                            <mod.icon className="w-8 h-8 text-white" />
-                                        </div>
-                                        <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors">{mod.label}</h3>
-                                        <p className="text-muted-foreground">{mod.desc}</p>
-                                    </motion.div>
+                                <Link
+                                    href="/compass/assessment"
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    {hasPersonalityTest ? "Redo" : "Take"} Assessment
                                 </Link>
-                            ))}
-                        </div>
+                            </div>
+
+                            {/* Personality Test Status */}
+                            {!isLoading && !hasPersonalityTest && (
+                                <div className="bg-card border border-border rounded-xl p-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Sparkles className="w-6 h-6 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg mb-2">
+                                                Get Started with Your Personality Assessment
+                                            </h3>
+                                            <p className="text-muted-foreground mb-4">
+                                                Discover your MBTI type and unlock personalized recommendations
+                                                tailored to your unique personality and monthly horoscope.
+                                            </p>
+                                            <Link
+                                                href="/compass/assessment"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                                            >
+                                                <Brain className="w-4 h-4" />
+                                                Start Assessment
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* AI Recommendations */}
+                            {hasPersonalityTest && (
+                                <div className="bg-card border border-border rounded-xl p-6">
+                                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-primary" />
+                                        AI Recommendations
+                                    </h3>
+                                    <AIRecommendations userId={user.id} onAccept={handleTodoUpdate} />
+                                </div>
+                            )}
+
+                            {/* To-Do Sections */}
+                            <div className="bg-card border border-border rounded-xl p-6">
+                                <h3 className="font-semibold text-lg mb-4">Your Action Plan</h3>
+                                <TodoSections userId={user.id} refreshTrigger={refreshTrigger} />
+                            </div>
+
+                            {/* Streak Tracker */}
+                            <StreakTracker userId={user.id} refreshTrigger={refreshTrigger} />
+                        </motion.div>
+
+                        {/* SECTION 2: Financial Wellness */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="space-y-6"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                                        <DollarSign className="w-6 h-6 text-green-500" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold">Financial Wellness</h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            Track & optimize your finances
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <Link
+                                    href="/compass/financials"
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                                >
+                                    <Wallet className="w-4 h-4" />
+                                    Update Financials
+                                </Link>
+                            </div>
+
+                            {/* Coming Soon Placeholder */}
+                            <div className="bg-card border border-border rounded-xl p-8 text-center">
+                                <div className="w-16 h-16 rounded-xl bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                                    <TrendingUp className="w-8 h-8 text-green-500" />
+                                </div>
+                                <h3 className="font-semibold text-lg mb-2">
+                                    Financial Wellness Coming Soon
+                                </h3>
+                                <p className="text-muted-foreground mb-6">
+                                    Track your financial health, get AI-powered advice, and visualize
+                                    investment projections. This feature is currently in development.
+                                </p>
+                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg text-sm">
+                                    <Sparkles className="w-4 h-4" />
+                                    Phase 3 Feature
+                                </div>
+                            </div>
+
+                            {/* Feature Preview Cards */}
+                            <div className="space-y-4">
+                                <div className="bg-card border border-dashed border-border rounded-xl p-6 opacity-60">
+                                    <h4 className="font-semibold mb-2">📊 Financial Health Score</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        AI-powered analysis of your financial snapshot with personalized
+                                        recommendations
+                                    </p>
+                                </div>
+
+                                <div className="bg-card border border-dashed border-border rounded-xl p-6 opacity-60">
+                                    <h4 className="font-semibold mb-2">📈 Investment Projections</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Visualize your portfolio growth over 5, 10, 20, and 40 years
+                                    </p>
+                                </div>
+
+                                <div className="bg-card border border-dashed border-border rounded-xl p-6 opacity-60">
+                                    <h4 className="font-semibold mb-2">💰 Portfolio Tracking</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Monitor your stocks or track the S&P 500 index performance
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
                 </main>
             </div>
