@@ -8,7 +8,7 @@ import { getTodosByTimeframe, updateTodoStatus, deleteTodo } from "@/app/actions
 interface Todo {
     id: string;
     task: string;
-    description?: string;
+    description: string | null;
     category: string;
     status: string;
 }
