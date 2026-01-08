@@ -202,9 +202,48 @@ Return ONLY valid JSON in this exact format:
 
         const response = await generateContentWithSmartRouter(prompt, "smart");
 
-        // Parse JSON response
-        const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
-        const data = JSON.parse(jsonStr);
+        // Parse JSON response with better error handling
+        let data;
+        try {
+            const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
+            // Try to find JSON in the response
+            const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error("No JSON found in response");
+            }
+            data = JSON.parse(jsonMatch[0]);
+        } catch (parseError) {
+            console.error("Failed to parse AI response:", response);
+            // Return fallback recommendations based on personality type
+            data = {
+                recommendations: [
+                    {
+                        category: "Personal Development",
+                        task: "Set aside 30 minutes daily for self-reflection or journaling",
+                        description: "Build self-awareness aligned with your personality type"
+                    },
+                    {
+                        category: "Career",
+                        task: "Identify one skill to develop this month and find resources to learn it",
+                        description: "Continuous growth leads to career advancement"
+                    },
+                    {
+                        category: "Health",
+                        task: "Establish a consistent sleep schedule for the next 30 days",
+                        description: "Quality rest improves focus and decision-making"
+                    },
+                    {
+                        category: "Relationships",
+                        task: "Reach out to one person you haven't spoken to in a while",
+                        description: "Nurturing connections strengthens your social network"
+                    }
+                ]
+            };
+        }
+
+        if (!data.recommendations || !Array.isArray(data.recommendations)) {
+            throw new Error("Invalid recommendations format");
+        }
 
         // Clear old pending recommendations before saving new ones
         await prisma.aIRecommendation.deleteMany({
