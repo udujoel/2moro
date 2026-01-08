@@ -28,6 +28,7 @@ interface AIRecommendationsProps {
     userId: string;
     onAccept?: () => void;
     forceRefresh?: boolean;
+    onLoadComplete?: () => void;
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -51,7 +52,7 @@ const CATEGORY_TEXT_COLORS: Record<string, string> = {
     "Personal Development": "text-purple-500",
 };
 
-export function AIRecommendations({ userId, onAccept, forceRefresh = false }: AIRecommendationsProps) {
+export function AIRecommendations({ userId, onAccept, forceRefresh = false, onLoadComplete }: AIRecommendationsProps) {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -78,6 +79,11 @@ export function AIRecommendations({ userId, onAccept, forceRefresh = false }: AI
         }
 
         setIsLoading(false);
+
+        // Notify parent that loading is complete
+        if (force && onLoadComplete) {
+            onLoadComplete();
+        }
     };
 
     const handleAccept = async (recommendation: Recommendation) => {

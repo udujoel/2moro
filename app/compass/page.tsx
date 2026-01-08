@@ -160,14 +160,25 @@ export default function CompassPage() {
                             {/* AI Recommendations */}
                             {hasPersonalityTest && (
                                 <div className="bg-card border border-border rounded-xl p-6">
-                                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                        <Sparkles className="w-5 h-5 text-primary" />
-                                        AI Recommendations
-                                    </h3>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                                            <Sparkles className="w-5 h-5 text-primary" />
+                                            AI Recommendations
+                                        </h3>
+                                        <button
+                                            onClick={() => setForceRefresh(true)}
+                                            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-secondary"
+                                            title="Regenerate recommendations"
+                                        >
+                                            <RefreshCw className="w-4 h-4" />
+                                            Regenerate
+                                        </button>
+                                    </div>
                                     <AIRecommendations
                                         userId={user.id}
                                         onAccept={handleTodoUpdate}
                                         forceRefresh={forceRefresh}
+                                        onLoadComplete={() => setForceRefresh(false)}
                                     />
                                 </div>
                             )}
