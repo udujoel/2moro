@@ -18,6 +18,9 @@ import { getLatestPersonalityTest } from "@/app/actions/compass";
 import { AIRecommendations } from "@/components/compass/ai-recommendations";
 import { TodoSections } from "@/components/compass/todo-sections";
 import { StreakTracker } from "@/components/compass/streak-tracker";
+import { InvestmentProjection } from "@/components/compass/investment-projection";
+import { PortfolioChart } from "@/components/compass/portfolio-chart";
+import { FinancialHealth } from "@/components/compass/financial-health";
 
 export default function CompassPage() {
     const { user } = useUser();
@@ -190,48 +193,14 @@ export default function CompassPage() {
                                 </Link>
                             </div>
 
-                            {/* Coming Soon Placeholder */}
-                            <div className="bg-card border border-border rounded-xl p-8 text-center">
-                                <div className="w-16 h-16 rounded-xl bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                                    <TrendingUp className="w-8 h-8 text-green-500" />
-                                </div>
-                                <h3 className="font-semibold text-lg mb-2">
-                                    Financial Wellness Coming Soon
-                                </h3>
-                                <p className="text-muted-foreground mb-6">
-                                    Track your financial health, get AI-powered advice, and visualize
-                                    investment projections. This feature is currently in development.
-                                </p>
-                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg text-sm">
-                                    <Sparkles className="w-4 h-4" />
-                                    Phase 3 Feature
-                                </div>
-                            </div>
+                            {/* Financial Health Score */}
+                            <FinancialHealth userId={user.id} />
 
-                            {/* Feature Preview Cards */}
-                            <div className="space-y-4">
-                                <div className="bg-card border border-dashed border-border rounded-xl p-6 opacity-60">
-                                    <h4 className="font-semibold mb-2">📊 Financial Health Score</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        AI-powered analysis of your financial snapshot with personalized
-                                        recommendations
-                                    </p>
-                                </div>
+                            {/* Investment Projection Calculator */}
+                            <InvestmentProjection userId={user.id} />
 
-                                <div className="bg-card border border-dashed border-border rounded-xl p-6 opacity-60">
-                                    <h4 className="font-semibold mb-2">📈 Investment Projections</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Visualize your portfolio growth over 5, 10, 20, and 40 years
-                                    </p>
-                                </div>
-
-                                <div className="bg-card border border-dashed border-border rounded-xl p-6 opacity-60">
-                                    <h4 className="font-semibold mb-2">💰 Portfolio Tracking</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Monitor your stocks or track the S&P 500 index performance
-                                    </p>
-                                </div>
-                            </div>
+                            {/* Portfolio/Market Chart */}
+                            <PortfolioChart userId={user.id} />
                         </motion.div>
                     </div>
                 </main>

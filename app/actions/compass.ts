@@ -418,9 +418,160 @@ export async function getCompletionHeatmap(userId: string, year: number) {
             }
         });
 
+
         return { success: true, heatmapData };
     } catch (error: any) {
         console.error("Error fetching heatmap data:", error);
         return { success: false, error: error.message, heatmapData: {} };
+    }
+}
+
+/**
+ * Save financial snapshot to database
+ */
+export async function saveFinancialSnapshot(
+    userId: string,
+    financialData: {
+        debt: number;
+        liabilities: number;
+        assets: number;
+        cash: number;
+        stocks?: any[];
+        investments?: any[];
+    }
+) {
+    try {
+        const snapshot = await prisma.financialSnapshot.create({
+            data: {
+                userId,
+                dataJson: financialData,
+            },
+        });
+
+        revalidatePath("/compass");
+        return { success: true, snapshot };
+    } catch (error: any) {
+        console.error("Error saving financial snapshot:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Generate AI financial analysis
+ */
+export async function generateFinancialAnalysis(userId: string) {
+    try {
+        const snapshot = await prisma.financialSnapshot.findFirst({
+            where: { userId },
+            orderBy: { createdAt: "desc" },
+        });
+
+        if (!snapshot) {
+            return {
+                success: false,
+                error: "No financial data found. Please update your financials first.",
+            };
+        }
+
+        const data = snapshot.dataJson as any;
+        const healthScore = calculateFinancialHealthScore({
+            debt: data.debt || 0,
+            liabilities: data.liabilities || 0,
+            assets: data.assets || 0,
+            cash: data.cash || 0,
+        });
+
+        const prompt = `You are a financial advisor AI. Analyze this financial snapshot and provide advice.
+
+**Financial Data:**
+- Debt: $${data.debt || 0}
+- Liabilities: $${data.liabilities || 0}
+- Assets: $${data.assets || 0}
+- Cash on Hand: $${data.cash || 0}
+- Net Worth: $${(data.assets || 0) + (data.cash || 0) - (data.debt || 0) - (data.liabilities || 0)}
+
+**Health Score:** ${healthScore}/100
+
+Provide 5-7 specific, actionable financial recommendations.
+Return ONLY valid JSON:
+{
+  "summary": "A brief 2-3 sentence overview",
+  "recommendations": ["Recommendation 1", "Recommendation 2", ...]
+}`;
+
+        const response = await generateContentWithSmartRouter(prompt, "smart");
+        const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
+        const aiResult = JSON.parse(jsonStr);
+
+        await prisma.financialSnapshot.update({
+            where: { id: snapshot.id },
+            data: {
+                healthScore,
+                aiReport: aiResult.summary,
+                recommendations: aiResult.recommendations,
+            },
+        });
+
+        revalidatePath("/compass");
+        return {
+            success: true,
+            healthScore,
+            summary: aiResult.summary,
+            recommendations: aiResult.recommendations,
+        };
+    } catch (error: any) {
+        console.error("Error generating financial analysis:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get latest financial snapshot
+ */
+export async function getLatestFinancialSnapshot(userId: string) {
+    try {
+        const snapshot = await prisma.financialSnapshot.findFirst({
+            where: { userId },
+            orderBy: { createdAt: "desc" },
+        });
+        return { success: true, snapshot };
+    } catch (error: any) {
+        console.error("Error fetching financial snapshot:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Update investment preference
+ */
+export async function updateInvestmentPreference(userId: string, monthlyInvestment: number) {
+    try {
+        let prefs = await prisma.userPreferences.findUnique({ where: { userId } });
+        if (!prefs) {
+            prefs = await prisma.userPreferences.create({ data: { userId, monthlyInvestment } });
+        } else {
+            prefs = await prisma.userPreferences.update({ where: { userId }, data: { monthlyInvestment } });
+        }
+        revalidatePath("/compass");
+        return { success: true, preferences: prefs };
+    } catch (error: any) {
+        console.error("Error updating investment preference:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get user preferences
+ */
+export async function getUserPreferences(userId: string) {
+    try {
+        let prefs = await prisma.userPreferences.findUnique({ where: { userId } });
+        if (!prefs) {
+            prefs = await prisma.userPreferences.create({ data: { userId } });
+        }
+        return { success: true, preferences: prefs };
+    } catch (error: any) {
+        console.error("Error fetching user preferences:", error);
+        return { success: false, error: error.message };
     }
 }
