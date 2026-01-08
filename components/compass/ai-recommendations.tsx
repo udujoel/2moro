@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Briefcase,
     Heart,
@@ -11,6 +11,9 @@ import {
     X,
     Loader2,
     Sparkles,
+    ChevronDown,
+    ChevronUp,
+    Zap,
 } from "lucide-react";
 import { generateAIRecommendations, acceptRecommendation } from "@/app/actions/compass";
 
@@ -39,12 +42,20 @@ const CATEGORY_COLORS: Record<string, string> = {
     "Personal Development": "bg-purple-500",
 };
 
+const CATEGORY_TEXT_COLORS: Record<string, string> = {
+    Career: "text-blue-500",
+    Relationships: "text-pink-500",
+    Health: "text-green-500",
+    "Personal Development": "text-purple-500",
+};
+
 export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
     const [acceptingIds, setAcceptingIds] = useState<Set<number>>(new Set());
+    const [isExpanded, setIsExpanded] = useState(true);
 
     useEffect(() => {
         loadRecommendations();
@@ -87,7 +98,7 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
                 next.delete(index);
                 return next;
             });
-            alert("Failed to accept recommendation. Please try again.");
+            alert("Failed to adopt recommendation. Please try again.");
         }
     };
 
@@ -102,6 +113,16 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
         acc[rec.category].push({ ...rec, originalIndex: idx });
         return acc;
     }, {} as Record<string, Array<Recommendation & { originalIndex: number }>>);
+
+    // Get category counts for collapsed summary
+    const categoryCounts = Object.entries(groupedRecommendations).map(([category, items]) => ({
+        category,
+        count: items.length,
+        color: CATEGORY_TEXT_COLORS[category] || "text-gray-500",
+        Icon: CATEGORY_ICONS[category] || Brain,
+    }));
+
+    const totalRemaining = categoryCounts.reduce((sum, c) => sum + c.count, 0);
 
     if (isLoading) {
         return (
@@ -145,83 +166,140 @@ export function AIRecommendations({ userId, onAccept }: AIRecommendationsProps) 
     }
 
     return (
-        <div className="space-y-6">
-            {Object.entries(groupedRecommendations).map(([category, items]) => {
-                const Icon = CATEGORY_ICONS[category] || Brain;
-                const colorClass = CATEGORY_COLORS[category] || "bg-gray-500";
+        <div className="space-y-4">
+            {/* Guidance Text */}
+            <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-lg">
+                <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                    Click <span className="text-primary font-medium">Adopt</span> to adopt a recommendation.
+                    It will be broken down into practical, atomic steps and integrated into your Action Plan.
+                </p>
+            </div>
 
-                return (
-                    <div key={category}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className={`w-10 h-10 rounded-xl ${colorClass} flex items-center justify-center`}>
-                                <Icon className="w-5 h-5 text-white" />
-                            </div>
-                            <h3 className="font-semibold text-lg">{category}</h3>
-                        </div>
-
-                        <div className="space-y-3">
-                            {items.map((rec) => {
-                                const isAccepting = acceptingIds.has(rec.originalIndex);
-
-                                return (
-                                    <motion.div
-                                        key={rec.originalIndex}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 group hover:border-primary/30 transition-colors"
-                                    >
-                                        <div className="flex-1">
-                                            <p className="font-medium mb-1">{rec.task}</p>
-                                            {rec.description && (
-                                                <p className="text-sm text-muted-foreground">{rec.description}</p>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleAccept(rec, rec.originalIndex)}
-                                                disabled={isAccepting}
-                                                className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
-                                                title="Accept & add to To-Do"
-                                            >
-                                                {isAccepting ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                ) : (
-                                                    <CheckCircle2 className="w-4 h-4" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => handleDismiss(rec.originalIndex)}
-                                                disabled={isAccepting}
-                                                className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50"
-                                                title="Dismiss"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                );
-            })}
-
-            {Object.keys(groupedRecommendations).length === 0 && (
-                <div className="bg-secondary/30 rounded-xl p-8 text-center">
-                    <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="font-semibold text-lg mb-2">All Done! 🎉</h3>
-                    <p className="text-muted-foreground mb-4">
-                        You've reviewed all recommendations. Check back next month for fresh insights!
-                    </p>
-                    <button
-                        onClick={loadRecommendations}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+            {/* Expanded Content */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-6 overflow-hidden"
                     >
-                        Refresh Recommendations
-                    </button>
-                </div>
+                        {Object.entries(groupedRecommendations).map(([category, items]) => {
+                            const Icon = CATEGORY_ICONS[category] || Brain;
+                            const colorClass = CATEGORY_COLORS[category] || "bg-gray-500";
+
+                            return (
+                                <div key={category}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className={`w-10 h-10 rounded-xl ${colorClass} flex items-center justify-center`}>
+                                            <Icon className="w-5 h-5 text-white" />
+                                        </div>
+                                        <h3 className="font-semibold text-lg">{category}</h3>
+                                        <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                                            {items.length}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {items.map((rec) => {
+                                            const isAccepting = acceptingIds.has(rec.originalIndex);
+
+                                            return (
+                                                <motion.div
+                                                    key={rec.originalIndex}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, x: -20 }}
+                                                    className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 group hover:border-primary/30 transition-colors"
+                                                >
+                                                    <div className="flex-1">
+                                                        <p className="font-medium mb-1">{rec.task}</p>
+                                                        {rec.description && (
+                                                            <p className="text-sm text-muted-foreground">{rec.description}</p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex gap-2 items-center">
+                                                        <button
+                                                            onClick={() => handleAccept(rec, rec.originalIndex)}
+                                                            disabled={isAccepting}
+                                                            className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                                        >
+                                                            {isAccepting ? (
+                                                                <>
+                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                    Adopting...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                    Adopt
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDismiss(rec.originalIndex)}
+                                                            disabled={isAccepting}
+                                                            className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                                                            title="Dismiss"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {Object.keys(groupedRecommendations).length === 0 && (
+                            <div className="bg-secondary/30 rounded-xl p-8 text-center">
+                                <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                                <h3 className="font-semibold text-lg mb-2">All Done! 🎉</h3>
+                                <p className="text-muted-foreground mb-4">
+                                    You've reviewed all recommendations. Check back next month for fresh insights!
+                                </p>
+                                <button
+                                    onClick={loadRecommendations}
+                                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                                >
+                                    Refresh Recommendations
+                                </button>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Collapse/Expand Toggle */}
+            {totalRemaining > 0 && (
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-full py-3 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors border-t border-border"
+                >
+                    {isExpanded ? (
+                        <>
+                            <ChevronUp className="w-4 h-4" />
+                            Collapse Recommendations
+                        </>
+                    ) : (
+                        <>
+                            <ChevronDown className="w-4 h-4" />
+                            <span>Show {totalRemaining} Recommendations: </span>
+                            <span className="flex items-center gap-2">
+                                {categoryCounts.map(({ category, count, color, Icon }) => (
+                                    <span key={category} className={`flex items-center gap-1 ${color}`}>
+                                        <Icon className="w-3.5 h-3.5" />
+                                        {count}
+                                    </span>
+                                ))}
+                            </span>
+                        </>
+                    )}
+                </button>
             )}
         </div>
     );

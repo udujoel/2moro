@@ -191,7 +191,8 @@ Return ONLY valid JSON in this exact format:
 }
 
 /**
- * Accept a recommendation and create a CompassTodo
+ * Accept a recommendation and create multiple atomic CompassTodos
+ * AI breaks down the goal into practical steps across timeframes
  */
 export async function acceptRecommendation(
     userId: string,
@@ -202,43 +203,70 @@ export async function acceptRecommendation(
     }
 ) {
     try {
-        // Use AI to break down into timeframes
+        // Use AI to break down into atomic todos across timeframes
         const prompt = `
-Given this task: "${recommendation.task}"
-Description: "${recommendation.description || ""}"
+You are a productivity coach. Break down this goal into practical, atomic action items.
 
-Break it down into specific actions for different timeframes.
-Determine if this is primarily a:
-- "today" task (can be done in one sitting, < 2 hours)
-- "week" task (needs a few days, multiple sessions)
-- "month" task (long-term goal, needs weeks)
+**Goal:** "${recommendation.task}"
+**Context:** "${recommendation.description || "No additional context"}"
+**Category:** ${recommendation.category}
+
+**Task:**
+Create 3-6 specific, actionable tasks that will help achieve this goal.
+Distribute them across different timeframes based on urgency and sequence:
+- "today": Quick wins, immediate actions (under 2 hours each)
+- "week": Medium-term actions (need a few days)
+- "month": Longer-term or ongoing commitments
+
+Each task should be:
+- Specific and measurable
+- Completable independently
+- Clear on what "done" looks like
 
 Return ONLY valid JSON:
 {
-  "timeframe": "today" | "week" | "month",
-  "breakdown": "A brief description of how to approach this task"
+  "todos": [
+    {
+      "task": "Specific action item",
+      "description": "Brief context on how to do it",
+      "timeframe": "today" | "week" | "month"
+    },
+    ...
+  ]
 }
 `;
 
-        const response = await generateContentWithSmartRouter(prompt, "fast");
-        const jsonStr = response.replace(/```json/g, "").replace(/```/g, "").trim();
+        const response = await generateContentWithSmartRouter(prompt, "smart");
+        const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
         const data = JSON.parse(jsonStr);
 
-        // Create the todo
-        const todo = await prisma.compassTodo.create({
-            data: {
-                userId,
-                task: recommendation.task,
-                description: recommendation.description || data.breakdown,
-                category: recommendation.category,
-                timeframe: data.timeframe,
-                status: "pending",
-                source: "ai",
-            },
-        });
+        if (!data.todos || !Array.isArray(data.todos)) {
+            throw new Error("Invalid AI response format");
+        }
+
+        // Create all the todos
+        const createdTodos = await Promise.all(
+            data.todos.map(async (item: any) => {
+                return prisma.compassTodo.create({
+                    data: {
+                        userId,
+                        task: item.task,
+                        description: item.description,
+                        category: recommendation.category,
+                        timeframe: item.timeframe || "week",
+                        status: "pending",
+                        source: "ai",
+                    },
+                });
+            })
+        );
 
         revalidatePath("/compass");
-        return { success: true, todo };
+        return {
+            success: true,
+            todos: createdTodos,
+            count: createdTodos.length
+        };
     } catch (error: any) {
         console.error("Error accepting recommendation:", error);
         return { success: false, error: error.message };
