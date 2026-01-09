@@ -16,6 +16,7 @@ import {
     Zap,
 } from "lucide-react";
 import { generateAIRecommendations, acceptRecommendation, dismissRecommendation } from "@/app/actions/compass";
+import { useToast } from "@/components/ui/toast-context";
 
 interface Recommendation {
     id?: string;
@@ -53,6 +54,7 @@ const CATEGORY_TEXT_COLORS: Record<string, string> = {
 };
 
 export function AIRecommendations({ userId, onAccept, forceRefresh = false, onLoadComplete }: AIRecommendationsProps) {
+    const { showToast } = useToast();
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -109,7 +111,7 @@ export function AIRecommendations({ userId, onAccept, forceRefresh = false, onLo
                 next.delete(recId);
                 return next;
             });
-            alert("Failed to adopt recommendation. Please try again.");
+            showToast("Failed to adopt recommendation", "error");
         }
     };
 

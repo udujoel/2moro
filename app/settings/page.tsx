@@ -25,6 +25,14 @@ export default async function SettingsPage() {
 
     const isCalendarConnected = user?.userPreferences?.googleCalendarEnabled ?? false;
 
+    console.log('[Settings] User preferences:', {
+        userId,
+        hasPrefs: !!user?.userPreferences,
+        googleCalendarEnabled: user?.userPreferences?.googleCalendarEnabled,
+        hasAccessToken: !!user?.userPreferences?.googleAccessToken,
+        hasRefreshToken: !!user?.userPreferences?.googleRefreshToken,
+    });
+
     return (
         <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500">
             <Sidebar className="hidden md:flex border-r border-border" />

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Trash2, Loader2, Calendar, CalendarPlus, Settings } from "lucide-react";
-import { getTodosByTimeframe, updateTodoStatus, deleteTodo, addTodoToCalendar, isCalendarConnected } from "@/app/actions/compass";
+import { getTodosByTimeframe, updateTodoStatus, deleteTodo, addTodoToCalendar, isCalendarConnected, addMultipleTodosToCalendar } from "@/app/actions/compass";
 import Link from "next/link";
+import { useToast } from "@/components/ui/toast-context";
 
 interface Todo {
     id: string;
@@ -27,6 +28,7 @@ const TIMEFRAMES = [
 ];
 
 export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
+    const { showToast } = useToast();
     const [todos, setTodos] = useState<Record<string, Todo[]>>({
         today: [],
         week: [],
@@ -35,6 +37,7 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
     const [addingToCalendarIds, setAddingToCalendarIds] = useState<Set<string>>(new Set());
+    const [isSyncingAll, setIsSyncingAll] = useState(false);
     const [calendarConnected, setCalendarConnected] = useState(false);
 
     useEffect(() => {
@@ -109,8 +112,9 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
                     t.id === todoId ? { ...t, googleEventId: result.eventId || 'synced' } : t
                 ),
             }));
+            showToast("Added to calendar successfully", "success");
         } else {
-            alert(result.error || "Failed to add to calendar");
+            showToast(result.error || "Failed to add to calendar", "error");
         }
 
         setAddingToCalendarIds((prev) => {
@@ -119,6 +123,37 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
             return next;
         });
     };
+
+    const handleSyncAll = async () => {
+        const pendingSyncIds = Object.values(todos)
+            .flat()
+            .filter((t) => !t.googleEventId)
+            .map((t) => t.id);
+
+        if (pendingSyncIds.length === 0) return;
+
+        setIsSyncingAll(true);
+        const result = await addMultipleTodosToCalendar(pendingSyncIds);
+
+        if (result.success) {
+            // Update all todos to show as synced
+            setTodos((prev) => {
+                const next = { ...prev };
+                Object.keys(next).forEach((tf) => {
+                    next[tf] = next[tf].map((t) =>
+                        pendingSyncIds.includes(t.id) ? { ...t, googleEventId: 'synced-batch' } : t
+                    );
+                });
+                return next;
+                return next;
+            });
+            showToast(result.message || "All tasks synced to calendar", "success");
+        } else {
+            showToast(result.message || "Failed to sync all tasks", "error");
+        }
+        setIsSyncingAll(false);
+    };
+
 
     if (isLoading) {
         return (
@@ -142,6 +177,31 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
 
     return (
         <div className="space-y-6">
+            {/* Action Plan Header with Batch Sync */}
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg text-muted-foreground/70 uppercase tracking-wider text-xs">
+                    Tasks ({totalTodos})
+                </h3>
+                {calendarConnected && totalTodos > 0 && (
+                    <button
+                        onClick={handleSyncAll}
+                        disabled={isSyncingAll}
+                        className="flex items-center gap-1.5 text-xs font-medium text-blue-500 hover:text-blue-600 transition-colors disabled:opacity-50"
+                    >
+                        {isSyncingAll ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Syncing...
+                            </>
+                        ) : (
+                            <>
+                                <CalendarPlus className="w-3.5 h-3.5" />
+                                Add all to Calendar
+                            </>
+                        )}
+                    </button>
+                )}
+            </div>
             {/* Calendar sync reminder */}
             {!calendarConnected && totalTodos > 0 && (
                 <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
@@ -222,7 +282,7 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
                                                 <button
                                                     onClick={() => handleAddToCalendar(todo.id, tf.key)}
                                                     disabled={isAddingToCalendar}
-                                                    className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-blue-500/10 text-blue-500 transition-all disabled:opacity-50"
+                                                    className="p-2 rounded-lg hover:bg-blue-500/10 text-blue-500 transition-all disabled:opacity-50"
                                                     title="Add to Calendar"
                                                 >
                                                     {isAddingToCalendar ? (

@@ -7,8 +7,13 @@ import { google } from 'googleapis';
 
 // OAuth2 client configuration
 export function getOAuth2Client() {
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI ||
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+    // Use localhost URI for development, production URI otherwise
+    const isLocalhost = process.env.NODE_ENV === 'development' ||
+        process.env.VERCEL_ENV === 'development';
+
+    const redirectUri = isLocalhost
+        ? process.env.GOOGLE_REDIRECT_URI_LOCALHOST
+        : process.env.GOOGLE_REDIRECT_URI;
 
     return new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
