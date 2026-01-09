@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/top-bar";
 import { motion } from "framer-motion";
@@ -11,6 +11,7 @@ import {
     Sparkles,
     TrendingUp,
     Wallet,
+    Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/components/user-provider";
@@ -23,7 +24,8 @@ import { PortfolioChart } from "@/components/compass/portfolio-chart";
 import { FinancialHealth } from "@/components/compass/financial-health";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function CompassPage() {
+// Inner component that uses useSearchParams
+function CompassContent() {
     const { user } = useUser();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -235,5 +237,24 @@ export default function CompassPage() {
                 </main>
             </div>
         </div>
+    );
+}
+
+// Wrapper with Suspense for useSearchParams
+export default function CompassPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden">
+                <Sidebar className="hidden md:flex shrink-0 z-30" />
+                <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-muted/10">
+                    <TopBar title="The Compass" />
+                    <main className="flex-1 p-6 md:p-8 flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </main>
+                </div>
+            </div>
+        }>
+            <CompassContent />
+        </Suspense>
     );
 }
