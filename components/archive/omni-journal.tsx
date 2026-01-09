@@ -236,6 +236,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
             setMode("menu");
         } else {
             setIsOpen(true);
+            setMode("text"); // Direct transition to text mode
         }
     };
 
@@ -263,9 +264,11 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                 {isOpen && (mode === "text" || mode === "voice") && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            layoutId="add-button-morph"
+                            initial={{ opacity: 0, scale: 0.1, x: "40vw", y: "40vh" }}
+                            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.1, x: "40vw", y: "40vh" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
                             className="bg-card border border-border p-6 rounded-3xl shadow-2xl w-[90vw] md:w-[600px] pointer-events-auto relative overflow-hidden flex flex-col"
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -411,35 +414,47 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                 )}
             </AnimatePresence>
 
-            {/* Floating Action Button Menu */}
+            {/* Floating Action Button */}
             <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end">
-                <AnimatePresence>
-                    {isOpen && mode === "menu" && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 20, scale: 0.8 }}
-                            className="mb-4 flex flex-col gap-3 items-end"
-                        >
-                            <button onClick={() => setMode("text")} className="flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-full shadow-lg hover:bg-muted font-medium transition-colors">
-                                <span>Add Memory</span>
-                                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300">
-                                    <Plus className="w-4 h-4" />
-                                </div>
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {mode !== 'text' && (
+                {mode !== 'text' && mode !== 'voice' && (
                     <motion.button
+                        layoutId="add-button-morph"
                         onClick={toggleOpen}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-colors ${isOpen ? "bg-muted text-foreground rotate-45" : "bg-primary text-primary-foreground"
-                            }`}
+                        animate={{
+                            boxShadow: [
+                                "0 0 0 0 rgba(59, 130, 246, 0.7)",
+                                "0 0 0 15px rgba(59, 130, 246, 0)",
+                                "0 0 0 0 rgba(59, 130, 246, 0)"
+                            ],
+                            background: [
+                                "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)",
+                                "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(29, 78, 216) 100%)",
+                                "linear-gradient(135deg, rgb(29, 78, 216) 0%, rgb(59, 130, 246) 100%)",
+                                "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)"
+                            ]
+                        }}
+                        transition={{
+                            boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                            background: { duration: 8, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white overflow-hidden"
+                        style={{ background: "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)" }}
                     >
-                        <Plus className="w-6 h-6" />
+                        <motion.div
+                            animate={{
+                                rotate: [0, 360, 360, 0, 0]
+                            }}
+                            transition={{
+                                duration: 8,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                times: [0, 0.23, 0.27, 0.48, 0.52]
+                            }}
+                        >
+                            <Plus className="w-6 h-6" />
+                        </motion.div>
                     </motion.button>
                 )}
             </div>

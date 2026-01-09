@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft } from "lucide-react";
 
@@ -15,7 +16,7 @@ interface ArchiveEntry {
     color?: string;
     context?: string;
     title?: string;
-    people?: string[]; // Added people array to interface
+    people?: string[];
     imageSrc?: string;
     weather?: any;
 }
@@ -38,7 +39,8 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
     const [hoveredId, setHoveredId] = useState<number | null>(null);
     const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
     const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-    const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+    // Use client coordinates for Portal positioning
+    const [clientCursorPos, setClientCursorPos] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -67,28 +69,73 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
     // Sort chronologically
     const sortedEntries = [...filteredEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Dynamic month labels based on data
-    const monthLabels = useMemo(() => {
+    // --- AXIS GENERATION LOGIC ---
+
+    // Top X-Axis Labels
+    const topAxisLabels = useMemo(() => {
         if (sortedEntries.length === 0) return [];
         const minDate = new Date(sortedEntries[0].date);
         const maxDate = new Date(sortedEntries[sortedEntries.length - 1].date);
+        const minTime = minDate.getTime();
+        const maxTime = maxDate.getTime();
+        const duration = maxTime - minTime;
 
-        const months: string[] = [];
-        const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+        // Safety check to avoid division by zero
+        if (duration <= 0) return [{ label: minDate.getFullYear().toString(), left: "50%" }];
 
-        while (current <= maxDate) {
-            months.push(current.toLocaleDateString('en-US', { month: 'long' }));
-            current.setMonth(current.getMonth() + 1);
+        const labels: { label: string; left: string }[] = [];
+
+        if (timeRange === "all" || timeRange === "2y") {
+            // Show Years
+            const startYear = minDate.getFullYear();
+            const endYear = maxDate.getFullYear();
+            for (let year = startYear; year <= endYear; year++) {
+                const yearDate = new Date(year, 0, 1);
+                const yearTime = yearDate.getTime();
+                if (yearTime >= minTime && yearTime <= maxTime) {
+                    const percent = ((yearTime - minTime) / duration) * 85 + 7.5; // Match dot scatter padding
+                    labels.push({ label: year.toString(), left: `${percent}%` });
+                }
+            }
+            // If too few labels, maybe show first/last only?
+            if (labels.length < 2) {
+                return [
+                    { label: startYear.toString(), left: "7.5%" },
+                    { label: endYear.toString(), left: "92.5%" }
+                ];
+            }
+        } else if (timeRange === "6m") {
+            // Show Months
+            const current = new Date(minDate);
+            current.setDate(1); // Start at beginning of month
+            while (current <= maxDate) {
+                const time = current.getTime();
+                if (time >= minTime) {
+                    const percent = ((time - minTime) / duration) * 85 + 7.5;
+                    labels.push({ label: current.toLocaleDateString('en-US', { month: 'short' }), left: `${percent}%` });
+                }
+                current.setMonth(current.getMonth() + 1);
+            }
+        } else {
+            // 30 Days - Show Weeks or Days
+            // Let's show every 5 days
+            const current = new Date(minDate);
+            while (current <= maxDate) {
+                const day = current.getDate();
+                if (day % 5 === 0 || current.getTime() === minTime) { // Every 5th day or start
+                    const percent = ((current.getTime() - minTime) / duration) * 85 + 7.5;
+                    labels.push({ label: `${current.getMonth() + 1}/${day}`, left: `${percent}%` });
+                }
+                current.setDate(current.getDate() + 1);
+            }
         }
 
-        if (months.length > 6) {
-            const step = Math.ceil(months.length / 4);
-            return months.filter((_, i) => i % step === 0).slice(0, 4);
-        }
-        return months.slice(0, 4);
-    }, [sortedEntries]);
+        return labels;
 
-    // Helper to position dots
+    }, [sortedEntries, timeRange]);
+
+
+    // Helper to position dots (Same as before)
     const getCoordinates = (entry: ArchiveEntry, index: number) => {
         if (sortedEntries.length === 0) return { x: '50%', y: '50%' };
 
@@ -98,26 +145,18 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
 
         let xPercent = 50;
         if (maxDate > minDate) {
-            xPercent = ((dateScore - minDate) / (maxDate - minDate)) * 85 + 7.5; // Padding
+            xPercent = ((dateScore - minDate) / (maxDate - minDate)) * 85 + 7.5;
         } else {
             if (sortedEntries.length > 1) {
                 xPercent = (index / (sortedEntries.length - 1)) * 85 + 7.5;
             }
         }
 
-        // Use a deterministic hash of the ID to spread dots even if they all have the same timestamp
-        // Fallback to index if id is missing to prevent NaN
         const safeId = typeof entry.id === 'number' ? entry.id : index;
         const idHash = (safeId * 9301 + 49297) % 233280;
-        const randomFactor = idHash / 233280; // 0.0 to 1.0
+        const randomFactor = idHash / 233280;
+        const indexFactor = (index % 7) / 7;
 
-        // Add index-based variation to guarantee spread if IDs are sequential/similar
-        const indexFactor = (index % 7) / 7; // 0.0 to ~0.85
-
-        // Mix factors:
-        // - Time (40%): coarsely places it in the day
-        // - Random (30%): random scatter
-        // - Index (30%): ensuring neighbors don't overlap
         const dateObj = new Date(entry.createdAt || entry.date);
         const hours = dateObj.getHours() || 0;
         const minutes = dateObj.getMinutes() || 0;
@@ -125,20 +164,12 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
 
         const combinedFactor = (timeValue * 0.4) + (randomFactor * 0.3) + (indexFactor * 0.3);
 
-        // Map to 10% - 90% range (MAXIMIZE vertical space)
         let yPercent = combinedFactor * 80 + 10;
-
-        // Clamp strictly and fallback for NaN
         if (isNaN(yPercent)) yPercent = 50;
         yPercent = Math.max(10, Math.min(90, yPercent));
 
         return { x: `${xPercent}%`, y: `${yPercent}%` };
     };
-
-    const windowLabel = timeRange === "30d" ? "30 Days" : timeRange === "6m" ? "6 Months" : timeRange === "2y" ? "2 Years" : "All Time";
-
-    // Get currently selected entry for detail view
-    const selectedEntry = hoveredId ? sortedEntries.find(e => e.id === hoveredId) : null;
 
     return (
         <div className="w-full h-full flex flex-col p-6 bg-background/50 relative overflow-hidden" ref={containerRef}>
@@ -167,23 +198,47 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                 </div>
 
                 {/* Plot Area */}
-                <div className="flex-1 relative w-full overflow-hidden"
-                // REMOVED container onMouseMove to fix following-in-void bug
-                >
-                    {/* Horizontal Guides */}
-                    <div className="absolute inset-x-6 top-[15%] h-px border-t border-dashed border-border/20 pointer-events-none" />
-                    <div className="absolute inset-x-6 top-[50%] h-px border-t border-dashed border-border/20 pointer-events-none" />
-                    <div className="absolute inset-x-6 top-[85%] h-px border-t border-dashed border-border/20 pointer-events-none" />
+                <div className="flex-1 relative w-full overflow-hidden">
+
+                    {/* Top Time Axis */}
+                    <div className="absolute top-4 inset-x-0 h-6 z-10 pointer-events-none">
+                        {topAxisLabels.map((label, i) => (
+                            <div
+                                key={i}
+                                className="absolute text-[10px] font-bold text-muted-foreground/60 -translate-x-1/2"
+                                style={{ left: label.left }}
+                            >
+                                {label.label}
+                                {/* Optional Tick Mark */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 w-px h-2 bg-border/40 mt-1" />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Horizontal Time Lines (Y-Axis) */}
+                    <div className="absolute inset-0 pointer-events-none">
+                        {/* Morning (6 AM - ~25%) */}
+                        <div className="absolute inset-x-6 top-[25%] h-px border-t border-dashed border-border/20">
+                            <span className="absolute left-0 -top-2.5 text-[9px] font-medium text-muted-foreground/40 bg-card/50 px-1 rounded">6 AM</span>
+                        </div>
+                        {/* Afternoon (2 PM - ~58%) */}
+                        <div className="absolute inset-x-6 top-[58%] h-px border-t border-dashed border-border/20">
+                            <span className="absolute left-0 -top-2.5 text-[9px] font-medium text-muted-foreground/40 bg-card/50 px-1 rounded">2 PM</span>
+                        </div>
+                        {/* Night (10 PM - ~91%) */}
+                        <div className="absolute inset-x-6 top-[91%] h-px border-t border-dashed border-border/20">
+                            <span className="absolute left-0 -top-2.5 text-[9px] font-medium text-muted-foreground/40 bg-card/50 px-1 rounded">10 PM</span>
+                        </div>
+                    </div>
+
 
                     {/* The Dots */}
-                    <div className="absolute inset-0 pl-16 pr-8 z-10">
+                    <div className="absolute inset-0 z-10">
                         {sortedEntries.map((entry, index) => {
                             const { x, y } = getCoordinates(entry, index);
-                            // Highlight if hovered OR if it's the selected entry for the sidebar
                             const isHovered = hoveredId === entry.id;
                             const isSelected = selectedEntryId === entry.id;
                             const isActive = isHovered || isSelected;
-
                             const dotColor = entry.color?.split(' ')[0] || "bg-slate-500";
 
                             return (
@@ -194,11 +249,7 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                     onMouseEnter={(e) => {
                                         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                                         setHoveredId(entry.id);
-                                        // Update cursor pos immediately
-                                        const rect = containerRef.current?.getBoundingClientRect();
-                                        if (rect) {
-                                            setCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                                        }
+                                        setClientCursorPos({ x: e.clientX, y: e.clientY });
                                     }}
                                     onMouseLeave={() => {
                                         hoverTimeoutRef.current = setTimeout(() => {
@@ -206,7 +257,6 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                         }, 2000);
                                     }}
                                 >
-                                    {/* Main Dot */}
                                     <motion.div
                                         animate={{ scale: isActive ? 1.5 : 1 }}
                                         className={`
@@ -214,10 +264,11 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                             ${isActive ? "ring-4 ring-primary/30 bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" : `${dotColor} opacity-40 hover:opacity-100 hover:ring-2 hover:ring-white/20`}
                                         `}
                                         style={{ width: isActive ? '16px' : (index % 5 === 0 ? '14px' : '10px'), height: isActive ? '16px' : (index % 5 === 0 ? '14px' : '10px') }}
-                                        onClick={() => {
-                                            // Click opens sidebar directly or just highlights?
-                                            // User said "The box should pop-up touching the cursor... a button for Details"
-                                            // So clicking the dot might usually just toggle hover, but let's keep it simple.
+                                        onClick={(e) => {
+                                            // Only set as selected if user intends to view details, 
+                                            // usually standard click on dot is just feedback, details button is real opener.
+                                            // But to be responsive, let's allow it.
+                                            // setClientCursorPos({ x: e.clientX, y: e.clientY });
                                         }}
                                     />
                                 </div>
@@ -225,87 +276,109 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                         })}
                     </div>
 
-                    {/* Hover Card */}
-                    <AnimatePresence>
-                        {hoveredId && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1, x: cursorPos.x + 20, y: cursorPos.y + 20 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ type: "spring", damping: 20, stiffness: 300, mass: 0.5 }} // Smooth follow
-                                className="absolute top-0 left-0 w-64 bg-popover/95 backdrop-blur-xl border border-border shadow-2xl rounded-xl z-50 overflow-hidden pointer-events-auto"
-                                style={{
-                                    // Make sure it doesn't go off screen - simplistically handled by container overflow hidden for now,
-                                    // but purely absolute within container logic:
-                                    // We rely on standard positioning.
-                                }}
-                                onMouseEnter={() => {
-                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                                }}
-                                onMouseLeave={() => {
-                                    hoverTimeoutRef.current = setTimeout(() => {
-                                        setHoveredId(null);
-                                    }, 2000);
-                                }}
-                            >
-                                {(() => {
-                                    const entry = sortedEntries.find(e => e.id === hoveredId);
-                                    if (!entry) return null;
+                    {/* Portal Hover Card */}
+                    {/* Rendered outside the overflow-hidden container to avoid clipping */}
+                    <TooltipPortal
+                        isOpen={!!hoveredId}
+                        x={clientCursorPos.x}
+                        y={clientCursorPos.y}
+                        onMouseEnter={() => {
+                            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                        }}
+                        onMouseLeave={() => {
+                            hoverTimeoutRef.current = setTimeout(() => {
+                                setHoveredId(null);
+                            }, 2000);
+                        }}
+                    >
+                        {(() => {
+                            const entry = sortedEntries.find(e => e.id === hoveredId);
+                            if (!entry) return null;
+                            const entryPeople = entry.people?.map(name => people.find(p => p.name === name) || { name, id: name, color: "bg-gray-500" }).filter(Boolean);
 
-                                    // Map People Names to Person Objects
-                                    const entryPeople = entry.people?.map(name => people.find(p => p.name === name) || { name, id: name, color: "bg-gray-500" }).filter(Boolean);
+                            // Smart Positioning Logic
+                            // We don't have the ref of the tooltip here easily before render, but we can assume dimensions
+                            // Width ~ 256px (w-64), Height variable but let's assume ~300px max
+                            const tooltipWidth = 280; // slightly more for safety
+                            const tooltipHeight = 350;
 
-                                    return (
-                                        <div className="flex flex-col">
-                                            {/* Header Image */}
-                                            {entry.imageSrc && (
-                                                <div className="h-32 w-full relative">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={entry.imageSrc} alt="Memory" className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                                </div>
-                                            )}
+                            const isRightSide = typeof window !== 'undefined' && clientCursorPos.x > window.innerWidth / 2;
+                            const isBottomSide = typeof window !== 'undefined' && clientCursorPos.y > window.innerHeight / 2;
 
-                                            <div className="p-4">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <h4 className="font-bold text-sm line-clamp-2">{entry.title || entry.content}</h4>
-                                                    <button onClick={() => setHoveredId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-                                                </div>
+                            const xOffset = isRightSide ? -(tooltipWidth + 20) : 20;
+                            const yOffset = isBottomSide ? -(tooltipHeight / 2) : 20; // For bottom, we shift up significantly, or just center it vertically?
 
-                                                {/* People Tags with Avatars */}
-                                                {entryPeople && entryPeople.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2 mb-4">
-                                                        {entryPeople.map((p: any) => (
-                                                            <div key={p.id || p.name} className="flex items-center gap-1.5 bg-secondary/50 rounded-full pr-2 pl-1 py-0.5 max-w-full">
-                                                                <div className={`w-4 h-4 rounded-full ${p.color || "bg-gray-500"} flex items-center justify-center text-[8px] font-bold text-white overflow-hidden shrink-0`}>
-                                                                    {p.avatar ? (
-                                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                                        <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
-                                                                    ) : p.name[0]}
-                                                                </div>
-                                                                <span className="text-[10px] font-medium truncate">{p.name}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                            // Let's do simple quadrant flipping
+                            // Top-Left: x+20, y+20
+                            // Top-Right: x-width-20, y+20
+                            // Bottom-Left: x+20, y-height-20
+                            // Bottom-Right: x-width-20, y-height-20
 
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedEntryId(entry.id);
-                                                        setHoveredId(null);
-                                                    }}
-                                                    className="w-full py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:opacity-90 transition-opacity"
-                                                >
-                                                    Details
-                                                </button>
-                                            </div>
+                            // Adjust Y calculation 
+                            const finalX = isRightSide ? -20 : 20; // We'll apply this relative to the cursor in the style
+                            const finalY = isBottomSide ? -20 : 20;
+
+                            // Framer variants for origin
+                            const originX = isRightSide ? 1 : 0;
+                            const originY = isBottomSide ? 1 : 0;
+
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, x: isRightSide ? "-100%" : 0, y: isBottomSide ? "-100%" : 0 }}
+                                    animate={{ opacity: 1, scale: 1, x: isRightSide ? "-100%" : 0, y: isBottomSide ? "-100%" : 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, x: isRightSide ? "-100%" : 0, y: isBottomSide ? "-100%" : 0 }}
+                                    transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                                    style={{
+                                        marginLeft: isRightSide ? -10 : 10, // Small gap
+                                        marginTop: isBottomSide ? -10 : 10,
+                                        transformOrigin: `${originX * 100}% ${originY * 100}%`
+                                    }}
+                                    className="w-64 bg-popover/95 backdrop-blur-xl border border-border shadow-2xl rounded-xl overflow-hidden pointer-events-auto"
+                                >
+                                    {entry.imageSrc && (
+                                        <div className="h-32 w-full relative">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={entry.imageSrc} alt="Memory" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                                         </div>
-                                    );
-                                })()}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                    )}
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <h4 className="font-bold text-sm line-clamp-2">{entry.title || entry.content}</h4>
+                                            <button onClick={() => setHoveredId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                                        </div>
+
+                                        {entryPeople && entryPeople.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                {entryPeople.map((p: any) => (
+                                                    <div key={p.id || p.name} className="flex items-center gap-1.5 bg-secondary/50 rounded-full pr-2 pl-1 py-0.5 max-w-full">
+                                                        <div className={`w-4 h-4 rounded-full ${p.color || "bg-gray-500"} flex items-center justify-center text-[8px] font-bold text-white overflow-hidden shrink-0`}>
+                                                            {p.avatar ? (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                                                            ) : p.name[0]}
+                                                        </div>
+                                                        <span className="text-[10px] font-medium truncate">{p.name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedEntryId(entry.id);
+                                                setHoveredId(null);
+                                            }}
+                                            className="w-full py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:opacity-90 transition-opacity"
+                                        >
+                                            Details
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            );
+                        })()}
+                    </TooltipPortal>
                 </div>
 
                 {/* Sidebar Detail View */}
@@ -333,12 +406,10 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                     // *** PERSON DETAIL VIEW ***
                                     (() => {
                                         const person = people.find(p => p.id === selectedPersonId) || { name: "Unknown", id: "unknown", color: "bg-gray-500", avatar: undefined, relationship: "" };
-                                        // Find memories composed of this person
                                         const personMemories = sortedEntries.filter(e => e.people?.includes(person.name));
 
                                         return (
                                             <div className="flex-1 flex flex-col h-full bg-background/50">
-                                                {/* Person Header */}
                                                 <div className="p-8 border-b border-border flex flex-col items-center justify-center relative bg-card shadow-sm z-10">
                                                     <button
                                                         onClick={() => setSelectedPersonId(null)}
@@ -356,7 +427,6 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                                     <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mt-1">{person.relationship || "Contact"}</p>
                                                 </div>
 
-                                                {/* Person Memories List */}
                                                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                                     <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2">Memories with {person.name}</h4>
                                                     {personMemories.length > 0 ? personMemories.map(memory => (
@@ -394,7 +464,6 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                         const entry = sortedEntries.find(e => e.id === selectedEntryId);
                                         if (!entry) return null;
 
-                                        // Map People
                                         const entryPeople = entry.people?.map(name => people.find(p => p.name === name) || { name, id: name, color: "bg-gray-500" }).filter(Boolean);
 
                                         return (
@@ -422,7 +491,6 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                                                 </div>
 
                                                 <div className="p-6 space-y-6">
-                                                    {/* Avatars */}
                                                     <div className="flex flex-wrap gap-2">
                                                         {entryPeople?.map((p: any) => (
                                                             <button
@@ -466,5 +534,33 @@ export function TimelineView({ entries, people = [] }: TimelineViewProps) {
                 </AnimatePresence>
             </div >
         </div >
+    );
+}
+
+// Separate component for Portal to keeping main component clean
+function TooltipPortal({ children, x, y, isOpen, onMouseEnter, onMouseLeave }: any) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    if (!mounted || !isOpen) return null;
+
+    return createPortal(
+        <AnimatePresence>
+            {isOpen && (
+                <div
+                    className="fixed z-[9999]"
+                    style={{ left: x + 20, top: y + 20 }}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                >
+                    {children}
+                </div>
+            )}
+        </AnimatePresence>,
+        document.body
     );
 }
