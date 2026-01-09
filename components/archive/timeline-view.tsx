@@ -90,7 +90,9 @@ export function TimelineView({ entries }: TimelineViewProps) {
         }
 
         // Use a deterministic hash of the ID to spread dots even if they all have the same timestamp
-        const idHash = (entry.id * 9301 + 49297) % 233280;
+        // Fallback to index if id is missing to prevent NaN
+        const safeId = typeof entry.id === 'number' ? entry.id : index;
+        const idHash = (safeId * 9301 + 49297) % 233280;
         const randomFactor = idHash / 233280; // 0.0 to 1.0
 
         // Add index-based variation to guarantee spread if IDs are sequential/similar
@@ -101,18 +103,18 @@ export function TimelineView({ entries }: TimelineViewProps) {
         // - Random (30%): random scatter
         // - Index (30%): ensuring neighbors don't overlap
         const dateObj = new Date(entry.createdAt || entry.date);
-        const hours = dateObj.getHours();
-        const minutes = dateObj.getMinutes();
+        const hours = dateObj.getHours() || 0;
+        const minutes = dateObj.getMinutes() || 0;
         const timeValue = ((hours * 60 + minutes) / 1440);
 
         const combinedFactor = (timeValue * 0.4) + (randomFactor * 0.3) + (indexFactor * 0.3);
 
-        // Map to 15% - 85% range (utilizing more vertical space)
-        // We avoid the very top (header) and very bottom (scrubber edge)
-        let yPercent = combinedFactor * 70 + 15;
+        // Map to 10% - 90% range (MAXIMIZE vertical space)
+        let yPercent = combinedFactor * 80 + 10;
 
-        // Clamp strictly
-        yPercent = Math.max(15, Math.min(85, yPercent));
+        // Clamp strictly and fallback for NaN
+        if (isNaN(yPercent)) yPercent = 50;
+        yPercent = Math.max(10, Math.min(90, yPercent));
 
         return { x: `${xPercent}%`, y: `${yPercent}%` };
     };
@@ -192,14 +194,15 @@ export function TimelineView({ entries }: TimelineViewProps) {
                     </div>
                 </div>
 
-                {/* Detail Panel - Moved to Root Container Layer to appear at true bottom */}
+                {/* Detail Panel - FIXED position relative to VIEWPORT (z-50) */}
                 <AnimatePresence>
                     {selectedEntry && (
                         <motion.div
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 100, opacity: 0 }}
-                            className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[400px] bg-popover/95 backdrop-blur-xl border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.3)] rounded-2xl z-[50] overflow-hidden"
+                            className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[400px] bg-popover/95 backdrop-blur-xl border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.3)] rounded-2xl z-[100] overflow-hidden"
+                            style={{ pointerEvents: 'auto' }}
                         >
                             <div className="p-5 space-y-4">
                                 <div className="flex items-center justify-between">
