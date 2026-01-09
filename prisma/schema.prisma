@@ -86,6 +86,9 @@ model Person {
   avatar       String?
   color        String?  @default("bg-blue-500")
   
+  // AI Insight
+  aiSummary    String?  @db.Text
+  lastAnalyzedAt DateTime?
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   

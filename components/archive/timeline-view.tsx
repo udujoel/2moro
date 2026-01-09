@@ -64,26 +64,21 @@ export function TimelineView({ entries }: TimelineViewProps) {
         if (maxDate > minDate) {
             xPercent = ((dateScore - minDate) / (maxDate - minDate)) * 90 + 5; // 5-95% padding
         } else {
-            // If only one date or all same, spread by index if possible or center
             if (sortedEntries.length > 1) {
                 xPercent = (index / (sortedEntries.length - 1)) * 90 + 5;
             }
         }
 
-        // Y Position: Time of Day extraction
-        // Assuming entry.date or createdAt has time. If it's just a date string, we might need a better heuristic.
-        // Let's try to extract time from createdAt if available
+        // Y Position: Flattened to a "strip" area (middle 30% of screen)
+        // We use a slight jitter/offset based on time to avoid complete overlap, but visually constrained
+        // Center is 50%. Variation +/- 15%
         const dateObj = new Date(entry.createdAt || entry.date);
         const hours = dateObj.getHours();
-        const minutes = dateObj.getMinutes();
-        const totalMinutes = hours * 60 + minutes;
+        const variation = ((hours - 12) / 12) * 20; // -20% to +20%
 
-        // Map 0 (midnight) to 1440 (midnight) -> 10% to 90%
-        let yPercent = (totalMinutes / 1440) * 80 + 10;
+        let yPercent = 50 + variation;
 
-        // Fallback or jitter to prevent exact overlap
-        if (Number.isNaN(yPercent)) yPercent = 50 + (Math.sin(index) * 20);
-
+        // Add random scatter for same-time collisions if needed, simplified here
         return { x: `${xPercent}%`, y: `${yPercent}%` };
     };
 
@@ -112,25 +107,20 @@ export function TimelineView({ entries }: TimelineViewProps) {
 
             {/* Scatter Plot Area */}
             <div className="flex-1 relative w-full h-full overflow-hidden">
-                {/* Y-Axis Labels (Time Context) */}
-                <div className="absolute left-4 top-0 bottom-0 flex flex-col justify-between py-12 text-[10px] text-muted-foreground opacity-50 z-0 pointer-events-none">
-                    <span>6 AM</span>
-                    <span>2 PM</span>
-                    <span>10 PM</span>
-                </div>
+                {/* Y-Axis Labels Removed for Cleaner Look */}
+                {/* <div className="absolute left-4 top-0 bottom-0 flex flex-col justify-between py-12 text-[10px] text-muted-foreground opacity-50 z-0 pointer-events-none">
+                    <span>AM</span>
+                    <span>PM</span>
+                </div> */}
 
-                {/* Grid Background */}
-                <div className="absolute inset-0 flex z-0 pointer-events-none pl-12 pr-4">
-                    {/* Horizontal Dashed Lines */}
-                    <div className="absolute top-[20%] w-full h-px border-t border-dashed border-border/50" />
-                    <div className="absolute top-[50%] w-full h-px border-t border-dashed border-border/50" />
-                    <div className="absolute top-[80%] w-full h-px border-t border-dashed border-border/50" />
+                {/* Grid Background - Simplified to Strip */}
+                <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+                    {/* Central Axis Line */}
+                    <div className="w-full h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
 
-                    {/* Vertical Dashed Columns */}
-                    <div className="flex-1 border-r border-dashed border-border/30 h-full" />
-                    <div className="flex-1 border-r border-dashed border-border/30 h-full" />
-                    <div className="flex-1 border-r border-dashed border-border/30 h-full" />
-                    <div className="flex-1 border-r border-dashed border-border/30 h-full" />
+                    {/* Faint Horizontal Bands (optional, purely aesthetic) */}
+                    <div className="absolute top-[35%] w-full h-px border-t border-dashed border-border/20" />
+                    <div className="absolute top-[65%] w-full h-px border-t border-dashed border-border/20" />
                 </div>
 
                 {/* The Dots */}
@@ -159,51 +149,44 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                     style={!isHovered && index % 3 === 0 ? { width: '16px', height: '16px' } : {}}
                                 />
 
-                                {/* Popup Card */}
+                                {/* Popup Card - Adjusted Position and Z-Index */}
                                 <AnimatePresence>
                                     {isHovered && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                             animate={{ opacity: 1, y: -20, scale: 1 }}
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-card border border-border/50 rounded-xl shadow-2xl p-0 z-50 overflow-hidden"
+                                            // Fixed clipping: Use portal or ensure container has no overflow hidden if possible. 
+                                            // Since we are in an overflow container, we simply position it higher and ensure z-50.
+                                            // To truly fix clipping in scrollable area, we'd need a Portal. 
+                                            // For this "strip" view, we position slightly differently.
+                                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-72 bg-popover/95 backdrop-blur-md border border-border rounded-xl shadow-2xl z-[100] overflow-hidden"
+                                            style={{ minWidth: '280px' }}
                                         >
                                             {/* Card Content */}
                                             <div className="p-4 space-y-3">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="font-bold text-sm">Memory #{entry.id}</span>
-                                                    <span className="text-xs text-muted-foreground">{entry.createdAt}</span>
+                                                    <span className="font-bold text-sm truncate mr-2">{entry.title || "Memory"}</span>
+                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{new Date(entry.date).toLocaleDateString()}</span>
                                                 </div>
 
                                                 <p className="text-sm text-foreground/80 line-clamp-3 leading-relaxed">
-                                                    {entry.type === 'text' ? entry.content : entry.caption}
+                                                    {entry.type === 'text' ? entry.content : (entry.caption || "Visual memory")}
                                                 </p>
 
-                                                {/* Mini Avatars/Metadata style */}
-                                                <div className="flex items-center justify-between pt-2">
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    {/* Avatars */}
                                                     <div className="flex -space-x-2">
-                                                        <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-card" />
-                                                        <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-card" />
+                                                        <div className="w-5 h-5 rounded-full bg-blue-500 border border-background shadow-sm" />
+                                                        <div className="w-5 h-5 rounded-full bg-purple-500 border border-background shadow-sm" />
                                                     </div>
-                                                    <div className="w-5 h-5 rounded-full bg-green-500/20 text-green-600 flex items-center justify-center text-[10px]">✓</div>
                                                 </div>
                                             </div>
 
-                                            {/* Action Bar */}
-                                            <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
-                                                <button className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg border border-border/50 bg-background text-xs font-semibold hover:bg-muted transition-colors">
-                                                    <GitCompare className="w-3 h-3" /> Compare
-                                                </button>
-                                                <button className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg border border-border/50 bg-background text-xs font-semibold hover:bg-muted transition-colors">
-                                                    <Eye className="w-3 h-3" /> Details
-                                                </button>
-                                            </div>
-
-                                            {/* Pagination Footer */}
-                                            <div className="flex items-center justify-between px-3 py-2 bg-muted/30 text-[10px] text-muted-foreground font-medium">
-                                                <button className="flex items-center hover:text-foreground"><ChevronLeft className="w-3 h-3 mr-1" /> Back</button>
-                                                <span>1 / 1</span>
-                                                <button className="flex items-center hover:text-foreground">Next <ChevronRight className="w-3 h-3 ml-1" /></button>
+                                            {/* Minimal Footer */}
+                                            <div className="px-4 py-2 bg-muted/30 border-t border-border/50 flex justify-between items-center">
+                                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Version 1</span>
+                                                <button className="text-xs font-semibold text-primary hover:underline">Details</button>
                                             </div>
                                         </motion.div>
                                     )}

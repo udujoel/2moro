@@ -218,9 +218,23 @@ export async function createPerson(userId: string, data: any) {
     }
 }
 
-export async function generateRelationshipInsight(userId: string, personId?: string, timeRange: "all" | "6m" | "1y" = "all") {
-    console.log("Debug AI: Generating insight", { userId, personId, timeRange });
+export async function generateRelationshipInsight(userId: string, personId?: string, timeRange: "all" | "6m" | "1y" = "all", forceRefresh: boolean = false) {
+    console.log("Debug AI: Generating insight", { userId, personId, timeRange, forceRefresh });
     try {
+        // 0. Check Database Cache (Only if specific person and no filters)
+        // We only persist the "All Time" summary for a specific person for now, as that's the main "Info" view.
+        if (personId && timeRange === "all" && !forceRefresh) {
+            const person = await prisma.person.findUnique({
+                where: { id: personId },
+                select: { aiSummary: true, lastAnalyzedAt: true }
+            });
+
+            if (person?.aiSummary) {
+                console.log("Debug AI: Returning cached summary");
+                return person.aiSummary;
+            }
+        }
+
         // 1. Calculate Date Cutoff
         let dateFilter = {};
         if (timeRange !== "all") {
@@ -271,7 +285,21 @@ export async function generateRelationshipInsight(userId: string, personId?: str
 
         const memoryContext = memories.map(m => `[${m.memoryDate.toLocaleDateString()}] ${m.content}`);
 
-        return await summarizePeopleInternal(peopleNames, memoryContext);
+        const result = await summarizePeopleInternal(peopleNames, memoryContext);
+
+        // 4. Save to Database (if specific person and all time)
+        if (personId && timeRange === "all" && result) {
+            await prisma.person.update({
+                where: { id: personId },
+                data: {
+                    aiSummary: result,
+                    lastAnalyzedAt: new Date()
+                }
+            });
+            console.log("Debug AI: Saved summary to database");
+        }
+
+        return result;
     } catch (error) {
         console.error("Error generating insight:", error);
         return "Insight generation failed.";

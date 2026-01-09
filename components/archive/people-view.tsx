@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Mic, Image as ImageIcon, ChevronLeft, ChevronRight, X, Calendar, RefreshCw } from "lucide-react";
 import { generateRelationshipInsight, getMemories } from "@/lib/actions";
@@ -69,6 +69,16 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
     const [historyLoading, setHistoryLoading] = useState(false);
 
     const { user } = useUser();
+    const prevPersonIdRef = useRef<string | null>(null);
+
+    const handleRefreshInsight = async () => {
+        if (!selectedPerson || !user) return;
+        setInsightLoading(true);
+        // FORCE REFRESH = TRUE
+        const res = await generateRelationshipInsight(user.id, selectedPerson.id, personTimeRange, true);
+        setInsight(res);
+        setInsightLoading(false);
+    };
 
     useEffect(() => {
         if (selectedPerson && user?.id) {
@@ -76,18 +86,38 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
             setHistoryLoading(true);
 
             // Fetch Insight
-            generateRelationshipInsight(user.id, selectedPerson.id, personTimeRange).then(res => {
-                setInsight(res);
+            if (!insight || selectedPerson.id !== prevPersonIdRef.current) {
+                // If it's a new person selected, we let the backend decide to return cached or new.
+                // We don't force refresh by default.
+                generateRelationshipInsight(user.id, selectedPerson.id, personTimeRange, false).then(res => {
+                    setInsight(res);
+                    setInsightLoading(false);
+                });
+            } else {
                 setInsightLoading(false);
-            });
+            }
+
+            prevPersonIdRef.current = selectedPerson.id;
 
             // Fetch Memories (Load up to 50 for now)
             // Note: reusing getMemories action which we updated to support personId
             getMemories(user.id, 1, 50, selectedPerson.id).then((mems: any) => {
-                // Filter by date locally for display if needed
+                // Map raw DB memories to ArchiveEntry format
+                const mappedMems = mems.map((m: any) => ({
+                    id: m.id,
+                    type: m.type,
+                    content: m.content,
+                    date: new Date(m.memoryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    title: m.title,
+                    createdAt: m.createdAt,
+                    people: m.people.map((p: any) => p.name),
+                    // raw date for filtering below
+                    _rawDate: new Date(m.memoryDate)
+                }));
+
                 const now = new Date();
-                const filtered = mems.filter((m: any) => {
-                    const d = new Date(m.memoryDate);
+                const filtered = mappedMems.filter((m: any) => {
+                    const d = m._rawDate;
                     if (personTimeRange === "6m") {
                         return d >= new Date(now.setMonth(now.getMonth() - 6));
                     }
@@ -214,7 +244,16 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
                                                 <span className="text-xs">Analyzing History...</span>
                                             </div>
                                         ) : (
-                                            <p>{insight || "No analysis available yet."}</p>
+                                            <div className="w-full h-full relative">
+                                                <p>{insight || "No analysis available yet."}</p>
+                                                {/* Refresh Button */}
+                                                <button
+                                                    onClick={handleRefreshInsight}
+                                                    className="absolute -top-2 -right-2 p-1.5 bg-card hover:bg-muted text-muted-foreground rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all border border-border"
+                                                    title="Regenerate Analysis">
+                                                    <RefreshCw className="w-3 h-3" />
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
 
