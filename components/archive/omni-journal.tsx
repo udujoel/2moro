@@ -32,6 +32,10 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
     const audioChunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+    // AI Suggestions State
+    const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -40,6 +44,46 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
             }
         };
     }, [isRecording]);
+
+    // Fetch AI suggestions when modal opens with empty text
+    useEffect(() => {
+        if (isOpen && mode === "text" && textInput === "" && aiSuggestions.length === 0) {
+            fetchSuggestions();
+        }
+    }, [isOpen, mode, textInput]);
+
+    const fetchSuggestions = async () => {
+        setLoadingSuggestions(true);
+        try {
+            const res = await fetch("/api/suggestions/daily");
+            if (res.ok) {
+                const data = await res.json();
+                setAiSuggestions(data.suggestions || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch suggestions:", error);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    };
+
+    const regenerateSuggestions = async () => {
+        setLoadingSuggestions(true);
+        try {
+            const res = await fetch("/api/suggestions/regenerate", { method: "POST" });
+            if (res.ok) {
+                const data = await res.json();
+                setAiSuggestions(data.suggestions || []);
+            } else if (res.status === 429) {
+                const data = await res.json();
+                alert(data.error || "Please wait before generating new suggestions");
+            }
+        } catch (error) {
+            console.error("Failed to regenerate suggestions:", error);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    };
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -289,9 +333,55 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                     value={textInput}
                                     onChange={handleTextChange}
                                     placeholder="What's on your mind? Type @ to tag people..."
-                                    className="w-full h-48 bg-transparent resize-none outline-none text-xl p-2 placeholder:text-muted-foreground/50 scrollbar-none"
+                                    className="w-full h-48 bg-transparent resize-none outline-none text-xl p-4 placeholder:text-muted-foreground/50 scrollbar-none border-2 border-border/30 rounded-2xl focus:border-primary/30 transition-colors"
                                     autoFocus
                                 />
+
+                                {/* AI Suggestions Overlay */}
+                                <AnimatePresence>
+                                    {textInput === "" && !loadingSuggestions && aiSuggestions.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            className="absolute top-4 left-4 right-4 space-y-3"
+                                        >
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" />
+                                                <p className="text-xs font-medium text-muted-foreground">Suggestions for today</p>
+                                            </div>
+                                            {aiSuggestions.map((suggestion, i) => (
+                                                <motion.button
+                                                    key={i}
+                                                    initial={{ opacity: 0, x: -10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: i * 0.1 }}
+                                                    onClick={() => setTextInput(suggestion)}
+                                                    className="w-full text-left p-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border border-blue-400/20 hover:border-blue-400/40 transition-all shadow-sm hover:shadow-md group"
+                                                >
+                                                    <span className="text-sm text-foreground/80 group-hover:text-foreground">{suggestion}</span>
+                                                </motion.button>
+                                            ))}
+                                            <button
+                                                onClick={regenerateSuggestions}
+                                                disabled={loadingSuggestions}
+                                                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mt-3"
+                                            >
+                                                <span className="text-base">↻</span> More suggestions
+                                            </button>
+                                        </motion.div>
+                                    )}
+                                    {textInput === "" && loadingSuggestions && (
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            className="absolute top-4 left-4 right-4 flex items-center gap-2 text-muted-foreground"
+                                        >
+                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                            <span className="text-sm">Generating suggestions...</span>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 {/* Suggestions Dropdown */}
                                 {showSuggestions && filteredPeople.length > 0 && (
@@ -415,47 +505,61 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
             </AnimatePresence>
 
             {/* Floating Action Button */}
-            <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end">
+            <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3">
                 {mode !== 'text' && mode !== 'voice' && (
-                    <motion.button
-                        layoutId="add-button-morph"
-                        onClick={toggleOpen}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        animate={{
-                            boxShadow: [
-                                "0 0 0 0 rgba(59, 130, 246, 0.7)",
-                                "0 0 0 15px rgba(59, 130, 246, 0)",
-                                "0 0 0 0 rgba(59, 130, 246, 0)"
-                            ],
-                            background: [
-                                "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)",
-                                "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(29, 78, 216) 100%)",
-                                "linear-gradient(135deg, rgb(29, 78, 216) 0%, rgb(59, 130, 246) 100%)",
-                                "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)"
-                            ]
-                        }}
-                        transition={{
-                            boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                            background: { duration: 8, repeat: Infinity, ease: "easeInOut" }
-                        }}
-                        className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white overflow-hidden"
-                        style={{ background: "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)" }}
-                    >
+                    <>
+                        {/* Playful floating label */}
                         <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: 0.5, type: "spring", damping: 15 }}
+                            className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-blue-400/20 px-4 py-2 rounded-full shadow-lg"
+                        >
+                            <span className="text-sm font-medium bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                ✨ Add a Memory
+                            </span>
+                        </motion.div>
+                        <motion.button
+                            layoutId="add-button-morph"
+                            onClick={toggleOpen}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             animate={{
-                                rotate: [0, 360, 360, 0, 0]
+                                boxShadow: [
+                                    "0 0 0 0 rgba(59, 130, 246, 0.7)",
+                                    "0 0 0 15px rgba(59, 130, 246, 0)",
+                                    "0 0 0 0 rgba(59, 130, 246, 0)"
+                                ],
+                                background: [
+                                    "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)",
+                                    "linear-gradient(135deg, rgb(37, 99, 235) 0%, rgb(29, 78, 216) 100%)",
+                                    "linear-gradient(135deg, rgb(29, 78, 216) 0%, rgb(59, 130, 246) 100%)",
+                                    "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)"
+                                ]
                             }}
                             transition={{
-                                duration: 8,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                                times: [0, 0.23, 0.27, 0.48, 0.52]
+                                boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                                background: { duration: 8, repeat: Infinity, ease: "easeInOut" }
                             }}
+                            className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white overflow-hidden"
+                            style={{ background: "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)" }}
                         >
-                            <Plus className="w-6 h-6" />
-                        </motion.div>
-                    </motion.button>
+                            <motion.div
+                                animate={{
+                                    rotate: [0, 360, 360, 0, 0]
+                                }}
+                                transition={{
+                                    duration: 8,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    times: [0, 0.23, 0.27, 0.48, 0.52]
+                                }}
+                            >
+                                <Plus className="w-6 h-6" />
+                            </motion.div>
+                        </motion.button>
+                    </>
                 )}
             </div>
         </>

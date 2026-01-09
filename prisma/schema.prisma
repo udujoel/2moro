@@ -28,6 +28,7 @@ model User {
   compassTodos        CompassTodo[]
   financialSnapshots  FinancialSnapshot[]
   userPreferences     UserPreferences?
+  memorySuggestions   MemorySuggestion[]
 }
 
 model Memory {
@@ -218,4 +219,20 @@ model AIRecommendation {
   createdAt   DateTime @default(now())
   
   @@index([userId, type, status])
+}
+
+model MemorySuggestion {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  content     String   // The suggestion text
+  context     Json?    // Metadata about what influenced this suggestion
+  
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime // Set to end of day when generated
+  used        Boolean  @default(false)
+  
+  @@index([userId, expiresAt])
+  @@index([generatedAt])
 }
