@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, GitCompare, Eye } from "lucide-react";
+import { X, ChevronLeft } from "lucide-react";
 
 interface ArchiveEntry {
     id: number;
@@ -15,6 +15,9 @@ interface ArchiveEntry {
     color?: string;
     context?: string;
     title?: string;
+    people?: string[]; // Added people array to interface
+    imageSrc?: string;
+    weather?: any;
 }
 
 interface TimelineViewProps {
@@ -24,7 +27,10 @@ interface TimelineViewProps {
 export function TimelineView({ entries }: TimelineViewProps) {
     const [timeRange, setTimeRange] = useState<"30d" | "6m" | "2y" | "all">("all");
     const [hoveredId, setHoveredId] = useState<number | null>(null);
+    const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
+    const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Filter based on TimeRange
     const now = new Date();
@@ -151,14 +157,16 @@ export function TimelineView({ entries }: TimelineViewProps) {
                 </div>
 
                 {/* Plot Area */}
-                <div className="flex-1 relative w-full overflow-hidden">
-                    {/* Time Scale Labels */}
-                    <div className="absolute left-6 top-[15%] bottom-[15%] flex flex-col justify-between text-[10px] font-bold text-muted-foreground/30 z-0 pointer-events-none uppercase tracking-tighter">
-                        <span>6 am</span>
-                        <span>2 pm</span>
-                        <span>10 pm</span>
-                    </div>
-
+                <div className="flex-1 relative w-full overflow-hidden"
+                    onMouseMove={(e) => {
+                        if (hoveredId) {
+                            const rect = containerRef.current?.getBoundingClientRect();
+                            if (rect) {
+                                setCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                            }
+                        }
+                    }}
+                >
                     {/* Horizontal Guides */}
                     <div className="absolute inset-x-6 top-[15%] h-px border-t border-dashed border-border/20 pointer-events-none" />
                     <div className="absolute inset-x-6 top-[50%] h-px border-t border-dashed border-border/20 pointer-events-none" />
@@ -168,7 +176,11 @@ export function TimelineView({ entries }: TimelineViewProps) {
                     <div className="absolute inset-0 pl-16 pr-8 z-10">
                         {sortedEntries.map((entry, index) => {
                             const { x, y } = getCoordinates(entry, index);
+                            // Highlight if hovered OR if it's the selected entry for the sidebar
                             const isHovered = hoveredId === entry.id;
+                            const isSelected = selectedEntryId === entry.id;
+                            const isActive = isHovered || isSelected;
+
                             const dotColor = entry.color?.split(' ')[0] || "bg-slate-500";
 
                             return (
@@ -176,129 +188,193 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                     key={entry.id}
                                     className="absolute -translate-x-1/2 -translate-y-1/2 group"
                                     style={{ left: x, top: y }}
-                                    onMouseEnter={() => setHoveredId(entry.id)}
+                                    onMouseEnter={(e) => {
+                                        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                                        setHoveredId(entry.id);
+                                        // Update cursor pos immediately
+                                        const rect = containerRef.current?.getBoundingClientRect();
+                                        if (rect) {
+                                            setCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                                        }
+                                    }}
+                                    onMouseLeave={() => {
+                                        hoverTimeoutRef.current = setTimeout(() => {
+                                            setHoveredId(null);
+                                        }, 2000);
+                                    }}
                                 >
                                     {/* Main Dot */}
                                     <motion.div
-                                        animate={{ scale: isHovered ? 1.5 : 1 }}
+                                        animate={{ scale: isActive ? 1.5 : 1 }}
                                         className={`
                                             rounded-full cursor-pointer transition-all duration-300
-                                            ${isHovered ? "ring-4 ring-primary/30 bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" : `${dotColor} opacity-40 hover:opacity-100 hover:ring-2 hover:ring-white/20`}
+                                            ${isActive ? "ring-4 ring-primary/30 bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" : `${dotColor} opacity-40 hover:opacity-100 hover:ring-2 hover:ring-white/20`}
                                         `}
-                                        style={{ width: isHovered ? '16px' : (index % 5 === 0 ? '14px' : '10px'), height: isHovered ? '16px' : (index % 5 === 0 ? '14px' : '10px') }}
-                                        onClick={() => setHoveredId(hoveredId === entry.id ? null : entry.id)} // Click toggle
+                                        style={{ width: isActive ? '16px' : (index % 5 === 0 ? '14px' : '10px'), height: isActive ? '16px' : (index % 5 === 0 ? '14px' : '10px') }}
+                                        onClick={() => {
+                                            // Click opens sidebar directly or just highlights?
+                                            // User said "The box should pop-up touching the cursor... a button for Details"
+                                            // So clicking the dot might usually just toggle hover, but let's keep it simple.
+                                        }}
                                     />
                                 </div>
                             );
                         })}
                     </div>
+
+                    {/* Hover Card */}
+                    <AnimatePresence>
+                        {hoveredId && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1, x: cursorPos.x + 20, y: cursorPos.y + 20 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ type: "spring", damping: 20, stiffness: 300, mass: 0.5 }} // Smooth follow
+                                className="absolute top-0 left-0 w-64 bg-popover/95 backdrop-blur-xl border border-border shadow-2xl rounded-xl z-50 overflow-hidden pointer-events-auto"
+                                style={{
+                                    // Make sure it doesn't go off screen - simplistically handled by container overflow hidden for now,
+                                    // but purely absolute within container logic:
+                                    // We rely on standard positioning.
+                                }}
+                                onMouseEnter={() => {
+                                    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                                }}
+                                onMouseLeave={() => {
+                                    hoverTimeoutRef.current = setTimeout(() => {
+                                        setHoveredId(null);
+                                    }, 2000);
+                                }}
+                            >
+                                {(() => {
+                                    const entry = sortedEntries.find(e => e.id === hoveredId);
+                                    if (!entry) return null;
+                                    return (
+                                        <div className="flex flex-col">
+                                            {/* Header Image */}
+                                            {entry.imageSrc && (
+                                                <div className="h-32 w-full relative">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={entry.imageSrc} alt="Memory" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                                </div>
+                                            )}
+
+                                            <div className="p-4">
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <h4 className="font-bold text-sm line-clamp-2">{entry.title || entry.content}</h4>
+                                                    <button onClick={() => setHoveredId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                                                </div>
+
+                                                {/* People Tags */}
+                                                {entry.people && entry.people.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mb-4">
+                                                        {entry.people.map(p => (
+                                                            <span key={p} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                                                {p}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedEntryId(entry.id);
+                                                        setHoveredId(null);
+                                                    }}
+                                                    className="w-full py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:opacity-90 transition-opacity"
+                                                >
+                                                    Details
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
-                {/* Detail Panel - FIXED position relative to VIEWPORT (z-50) */}
+                {/* Sidebar Detail View */}
                 <AnimatePresence>
-                    {selectedEntry && (
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[400px] bg-popover/95 backdrop-blur-xl border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.3)] rounded-2xl z-[100] overflow-hidden"
-                            style={{ pointerEvents: 'auto' }}
-                        >
-                            <div className="p-5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-sm text-foreground truncate">{selectedEntry.title || "Memory " + selectedEntry.id}</span>
-                                        <span className="text-[10px] text-muted-foreground uppercase font-medium tracking-tight mt-0.5">
-                                            {new Date(selectedEntry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {new Date(selectedEntry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
+                    {selectedEntryId && (
+                        <>
+                            {/* Backdrop */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setSelectedEntryId(null)}
+                                className="absolute inset-0 bg-black/20 backdrop-blur-sm z-40"
+                            />
 
-                                    <button
-                                        onClick={() => setHoveredId(null)}
-                                        className="w-6 h-6 flex items-center justify-center rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
+                            {/* Slide-over Panel */}
+                            <motion.div
+                                initial={{ x: "100%" }}
+                                animate={{ x: 0 }}
+                                exit={{ x: "100%" }}
+                                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                                className="absolute top-0 right-0 bottom-0 w-[400px] bg-card border-l border-border shadow-2xl z-50 flex flex-col overflow-hidden"
+                            >
+                                {(() => {
+                                    const entry = sortedEntries.find(e => e.id === selectedEntryId);
+                                    if (!entry) return null;
+                                    return (
+                                        <div className="flex-1 flex flex-col h-full overflow-y-auto">
+                                            <div className="h-64 relative shrink-0">
+                                                {entry.imageSrc ? (
+                                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                                    <img src={entry.imageSrc} alt="Memory" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className={`w-full h-full ${entry.color || "bg-muted"} flex items-center justify-center p-8`}>
+                                                        <p className="text-xl font-serif italic opacity-50 text-center">"{entry.content}"</p>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => setSelectedEntryId(null)}
+                                                    className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
 
-                                <p className="text-sm text-foreground/80 line-clamp-3 leading-relaxed">
-                                    {selectedEntry.type === 'text' ? selectedEntry.content : (selectedEntry.caption || "Media entry captured in MyStory.")}
-                                </p>
+                                                <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
+                                                    <h2 className="text-2xl font-bold leading-tight">{entry.title || "Memory Entry"}</h2>
+                                                    <p className="opacity-80 text-sm mt-1">{entry.date}</p>
+                                                </div>
+                                            </div>
 
-                                <div className="flex items-center justify-between pt-1">
-                                    <div className="flex -space-x-2.5">
-                                        <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-background shadow-sm overflow-hidden" />
-                                        <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-background shadow-sm overflow-hidden" />
-                                    </div>
-                                    <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[8px] text-emerald-500">✓</div>
-                                </div>
-                            </div>
+                                            <div className="p-6 space-y-6">
+                                                <div className="flex gap-2">
+                                                    {entry.people?.map(p => (
+                                                        <span key={p} className="px-3 py-1 rounded-full bg-muted text-foreground text-xs font-bold border border-border">
+                                                            {p}
+                                                        </span>
+                                                    ))}
+                                                </div>
 
-                            <div className="flex items-center gap-2 p-3 bg-muted/20 border-t border-border/40">
-                                <button className="flex-1 py-1.5 rounded-lg border border-border/40 bg-background/50 text-[11px] font-bold hover:bg-muted/50 transition-colors flex items-center justify-center gap-2">
-                                    <GitCompare className="w-3 h-3" /> Compare
-                                </button>
-                                <button className="flex-1 py-1.5 rounded-lg border border-border/40 bg-background/50 text-[11px] font-bold hover:bg-muted/50 transition-colors flex items-center justify-center gap-2">
-                                    <Eye className="w-3 h-3" /> Details
-                                </button>
-                            </div>
+                                                <div className="prose prose-sm dark:prose-invert">
+                                                    <p className="text-lg leading-relaxed">{entry.content}</p>
+                                                </div>
 
-                            <div className="flex items-center justify-between px-4 py-2 bg-muted/40 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-t border-border/20">
-                                <button
-                                    onClick={() => {
-                                        const idx = sortedEntries.findIndex(e => e.id === selectedEntry.id);
-                                        if (idx > 0) setHoveredId(sortedEntries[idx - 1].id);
-                                    }}
-                                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                                >
-                                    <ChevronLeft className="w-3 h-3" /> Back
-                                </button>
-                                <span className="opacity-60">{sortedEntries.findIndex(e => e.id === selectedEntry.id) + 1} / {sortedEntries.length}</span>
-                                <button
-                                    onClick={() => {
-                                        const idx = sortedEntries.findIndex(e => e.id === selectedEntry.id);
-                                        if (idx < sortedEntries.length - 1) setHoveredId(sortedEntries[idx + 1].id);
-                                    }}
-                                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                                >
-                                    Next <ChevronRight className="w-3 h-3" />
-                                </button>
-                            </div>
-                        </motion.div>
+                                                <div className="border-t border-border pt-6 grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                                                    <div>
+                                                        <span className="font-bold block text-foreground mb-1">Weather</span>
+                                                        <span>{typeof entry.weather === 'object' ? `${Math.round((entry.weather as any).temp)}° ${(entry.weather as any).condition}` : (entry.weather || "Unknown")}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block text-foreground mb-1">Created</span>
+                                                        <span>{entry.createdAt}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </motion.div>
+                        </>
                     )}
                 </AnimatePresence>
-
-                {/* Bottom Scrubber */}
-                <div className="h-28 border-t border-border/30 bg-card/10 flex flex-col items-center justify-center px-12 relative overflow-hidden">
-                    {/* Tick Marks Container */}
-                    <div className="w-full h-12 flex items-center gap-1.5 overflow-hidden opacity-20">
-                        {Array.from({ length: 120 }).map((_, i) => (
-                            <div key={i} className={`w-0.5 rounded-full bg-foreground ${i % 10 === 0 ? "h-6 opacity-80" : i % 5 === 0 ? "h-4 opacity-50" : "h-2 opacity-30"}`} />
-                        ))}
-                    </div>
-
-                    {/* Window Pill */}
-                    <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                        <div className="bg-background/80 backdrop-blur-xl border border-border/60 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.2)] px-10 py-2.5 flex items-center justify-center cursor-default z-10 transition-transform active:scale-95">
-                            <span className="text-xs font-black uppercase tracking-[0.2em]">{windowLabel}</span>
-                        </div>
-                    </div>
-
-                    {/* Month Labels */}
-                    <div className="absolute bottom-4 left-12 right-12 flex justify-between text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">
-                        {monthLabels.length > 0 ? monthLabels.map((month, i) => (
-                            <span key={i}>{month}</span>
-                        )) : (
-                            <>
-                                <span>September</span>
-                                <span>October</span>
-                                <span>November</span>
-                                <span>December</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
