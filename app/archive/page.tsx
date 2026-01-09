@@ -17,23 +17,24 @@ export default function ArchivePage() {
     const { user } = useUser();
     const { showToast } = useToast();
 
-    // Persist view mode across refreshes
-    const [viewMode, setViewMode] = useState<"grid" | "timeline" | "people">(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('archive-view-mode');
-            if (saved === 'grid' || saved === 'timeline' || saved === 'people') {
-                return saved;
-            }
+    const [viewMode, setViewMode] = useState<"grid" | "timeline" | "people">("grid");
+    const [mounted, setMounted] = useState(false);
+
+    // Initial load from localStorage
+    useEffect(() => {
+        setMounted(true);
+        const saved = localStorage.getItem('archive-view-mode');
+        if (saved === 'grid' || saved === 'timeline' || saved === 'people') {
+            setViewMode(saved);
         }
-        return "grid";
-    });
+    }, []);
 
     // Save viewMode to localStorage when it changes
     useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (mounted) {
             localStorage.setItem('archive-view-mode', viewMode);
         }
-    }, [viewMode]);
+    }, [viewMode, mounted]);
 
     const [memories, setMemories] = useState<any[]>([]); // Using any for transition, ideally typed
     const [people, setPeople] = useState<any[]>([]);
