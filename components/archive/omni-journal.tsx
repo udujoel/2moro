@@ -380,7 +380,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             transition={{ delay: i * 0.05 }}
                                                             onClick={() => setTextInput(suggestion)}
-                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted border border-border/40 hover:border-border/70 text-foreground/70 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
+                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted border border-border/40 hover:border-border/70 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent transition-all cursor-pointer whitespace-nowrap"
                                                         >
                                                             {suggestion}
                                                         </motion.button>
@@ -506,16 +506,28 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                 {mode !== 'text' && mode !== 'voice' && (
                     <>
                         {/* Playful floating label */}
+                        {/* Playful floating label - Curved Text */}
                         <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ delay: 0.5, type: "spring", damping: 15 }}
-                            className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-blue-400/20 px-4 py-2 rounded-full shadow-lg"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ delay: 0.5 }}
+                            className="absolute -top-12 -left-12 w-32 h-32 pointer-events-none z-40"
                         >
-                            <span className="text-sm font-medium bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                ✨ Add a Memory
-                            </span>
+                            <svg viewBox="0 0 100 100" className="w-full h-full rotate-[-15deg]">
+                                <defs>
+                                    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="#60A5FA" />
+                                        <stop offset="100%" stopColor="#C084FC" />
+                                    </linearGradient>
+                                </defs>
+                                <path id="curve" d="M 10,50 A 40,40 0 0,1 90,50" fill="transparent" />
+                                <text className="text-[11px] font-bold tracking-tight uppercase" style={{ fill: "url(#textGradient)" }}>
+                                    <textPath href="#curve" startOffset="50%" textAnchor="middle">
+                                        ✨ Add a Memory
+                                    </textPath>
+                                </text>
+                            </svg>
                         </motion.div>
                         <motion.button
                             layoutId="add-button-morph"
