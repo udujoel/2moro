@@ -380,7 +380,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             transition={{ delay: i * 0.05 }}
                                                             onClick={() => setTextInput(suggestion)}
-                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted text-foreground/70 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
+                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted border border-border/40 hover:border-border/70 text-foreground/70 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
                                                         >
                                                             {suggestion}
                                                         </motion.button>
