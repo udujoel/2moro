@@ -304,7 +304,7 @@ export async function acceptRecommendation(
         id?: string; // AIRecommendation ID if from cache
         category: string;
         task: string;
-        description?: string;
+        description?: string | null;
     }
 ) {
     try {
