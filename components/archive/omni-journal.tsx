@@ -512,15 +512,15 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}
                             transition={{ delay: 0.5 }}
-                            className="absolute -top-6 -left-6 w-24 h-24 pointer-events-none z-40"
+                            className="absolute -top-10 -left-10 w-36 h-36 pointer-events-none z-40"
                         >
-                            <svg viewBox="0 0 100 100" className="w-full h-full rotate-[-15deg]">
+                            <svg viewBox="0 0 100 100" className="w-full h-full rotate-[-25deg]">
                                 <defs>
-                                    <path id="curve" d="M 14,50 A 36,36 0 0,1 86,50" fill="transparent" />
+                                    <path id="curve" d="M 12,50 A 38,38 0 0,1 88,50" fill="transparent" />
                                 </defs>
-                                <text className="text-[10px] font-serif italic fill-muted-foreground/80">
+                                <text className="text-[9px] font-bold font-serif italic fill-white drop-shadow-md">
                                     <textPath href="#curve" startOffset="50%" textAnchor="middle">
-                                        add a memory
+                                        click here to add a memory
                                     </textPath>
                                 </text>
                             </svg>
