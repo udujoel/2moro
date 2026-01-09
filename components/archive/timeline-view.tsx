@@ -94,14 +94,15 @@ export function TimelineView({ entries }: TimelineViewProps) {
         const hours = dateObj.getHours();
         const minutes = dateObj.getMinutes();
 
-        // Map time (0-24h) to y position (20% to 80%)
-        const timeBasedY = ((hours * 60 + minutes) / 1440) * 60 + 20;
+        // Map time (0-24h) to y position (restricted to 35% - 75% to clear header)
+        // Header roughly takes top 20-30% depending on screen size, so we start at 35%
+        const timeBasedY = ((hours * 60 + minutes) / 1440) * 40 + 35;
 
         // Jitter based on ID
-        const jitter = ((entry.id % 11) - 5) * 2;
+        const jitter = ((entry.id % 11) - 5) * 1.5;
         let yPercent = timeBasedY + jitter;
 
-        yPercent = Math.max(20, Math.min(80, yPercent));
+        yPercent = Math.max(30, Math.min(80, yPercent));
 
         return { x: `${xPercent}%`, y: `${yPercent}%` };
     };
@@ -137,18 +138,16 @@ export function TimelineView({ entries }: TimelineViewProps) {
                 {/* Plot Area */}
                 <div className="flex-1 relative w-full overflow-hidden">
                     {/* Time Scale Labels */}
-                    <div className="absolute left-6 top-0 bottom-0 flex flex-col justify-between py-12 text-[10px] font-bold text-muted-foreground/30 z-0 pointer-events-none uppercase tracking-tighter">
+                    <div className="absolute left-6 top-[35%] bottom-[25%] flex flex-col justify-between text-[10px] font-bold text-muted-foreground/30 z-0 pointer-events-none uppercase tracking-tighter">
                         <span>6 am</span>
                         <span>2 pm</span>
                         <span>10 pm</span>
                     </div>
 
-                    {/* Horizontal Guides */}
-                    <div className="absolute inset-0 flex flex-col justify-between py-12 z-0 pointer-events-none px-6">
-                        <div className="w-full h-px border-t border-dashed border-border/20" />
-                        <div className="w-full h-px border-t border-dashed border-border/20" />
-                        <div className="w-full h-px border-t border-dashed border-border/20" />
-                    </div>
+                    {/* Horizontal Guides - Aligned with Y Range (35% - 75%) */}
+                    <div className="absolute inset-x-6 top-[35%] h-px border-t border-dashed border-border/20 pointer-events-none" />
+                    <div className="absolute inset-x-6 top-[55%] h-px border-t border-dashed border-border/20 pointer-events-none" />
+                    <div className="absolute inset-x-6 top-[75%] h-px border-t border-dashed border-border/20 pointer-events-none" />
 
                     {/* The Dots */}
                     <div className="absolute inset-0 pl-16 pr-8 z-10">
