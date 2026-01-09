@@ -380,7 +380,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             transition={{ delay: i * 0.05 }}
                                                             onClick={() => setTextInput(suggestion)}
-                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted border border-border/40 hover:border-border/70 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent transition-all cursor-pointer whitespace-nowrap"
+                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted border border-purple-500/30 hover:border-purple-500/60 text-foreground/80 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
                                                         >
                                                             {suggestion}
                                                         </motion.button>
@@ -512,19 +512,15 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}
                             transition={{ delay: 0.5 }}
-                            className="absolute -top-12 -left-12 w-32 h-32 pointer-events-none z-40"
+                            className="absolute -top-6 -left-6 w-24 h-24 pointer-events-none z-40"
                         >
                             <svg viewBox="0 0 100 100" className="w-full h-full rotate-[-15deg]">
                                 <defs>
-                                    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor="#60A5FA" />
-                                        <stop offset="100%" stopColor="#C084FC" />
-                                    </linearGradient>
+                                    <path id="curve" d="M 14,50 A 36,36 0 0,1 86,50" fill="transparent" />
                                 </defs>
-                                <path id="curve" d="M 10,50 A 40,40 0 0,1 90,50" fill="transparent" />
-                                <text className="text-[11px] font-bold tracking-tight uppercase" style={{ fill: "url(#textGradient)" }}>
+                                <text className="text-[10px] font-serif italic fill-muted-foreground/80">
                                     <textPath href="#curve" startOffset="50%" textAnchor="middle">
-                                        ✨ Add a Memory
+                                        add a memory
                                     </textPath>
                                 </text>
                             </svg>
