@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft, GitCompare, Eye } from "lucide-react";
 
@@ -89,36 +89,48 @@ export function TimelineView({ entries }: TimelineViewProps) {
             }
         }
 
-        // Y Position: Scatter
+        // Use a deterministic hash of the ID to spread dots even if they all have the same timestamp
+        const idHash = (entry.id * 9301 + 49297) % 233280;
+        const randomFactor = idHash / 233280; // 0.0 to 1.0
+
+        // Add index-based variation to guarantee spread if IDs are sequential/similar
+        const indexFactor = (index % 7) / 7; // 0.0 to ~0.85
+
+        // Mix factors:
+        // - Time (40%): coarsely places it in the day
+        // - Random (30%): random scatter
+        // - Index (30%): ensuring neighbors don't overlap
         const dateObj = new Date(entry.createdAt || entry.date);
         const hours = dateObj.getHours();
         const minutes = dateObj.getMinutes();
+        const timeValue = ((hours * 60 + minutes) / 1440);
 
-        // Map time (0-24h) to y position (Centered in bottom half: 50% - 90%)
-        // This ensures absolutely NO overlap with the top header area
-        const timeBasedY = ((hours * 60 + minutes) / 1440) * 40 + 50;
+        const combinedFactor = (timeValue * 0.4) + (randomFactor * 0.3) + (indexFactor * 0.3);
 
-        // Jitter based on ID
-        const jitter = ((entry.id % 11) - 5) * 1.5;
-        let yPercent = timeBasedY + jitter;
+        // Map to 15% - 85% range (utilizing more vertical space)
+        // We avoid the very top (header) and very bottom (scrubber edge)
+        let yPercent = combinedFactor * 70 + 15;
 
-        // Strict clamp to safe area
-        yPercent = Math.max(45, Math.min(95, yPercent));
+        // Clamp strictly
+        yPercent = Math.max(15, Math.min(85, yPercent));
 
         return { x: `${xPercent}%`, y: `${yPercent}%` };
     };
 
     const windowLabel = timeRange === "30d" ? "30 Days" : timeRange === "6m" ? "6 Months" : timeRange === "2y" ? "2 Years" : "All Time";
 
+    // Get currently selected entry for detail view
+    const selectedEntry = hoveredId ? sortedEntries.find(e => e.id === hoveredId) : null;
+
     return (
         <div className="w-full h-full flex flex-col p-6 bg-background/50 relative overflow-hidden" ref={containerRef}>
             {/* Window Container */}
             <div className="flex-1 flex flex-col bg-card/40 backdrop-blur-md border border-border/60 rounded-[2rem] overflow-hidden shadow-2xl relative">
 
-                {/* Upper Control Bar (Simulated inside window) */}
+                {/* Upper Control Bar */}
                 <div className="flex items-center justify-between px-8 py-6 border-b border-border/30 bg-card/20 z-20">
                     <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-lg tracking-tight">Version History</h3>
+                        <h3 className="font-bold text-lg tracking-tight">Memories</h3>
                         <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest opacity-60">{sortedEntries.length} entries</span>
                     </div>
@@ -139,16 +151,16 @@ export function TimelineView({ entries }: TimelineViewProps) {
                 {/* Plot Area */}
                 <div className="flex-1 relative w-full overflow-hidden">
                     {/* Time Scale Labels */}
-                    <div className="absolute left-6 top-[50%] bottom-[10%] flex flex-col justify-between text-[10px] font-bold text-muted-foreground/30 z-0 pointer-events-none uppercase tracking-tighter">
+                    <div className="absolute left-6 top-[15%] bottom-[15%] flex flex-col justify-between text-[10px] font-bold text-muted-foreground/30 z-0 pointer-events-none uppercase tracking-tighter">
                         <span>6 am</span>
                         <span>2 pm</span>
                         <span>10 pm</span>
                     </div>
 
-                    {/* Horizontal Guides - Aligned with Y Range (50% - 90%) */}
+                    {/* Horizontal Guides */}
+                    <div className="absolute inset-x-6 top-[15%] h-px border-t border-dashed border-border/20 pointer-events-none" />
                     <div className="absolute inset-x-6 top-[50%] h-px border-t border-dashed border-border/20 pointer-events-none" />
-                    <div className="absolute inset-x-6 top-[70%] h-px border-t border-dashed border-border/20 pointer-events-none" />
-                    <div className="absolute inset-x-6 top-[90%] h-px border-t border-dashed border-border/20 pointer-events-none" />
+                    <div className="absolute inset-x-6 top-[85%] h-px border-t border-dashed border-border/20 pointer-events-none" />
 
                     {/* The Dots */}
                     <div className="absolute inset-0 pl-16 pr-8 z-10">
@@ -163,7 +175,6 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                     className="absolute -translate-x-1/2 -translate-y-1/2 group"
                                     style={{ left: x, top: y }}
                                     onMouseEnter={() => setHoveredId(entry.id)}
-                                    onMouseLeave={() => setHoveredId(null)}
                                 >
                                     {/* Main Dot */}
                                     <motion.div
@@ -173,62 +184,86 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                             ${isHovered ? "ring-4 ring-primary/30 bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" : `${dotColor} opacity-40 hover:opacity-100 hover:ring-2 hover:ring-white/20`}
                                         `}
                                         style={{ width: isHovered ? '16px' : (index % 5 === 0 ? '14px' : '10px'), height: isHovered ? '16px' : (index % 5 === 0 ? '14px' : '10px') }}
+                                        onClick={() => setHoveredId(hoveredId === entry.id ? null : entry.id)} // Click toggle
                                     />
-
-                                    {/* Hover Card */}
-                                    <AnimatePresence>
-                                        {isHovered && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                animate={{ opacity: 1, y: -15, scale: 1 }}
-                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-72 bg-popover/90 backdrop-blur-xl border border-border shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl z-[100] overflow-hidden"
-                                            >
-                                                <div className="p-5 space-y-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-sm text-foreground truncate">{entry.title || "Version " + entry.id}</span>
-                                                            <span className="text-[10px] text-muted-foreground uppercase font-medium tracking-tight mt-0.5">
-                                                                {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-                                                        {entry.type === 'text' ? entry.content : (entry.caption || "Media entry captured in MyStory.")}
-                                                    </p>
-
-                                                    <div className="flex items-center justify-between pt-1">
-                                                        <div className="flex -space-x-2.5">
-                                                            <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-background shadow-sm overflow-hidden" />
-                                                            <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-background shadow-sm overflow-hidden" />
-                                                        </div>
-                                                        <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[8px] text-emerald-500">✓</div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 p-3 bg-muted/20 border-t border-border/40">
-                                                    <button className="flex-1 py-1.5 rounded-lg border border-border/40 bg-background/50 text-[11px] font-bold hover:bg-muted/50 transition-colors flex items-center justify-center gap-2">
-                                                        <GitCompare className="w-3 h-3" /> Compare
-                                                    </button>
-                                                    <button className="flex-1 py-1.5 rounded-lg border border-border/40 bg-background/50 text-[11px] font-bold hover:bg-muted/50 transition-colors flex items-center justify-center gap-2">
-                                                        <Eye className="w-3 h-3" /> Details
-                                                    </button>
-                                                </div>
-
-                                                <div className="flex items-center justify-between px-4 py-2 bg-muted/40 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-t border-border/20">
-                                                    <button className="flex items-center gap-1 hover:text-foreground transition-colors"><ChevronLeft className="w-3 h-3" /> Back</button>
-                                                    <span className="opacity-60">1 / 5</span>
-                                                    <button className="flex items-center gap-1 hover:text-foreground transition-colors">Next <ChevronRight className="w-3 h-3" /></button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
                                 </div>
                             );
                         })}
                     </div>
                 </div>
+
+                {/* Detail Panel - Moved to Root Container Layer to appear at true bottom */}
+                <AnimatePresence>
+                    {selectedEntry && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[400px] bg-popover/95 backdrop-blur-xl border border-border shadow-[0_-10px_40px_rgba(0,0,0,0.3)] rounded-2xl z-[50] overflow-hidden"
+                        >
+                            <div className="p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-sm text-foreground truncate">{selectedEntry.title || "Memory " + selectedEntry.id}</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase font-medium tracking-tight mt-0.5">
+                                            {new Date(selectedEntry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {new Date(selectedEntry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setHoveredId(null)}
+                                        className="w-6 h-6 flex items-center justify-center rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+
+                                <p className="text-sm text-foreground/80 line-clamp-3 leading-relaxed">
+                                    {selectedEntry.type === 'text' ? selectedEntry.content : (selectedEntry.caption || "Media entry captured in MyStory.")}
+                                </p>
+
+                                <div className="flex items-center justify-between pt-1">
+                                    <div className="flex -space-x-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-blue-500 border-2 border-background shadow-sm overflow-hidden" />
+                                        <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-background shadow-sm overflow-hidden" />
+                                    </div>
+                                    <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[8px] text-emerald-500">✓</div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 p-3 bg-muted/20 border-t border-border/40">
+                                <button className="flex-1 py-1.5 rounded-lg border border-border/40 bg-background/50 text-[11px] font-bold hover:bg-muted/50 transition-colors flex items-center justify-center gap-2">
+                                    <GitCompare className="w-3 h-3" /> Compare
+                                </button>
+                                <button className="flex-1 py-1.5 rounded-lg border border-border/40 bg-background/50 text-[11px] font-bold hover:bg-muted/50 transition-colors flex items-center justify-center gap-2">
+                                    <Eye className="w-3 h-3" /> Details
+                                </button>
+                            </div>
+
+                            <div className="flex items-center justify-between px-4 py-2 bg-muted/40 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-t border-border/20">
+                                <button
+                                    onClick={() => {
+                                        const idx = sortedEntries.findIndex(e => e.id === selectedEntry.id);
+                                        if (idx > 0) setHoveredId(sortedEntries[idx - 1].id);
+                                    }}
+                                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                >
+                                    <ChevronLeft className="w-3 h-3" /> Back
+                                </button>
+                                <span className="opacity-60">{sortedEntries.findIndex(e => e.id === selectedEntry.id) + 1} / {sortedEntries.length}</span>
+                                <button
+                                    onClick={() => {
+                                        const idx = sortedEntries.findIndex(e => e.id === selectedEntry.id);
+                                        if (idx < sortedEntries.length - 1) setHoveredId(sortedEntries[idx + 1].id);
+                                    }}
+                                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                >
+                                    Next <ChevronRight className="w-3 h-3" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Bottom Scrubber */}
                 <div className="h-28 border-t border-border/30 bg-card/10 flex flex-col items-center justify-center px-12 relative overflow-hidden">
@@ -246,7 +281,7 @@ export function TimelineView({ entries }: TimelineViewProps) {
                         </div>
                     </div>
 
-                    {/* Month Labels - Positioned relative to ticks */}
+                    {/* Month Labels */}
                     <div className="absolute bottom-4 left-12 right-12 flex justify-between text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.3em]">
                         {monthLabels.length > 0 ? monthLabels.map((month, i) => (
                             <span key={i}>{month}</span>
