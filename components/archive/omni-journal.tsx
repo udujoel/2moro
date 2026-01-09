@@ -313,13 +313,13 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
                             exit={{ opacity: 0, scale: 0.1, x: "40vw", y: "40vh" }}
                             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="bg-card border border-border p-6 rounded-3xl shadow-2xl w-[90vw] md:w-[600px] pointer-events-auto relative overflow-hidden flex flex-col"
+                            className="bg-card/95 backdrop-blur-lg p-6 rounded-3xl shadow-2xl w-[90vw] md:w-[600px] pointer-events-auto relative overflow-hidden flex flex-col"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-muted-foreground">New Memory</span>
+                                    <span className="text-sm font-medium text-muted-foreground">New Journal Entry</span>
                                 </div>
                                 <button onClick={() => { setIsOpen(false); setMode("menu"); cancelRecording(); }} className="p-2 hover:bg-muted rounded-full">
                                     <X className="w-5 h-5" />
@@ -333,7 +333,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                     value={textInput}
                                     onChange={handleTextChange}
                                     placeholder="What's on your mind? Type @ to tag people..."
-                                    className="w-full min-h-[120px] bg-transparent resize-none outline-none text-lg p-4 placeholder:text-muted-foreground/50 scrollbar-none border-2 border-border/30 rounded-2xl focus:border-primary/30 transition-colors"
+                                    className="w-full min-h-[120px] bg-transparent resize-none outline-none text-lg p-4 placeholder:text-muted-foreground/50 scrollbar-none rounded-2xl focus:bg-muted/20 transition-colors"
                                     autoFocus
                                 />
 
@@ -365,7 +365,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                         exit={{ opacity: 0, height: 0 }}
                                         className="overflow-hidden"
                                     >
-                                        <div className="flex flex-wrap items-center gap-2 pt-3">
+                                        <div className="flex flex-wrap justify-center items-center gap-2 py-3">
                                             {loadingSuggestions ? (
                                                 <div className="flex items-center gap-2 text-muted-foreground px-3 py-1.5">
                                                     <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -380,7 +380,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             transition={{ delay: i * 0.05 }}
                                                             onClick={() => setTextInput(suggestion)}
-                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/15 to-purple-500/15 hover:from-blue-500/25 hover:to-purple-500/25 border border-blue-400/30 hover:border-blue-400/50 text-foreground/80 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
+                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-muted/50 hover:bg-muted text-foreground/70 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
                                                         >
                                                             {suggestion}
                                                         </motion.button>
@@ -411,7 +411,7 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                             )}
 
                             {/* Bottom Toolbar or Recording Pill */}
-                            <div className="pt-4 border-t border-border h-16 relative flex items-center justify-between">
+                            <div className="pt-4 h-16 relative flex items-center justify-between">
                                 <AnimatePresence mode="wait">
                                     {isRecording ? (
                                         <motion.div

@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
                 expiresAt: { gt: now },
             },
             orderBy: { generatedAt: "desc" },
-            take: 3,
+            take: 6,
         });
 
         if (existingSuggestions.length > 0) {
@@ -196,7 +196,7 @@ RULES:
 5. If there's interesting news, suggest documenting reaction like "Market crash thoughts"
 6. Make them feel like natural diary entry titles, not prompts
 
-Return ONLY a JSON array with exactly 3 strings. Example: ["Morning yoga session", "Coffee with James", "Project deadline push"]`;
+Return ONLY a JSON array with exactly 6 strings. Example: ["Morning yoga session", "Coffee with James", "Project deadline push", "Lunch at cafe", "Evening walk", "Day's highlight"]`;
 
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
         const result = await model.generateContent(prompt);
@@ -207,7 +207,7 @@ Return ONLY a JSON array with exactly 3 strings. Example: ["Morning yoga session
         if (jsonMatch) {
             const suggestions = JSON.parse(jsonMatch[0]);
             // Truncate any overly long suggestions
-            return suggestions.slice(0, 3).map((s: string) =>
+            return suggestions.slice(0, 6).map((s: string) =>
                 s.length > 40 ? s.substring(0, 37) + "..." : s
             );
         }
@@ -236,21 +236,33 @@ function getSmartFallbacks(): string[] {
             "Morning reflection",
             "Today's intentions",
             "Breakfast thoughts",
+            "Early walk notes",
+            "Morning gratitude",
+            "Sunrise moments",
         ],
         afternoon: [
             "Midday check-in",
             "Lunch break notes",
             "Afternoon productivity",
+            "Work milestone",
+            "Creative spark",
+            "Energy boost",
         ],
         evening: [
             "Evening wind-down",
             "Dinner conversations",
             "Day's highlights",
+            "Sunset walk",
+            "Family time",
+            "Relaxation notes",
         ],
         night: [
             "Late night thoughts",
             "Day recap",
             "Tomorrow's plans",
+            "Quiet reflections",
+            "Sleep prep",
+            "Night gratitude",
         ],
     };
 
