@@ -333,57 +333,11 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                     value={textInput}
                                     onChange={handleTextChange}
                                     placeholder="What's on your mind? Type @ to tag people..."
-                                    className="w-full h-48 bg-transparent resize-none outline-none text-xl p-4 placeholder:text-muted-foreground/50 scrollbar-none border-2 border-border/30 rounded-2xl focus:border-primary/30 transition-colors"
+                                    className="w-full min-h-[120px] bg-transparent resize-none outline-none text-lg p-4 placeholder:text-muted-foreground/50 scrollbar-none border-2 border-border/30 rounded-2xl focus:border-primary/30 transition-colors"
                                     autoFocus
                                 />
 
-                                {/* AI Suggestions Overlay */}
-                                <AnimatePresence>
-                                    {textInput === "" && !loadingSuggestions && aiSuggestions.length > 0 && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 10 }}
-                                            className="absolute top-4 left-4 right-4 space-y-3"
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" />
-                                                <p className="text-xs font-medium text-muted-foreground">Suggestions for today</p>
-                                            </div>
-                                            {aiSuggestions.map((suggestion, i) => (
-                                                <motion.button
-                                                    key={i}
-                                                    initial={{ opacity: 0, x: -10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: i * 0.1 }}
-                                                    onClick={() => setTextInput(suggestion)}
-                                                    className="w-full text-left p-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border border-blue-400/20 hover:border-blue-400/40 transition-all shadow-sm hover:shadow-md group"
-                                                >
-                                                    <span className="text-sm text-foreground/80 group-hover:text-foreground">{suggestion}</span>
-                                                </motion.button>
-                                            ))}
-                                            <button
-                                                onClick={regenerateSuggestions}
-                                                disabled={loadingSuggestions}
-                                                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mt-3"
-                                            >
-                                                <span className="text-base">↻</span> More suggestions
-                                            </button>
-                                        </motion.div>
-                                    )}
-                                    {textInput === "" && loadingSuggestions && (
-                                        <motion.div
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            className="absolute top-4 left-4 right-4 flex items-center gap-2 text-muted-foreground"
-                                        >
-                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                            <span className="text-sm">Generating suggestions...</span>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                {/* Suggestions Dropdown */}
+                                {/* Suggestions Dropdown for @mentions */}
                                 {showSuggestions && filteredPeople.length > 0 && (
                                     <div className="absolute top-12 left-2 bg-card border border-border rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto w-64 animate-in fade-in zoom-in-95 duration-100">
                                         {filteredPeople.map(person => (
@@ -401,6 +355,49 @@ export function OmniJournal({ onNewEntry, people = [], locationEnabled = false }
                                     </div>
                                 )}
                             </div>
+
+                            {/* AI Suggestions - Horizontal Bubbles Below Input */}
+                            <AnimatePresence>
+                                {textInput === "" && (aiSuggestions.length > 0 || loadingSuggestions) && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="flex flex-wrap items-center gap-2 pt-3">
+                                            {loadingSuggestions ? (
+                                                <div className="flex items-center gap-2 text-muted-foreground px-3 py-1.5">
+                                                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                                    <span className="text-xs">Finding suggestions...</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {aiSuggestions.map((suggestion, i) => (
+                                                        <motion.button
+                                                            key={i}
+                                                            initial={{ opacity: 0, scale: 0.9 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            transition={{ delay: i * 0.05 }}
+                                                            onClick={() => setTextInput(suggestion)}
+                                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500/15 to-purple-500/15 hover:from-blue-500/25 hover:to-purple-500/25 border border-blue-400/30 hover:border-blue-400/50 text-foreground/80 hover:text-foreground transition-all cursor-pointer whitespace-nowrap"
+                                                        >
+                                                            {suggestion}
+                                                        </motion.button>
+                                                    ))}
+                                                    <button
+                                                        onClick={regenerateSuggestions}
+                                                        disabled={loadingSuggestions}
+                                                        className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                                                    >
+                                                        <span>↻</span> More
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             {/* Media Previews */}
                             {mediaPreview.length > 0 && (

@@ -3,36 +3,31 @@ import { prisma } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
     try {
-        // Simple user ID extraction
-        const userId = req.cookies.get("userId")?.value;
+        // Find any user for demo
+        const user = await prisma.user.findFirst();
 
-        if (!userId) {
-            const fallbackSuggestions = [
-                "What made you smile today?",
-                "Capture a meaningful moment from your day.",
-                "Who inspired you recently?"
-            ];
+        if (!user) {
+            // Return time-based suggestions
+            const hour = new Date().getHours();
+            const suggestions = hour < 12
+                ? ["Morning workout", "Breakfast spot", "Early meeting"]
+                : hour < 17
+                    ? ["Lunch break", "Afternoon walk", "Work milestone"]
+                    : ["Evening plans", "Dinner notes", "Day reflection"];
+
             return NextResponse.json({
-                suggestions: fallbackSuggestions,
+                suggestions,
                 generatedAt: new Date(),
                 canRegenerate: true,
             });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
-        }
-
-        // Rate limiting: Check if suggestions were generated in the last hour
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        // Rate limiting: Check if suggestions were generated in the last 5 minutes
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         const recentSuggestions = await prisma.memorySuggestion.findFirst({
             where: {
                 userId: user.id,
-                generatedAt: { gt: oneHourAgo },
+                generatedAt: { gt: fiveMinutesAgo },
             },
             orderBy: { generatedAt: "desc" },
         });
@@ -41,7 +36,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(
                 {
                     error: "Please wait before generating new suggestions",
-                    retryAfter: new Date(recentSuggestions.generatedAt.getTime() + 60 * 60 * 1000),
+                    retryAfter: new Date(recentSuggestions.generatedAt.getTime() + 5 * 60 * 1000),
                 },
                 { status: 429 }
             );
@@ -52,15 +47,13 @@ export async function POST(req: NextRequest) {
             where: { userId: user.id },
         });
 
-        // Trigger regeneration by redirecting to daily endpoint
-        const response = await fetch(
-            `${req.nextUrl.origin}/api/suggestions/daily`,
-            {
-                headers: {
-                    cookie: req.headers.get("cookie") || "",
-                },
-            }
-        );
+        // Trigger regeneration by making internal request
+        const baseUrl = req.nextUrl.origin;
+        const response = await fetch(`${baseUrl}/api/suggestions/daily`, {
+            headers: {
+                cookie: req.headers.get("cookie") || "",
+            },
+        });
 
         const data = await response.json();
         return NextResponse.json(data);
