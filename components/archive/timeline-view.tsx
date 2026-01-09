@@ -20,14 +20,24 @@ interface ArchiveEntry {
     weather?: any;
 }
 
-interface TimelineViewProps {
-    entries: ArchiveEntry[];
+interface Person {
+    id: string;
+    name: string;
+    avatar?: string;
+    relationship?: string;
+    color?: string;
 }
 
-export function TimelineView({ entries }: TimelineViewProps) {
+interface TimelineViewProps {
+    entries: ArchiveEntry[];
+    people?: Person[];
+}
+
+export function TimelineView({ entries, people = [] }: TimelineViewProps) {
     const [timeRange, setTimeRange] = useState<"30d" | "6m" | "2y" | "all">("all");
     const [hoveredId, setHoveredId] = useState<number | null>(null);
     const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
+    const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,14 +168,7 @@ export function TimelineView({ entries }: TimelineViewProps) {
 
                 {/* Plot Area */}
                 <div className="flex-1 relative w-full overflow-hidden"
-                    onMouseMove={(e) => {
-                        if (hoveredId) {
-                            const rect = containerRef.current?.getBoundingClientRect();
-                            if (rect) {
-                                setCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                            }
-                        }
-                    }}
+                // REMOVED container onMouseMove to fix following-in-void bug
                 >
                     {/* Horizontal Guides */}
                     <div className="absolute inset-x-6 top-[15%] h-px border-t border-dashed border-border/20 pointer-events-none" />
@@ -248,6 +251,10 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                 {(() => {
                                     const entry = sortedEntries.find(e => e.id === hoveredId);
                                     if (!entry) return null;
+
+                                    // Map People Names to Person Objects
+                                    const entryPeople = entry.people?.map(name => people.find(p => p.name === name) || { name, id: name, color: "bg-gray-500" }).filter(Boolean);
+
                                     return (
                                         <div className="flex flex-col">
                                             {/* Header Image */}
@@ -265,13 +272,19 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                                     <button onClick={() => setHoveredId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                                                 </div>
 
-                                                {/* People Tags */}
-                                                {entry.people && entry.people.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 mb-4">
-                                                        {entry.people.map(p => (
-                                                            <span key={p} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                                                {p}
-                                                            </span>
+                                                {/* People Tags with Avatars */}
+                                                {entryPeople && entryPeople.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mb-4">
+                                                        {entryPeople.map((p: any) => (
+                                                            <div key={p.id || p.name} className="flex items-center gap-1.5 bg-secondary/50 rounded-full pr-2 pl-1 py-0.5 max-w-full">
+                                                                <div className={`w-4 h-4 rounded-full ${p.color || "bg-gray-500"} flex items-center justify-center text-[8px] font-bold text-white overflow-hidden shrink-0`}>
+                                                                    {p.avatar ? (
+                                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                                        <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                                                                    ) : p.name[0]}
+                                                                </div>
+                                                                <span className="text-[10px] font-medium truncate">{p.name}</span>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 )}
@@ -297,14 +310,14 @@ export function TimelineView({ entries }: TimelineViewProps) {
 
                 {/* Sidebar Detail View */}
                 <AnimatePresence>
-                    {selectedEntryId && (
+                    {(selectedEntryId || selectedPersonId) && (
                         <>
                             {/* Backdrop */}
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                onClick={() => setSelectedEntryId(null)}
+                                onClick={() => { setSelectedEntryId(null); setSelectedPersonId(null); }}
                                 className="absolute inset-0 bg-black/20 backdrop-blur-sm z-40"
                             />
 
@@ -316,60 +329,137 @@ export function TimelineView({ entries }: TimelineViewProps) {
                                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
                                 className="absolute top-0 right-0 bottom-0 w-[400px] bg-card border-l border-border shadow-2xl z-50 flex flex-col overflow-hidden"
                             >
-                                {(() => {
-                                    const entry = sortedEntries.find(e => e.id === selectedEntryId);
-                                    if (!entry) return null;
-                                    return (
-                                        <div className="flex-1 flex flex-col h-full overflow-y-auto">
-                                            <div className="h-64 relative shrink-0">
-                                                {entry.imageSrc ? (
-                                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                                    <img src={entry.imageSrc} alt="Memory" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className={`w-full h-full ${entry.color || "bg-muted"} flex items-center justify-center p-8`}>
-                                                        <p className="text-xl font-serif italic opacity-50 text-center">"{entry.content}"</p>
-                                                    </div>
-                                                )}
-                                                <button
-                                                    onClick={() => setSelectedEntryId(null)}
-                                                    className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
-                                                >
-                                                    <X className="w-5 h-5" />
-                                                </button>
+                                {selectedPersonId ? (
+                                    // *** PERSON DETAIL VIEW ***
+                                    (() => {
+                                        const person = people.find(p => p.id === selectedPersonId) || { name: "Unknown", id: "unknown", color: "bg-gray-500", avatar: undefined, relationship: "" };
+                                        // Find memories composed of this person
+                                        const personMemories = sortedEntries.filter(e => e.people?.includes(person.name));
 
-                                                <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
-                                                    <h2 className="text-2xl font-bold leading-tight">{entry.title || "Memory Entry"}</h2>
-                                                    <p className="opacity-80 text-sm mt-1">{entry.date}</p>
+                                        return (
+                                            <div className="flex-1 flex flex-col h-full bg-background/50">
+                                                {/* Person Header */}
+                                                <div className="p-8 border-b border-border flex flex-col items-center justify-center relative bg-card shadow-sm z-10">
+                                                    <button
+                                                        onClick={() => setSelectedPersonId(null)}
+                                                        className="absolute top-4 left-4 flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+                                                    >
+                                                        <ChevronLeft className="w-3 h-3" /> Back
+                                                    </button>
+                                                    <div className={`w-24 h-24 rounded-full ${person.color || "bg-gray-500"} flex items-center justify-center text-3xl font-bold text-white overflow-hidden ring-4 ring-background shadow-lg mb-4`}>
+                                                        {person.avatar ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img src={person.avatar} alt={person.name} className="w-full h-full object-cover" />
+                                                        ) : person.name[0]}
+                                                    </div>
+                                                    <h2 className="text-xl font-bold">{person.name}</h2>
+                                                    <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mt-1">{person.relationship || "Contact"}</p>
+                                                </div>
+
+                                                {/* Person Memories List */}
+                                                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2">Memories with {person.name}</h4>
+                                                    {personMemories.length > 0 ? personMemories.map(memory => (
+                                                        <div
+                                                            key={memory.id}
+                                                            onClick={() => { setSelectedPersonId(null); setSelectedEntryId(memory.id); }}
+                                                            className="p-3 rounded-xl bg-card border border-border hover:shadow-md transition-all cursor-pointer group flex gap-3"
+                                                        >
+                                                            {memory.imageSrc && (
+                                                                <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden shrink-0">
+                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                    <img src={memory.imageSrc} className="w-full h-full object-cover" alt="" />
+                                                                </div>
+                                                            )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{memory.date}</span>
+                                                                </div>
+                                                                <h5 className="text-sm font-bold truncate group-hover:text-primary transition-colors">{memory.title || memory.content}</h5>
+                                                                <p className="text-xs text-muted-foreground line-clamp-1 opacity-70">{memory.content}</p>
+                                                            </div>
+                                                        </div>
+                                                    )) : (
+                                                        <div className="text-center py-10 opacity-50">
+                                                            <p className="text-sm">No memories found.</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
+                                        )
+                                    })()
+                                ) : (
+                                    // *** ENTRY DETAIL VIEW ***
+                                    (() => {
+                                        const entry = sortedEntries.find(e => e.id === selectedEntryId);
+                                        if (!entry) return null;
 
-                                            <div className="p-6 space-y-6">
-                                                <div className="flex gap-2">
-                                                    {entry.people?.map(p => (
-                                                        <span key={p} className="px-3 py-1 rounded-full bg-muted text-foreground text-xs font-bold border border-border">
-                                                            {p}
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                        // Map People
+                                        const entryPeople = entry.people?.map(name => people.find(p => p.name === name) || { name, id: name, color: "bg-gray-500" }).filter(Boolean);
 
-                                                <div className="prose prose-sm dark:prose-invert">
-                                                    <p className="text-lg leading-relaxed">{entry.content}</p>
-                                                </div>
+                                        return (
+                                            <div className="flex-1 flex flex-col h-full overflow-y-auto">
+                                                <div className="h-64 relative shrink-0">
+                                                    {entry.imageSrc ? (
+                                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                                        <img src={entry.imageSrc} alt="Memory" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className={`w-full h-full ${entry.color || "bg-muted"} flex items-center justify-center p-8`}>
+                                                            <p className="text-xl font-serif italic opacity-50 text-center">"{entry.content}"</p>
+                                                        </div>
+                                                    )}
+                                                    <button
+                                                        onClick={() => setSelectedEntryId(null)}
+                                                        className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
+                                                    >
+                                                        <X className="w-5 h-5" />
+                                                    </button>
 
-                                                <div className="border-t border-border pt-6 grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-                                                    <div>
-                                                        <span className="font-bold block text-foreground mb-1">Weather</span>
-                                                        <span>{typeof entry.weather === 'object' ? `${Math.round((entry.weather as any).temp)}° ${(entry.weather as any).condition}` : (entry.weather || "Unknown")}</span>
+                                                    <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
+                                                        <h2 className="text-2xl font-bold leading-tight">{entry.title || "Memory Entry"}</h2>
+                                                        <p className="opacity-80 text-sm mt-1">{entry.date}</p>
                                                     </div>
-                                                    <div>
-                                                        <span className="font-bold block text-foreground mb-1">Created</span>
-                                                        <span>{entry.createdAt}</span>
+                                                </div>
+
+                                                <div className="p-6 space-y-6">
+                                                    {/* Avatars */}
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {entryPeople?.map((p: any) => (
+                                                            <button
+                                                                key={p.id || p.name}
+                                                                onClick={() => p.id && setSelectedPersonId(p.id)}
+                                                                className="flex items-center gap-2 pl-1 pr-3 py-1 bg-muted hover:bg-muted/80 rounded-full border border-border transition-colors group"
+                                                            >
+                                                                <div className={`w-6 h-6 rounded-full ${p.color || "bg-gray-500"} flex items-center justify-center text-[10px] uppercase font-bold text-white overflow-hidden shrink-0`}>
+                                                                    {p.avatar ? (
+                                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                                        <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                                                                    ) : p.name[0]}
+                                                                </div>
+                                                                <span className="text-xs font-semibold group-hover:text-primary transition-colors">{p.name}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="prose prose-sm dark:prose-invert">
+                                                        <p className="text-lg leading-relaxed">{entry.content}</p>
+                                                    </div>
+
+                                                    <div className="border-t border-border pt-6 grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                                                        <div>
+                                                            <span className="font-bold block text-foreground mb-1">Weather</span>
+                                                            <span>{typeof entry.weather === 'object' ? `${Math.round((entry.weather as any).temp)}° ${(entry.weather as any).condition}` : (entry.weather || "Unknown")}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-bold block text-foreground mb-1">Created</span>
+                                                            <span>{entry.createdAt}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })()}
+                                        );
+                                    })()
+                                )}
                             </motion.div>
                         </>
                     )}

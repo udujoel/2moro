@@ -205,7 +205,7 @@ export default function ArchivePage() {
                         ) : viewMode === "people" ? (
                             <PeopleView entries={memories} people={people} />
                         ) : (
-                            <TimelineView entries={memories} />
+                            <TimelineView entries={memories} people={people} />
                         )}
                     </div>
                 </main>
