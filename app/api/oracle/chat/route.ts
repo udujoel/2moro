@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateContentWithSmartRouter } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 
 const FUTURE_SELF_SYSTEM_PROMPT = `You are the user's future self - a wise, encouraging, and insightful version of them from 10-20 years in the future. You have lived through their current challenges and emerged with wisdom.
@@ -26,19 +26,17 @@ const FUTURE_SELF_SYSTEM_PROMPT = `You are the user's future self - a wise, enco
 Remember: You ARE their future self speaking with intimate knowledge and care.`;
 
 export async function POST(req: NextRequest) {
-    const apiKey = process.env.GEMINI_KEY;
-
-    if (!apiKey) {
-        console.error("[Oracle] Missing GEMINI_KEY");
-        return NextResponse.json({ error: "AI not configured" }, { status: 500 });
-    }
-
     try {
         const { messages, userId } = await req.json();
 
         if (!messages || messages.length === 0) {
             return NextResponse.json({ error: "No messages provided" }, { status: 400 });
         }
+
+        console.log("[Oracle] Processing chat request", {
+            messageCount: messages.length,
+            userId: userId || "anonymous"
+        });
 
         // Fetch user context
         let userContext = "";
@@ -56,9 +54,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-
-        // Build conversation as a single prompt for reliability
+        // Build conversation as a single prompt
         const conversationText = messages.map((m: any) =>
             `${m.role === "user" ? "User" : "You (Future Self)"}: ${m.content}`
         ).join("\n\n");
@@ -68,51 +64,19 @@ export async function POST(req: NextRequest) {
 Previous conversation:
 ${conversationText}
 
-Now respond as the user's future self:`;
+Now respond as the user's future self. Be warm, wise, and use Socratic questioning. Keep your response to 2-3 paragraphs:`;
 
-        // Try models with fallback
-        const modelsToTry = [
-            "gemini-1.5-flash",
-            "gemini-pro",
-            "gemini-1.5-pro",
-        ];
+        console.log("[Oracle] Calling AI with smart router...");
 
-        for (const modelName of modelsToTry) {
-            try {
-                console.log(`[Oracle] Trying ${modelName}`);
-                const model = genAI.getGenerativeModel({ model: modelName });
+        // Use the proven smart router from lib/ai.ts
+        const response = await generateContentWithSmartRouter(fullPrompt, 'smart');
 
-                const result = await model.generateContentStream(fullPrompt);
+        console.log("[Oracle] Got response, length:", response.length);
 
-                const encoder = new TextEncoder();
-                const stream = new ReadableStream({
-                    async start(controller) {
-                        try {
-                            for await (const chunk of result.stream) {
-                                const text = chunk.text();
-                                if (text) {
-                                    controller.enqueue(encoder.encode(text));
-                                }
-                            }
-                            controller.close();
-                        } catch (err) {
-                            console.error("[Oracle] Stream error:", err);
-                            controller.close();
-                        }
-                    },
-                });
-
-                console.log(`[Oracle] Success with ${modelName}`);
-                return new Response(stream, {
-                    headers: { "Content-Type": "text/plain; charset=utf-8" },
-                });
-            } catch (error: any) {
-                console.warn(`[Oracle] ${modelName} failed:`, error.message?.substring(0, 100));
-                continue;
-            }
-        }
-
-        return NextResponse.json({ error: "AI temporarily unavailable" }, { status: 503 });
+        // Return as streaming-compatible text response
+        return new Response(response, {
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
 
     } catch (error: any) {
         console.error("[Oracle] Error:", error.message);
