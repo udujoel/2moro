@@ -51,7 +51,7 @@ export function Sidebar({ className }: { className?: string }) {
         <aside
             className={cn(
                 "flex flex-col py-4 h-screen sticky top-0 ease-in-out border-r border-border bg-card/30 backdrop-blur-xl z-30",
-                isExpanded ? "w-64 px-4 transition-all duration-300" : "w-[4.5rem] px-2 transition-all duration-300",
+                isExpanded ? "w-48 px-3 transition-all duration-300" : "w-14 px-2 transition-all duration-300",
                 className
             )}
         >
@@ -188,9 +188,12 @@ export function Sidebar({ className }: { className?: string }) {
                             </Link>
 
                             {/* Theme Submenu */}
-                            <div className="relative">
+                            <div
+                                className="relative"
+                                onMouseEnter={() => setShowThemeSubmenu(true)}
+                                onMouseLeave={() => setShowThemeSubmenu(false)}
+                            >
                                 <button
-                                    onClick={() => setShowThemeSubmenu(!showThemeSubmenu)}
                                     className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-muted text-sm transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
