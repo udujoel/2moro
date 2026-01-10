@@ -7,7 +7,6 @@ import { TimelineView } from "@/components/archive/timeline-view";
 import { PeopleView } from "@/components/archive/people-view";
 import { Play } from "lucide-react";
 import Link from "next/link";
-import { ProfileDropdown } from "@/components/profile-dropdown";
 import { useToast } from "@/components/ui/toast-context";
 import { useState, useEffect } from "react";
 import { getMemories, getPeople, createMemory } from "@/lib/actions";
@@ -140,9 +139,6 @@ export default function ArchivePage() {
                             <Play className="w-3 h-3 fill-primary text-primary" />
                         </div>
                     </Link>
-                    <div className="flex items-center gap-4">
-                        <ProfileDropdown />
-                    </div>
                 </header>
 
                 <main className="flex-1 p-0 md:p-6 overflow-hidden flex flex-col relative">

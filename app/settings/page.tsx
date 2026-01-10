@@ -1,7 +1,6 @@
 import { getSessionUser } from "@/app/actions/auth";
 import { getOrCreateUser } from "@/lib/actions";
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeCustomizer } from "@/components/settings/theme-customizer";
 import { LocationToggle } from "@/components/settings/location-toggle";
 import { CalendarIntegration } from "@/components/settings/calendar-integration";
@@ -38,10 +37,8 @@ export default async function SettingsPage() {
             <Sidebar className="hidden md:flex border-r border-border" />
 
             <div className="flex-1 flex flex-col">
-                <header className="h-16 border-b border-border flex items-center px-6 justify-between md:justify-end">
-                    <div className="flex items-center gap-4">
-                        <ProfileDropdown />
-                    </div>
+                <header className="h-16 border-b border-border flex items-center px-6 justify-end">
+                    {/* Header placeholder - profile moved to sidebar */}
                 </header>
 
                 <main className="flex-1 p-6 space-y-8 overflow-y-auto max-w-4xl mx-auto w-full">

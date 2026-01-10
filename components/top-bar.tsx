@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { Search, Bell, Globe, Loader2, Calendar, User } from "lucide-react";
-import { ProfileDropdown } from "./profile-dropdown";
 import { searchContent, SearchResult } from "@/app/actions/search";
 import { useUser } from "@/components/user-provider";
 import { AnimatePresence, motion } from "framer-motion";
@@ -112,10 +111,6 @@ export function TopBar({ title = "My Profile" }: { title?: string }) {
                     <Bell className="w-5 h-5" />
                     <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-2 border-background" />
                 </button>
-
-                <div className="pl-4 border-l border-border">
-                    <ProfileDropdown />
-                </div>
             </div>
         </header>
     );

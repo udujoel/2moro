@@ -1,7 +1,6 @@
 "use client";
 
 import { Sidebar } from "@/components/dashboard/sidebar";
-import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ArrowLeft, BookOpen, Share2, Settings, Sparkles, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -105,7 +104,6 @@ export default function MyStoryPage() {
                         <button className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground">
                             <Settings className="w-5 h-5" />
                         </button>
-                        <ProfileDropdown />
                     </div>
                 </header>
 
