@@ -26,13 +26,23 @@ const SMART_MODELS = [
     "gemini-flash-latest"        // Ultimate Backup (Verified Working)
 ];
 
-type ModelTier = 'fast' | 'smart';
+// Voice models for native audio conversations
+const VOICE_MODELS = [
+    "gemini-2.5-flash-native-audio-dialog",  // Primary voice model
+    "gemini-2.0-flash-exp",                   // Fallback for text response
+];
+
+type ModelTier = 'fast' | 'smart' | 'voice';
 
 // Define the Part type if not exported by library, or import it. 
 // For simplicity we can use 'any' or better yet, the library's types.
 // But prompt can be string | Array<string | Part>
 export async function generateContentWithSmartRouter(prompt: string | Array<string | any>, tier: ModelTier = 'fast'): Promise<string> {
-    const modelsToTry = tier === 'fast' ? FAST_MODELS : SMART_MODELS;
+    const modelsToTry = tier === 'fast'
+        ? FAST_MODELS
+        : tier === 'voice'
+            ? VOICE_MODELS
+            : SMART_MODELS;
     let lastError;
 
     // Remove duplicates just in case

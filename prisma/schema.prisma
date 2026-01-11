@@ -29,6 +29,22 @@ model User {
   financialSnapshots  FinancialSnapshot[]
   userPreferences     UserPreferences?
   memorySuggestions   MemorySuggestion[]
+  oracleConversations OracleConversation[]
+}
+
+model OracleConversation {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        String   @default("text") // "text" | "voice"
+  messages    Json     // Array of { role, content, timestamp }
+  summary     String?  // AI-generated summary or first message snippet
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId, createdAt])
 }
 
 model Memory {

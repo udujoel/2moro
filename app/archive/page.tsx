@@ -133,7 +133,14 @@ export default function ArchivePage() {
             <Sidebar className="hidden md:flex border-r border-border" />
 
             <div className="flex-1 flex flex-col relative">
-                <header className="h-16 border-b border-border flex items-center px-6 justify-between md:justify-end">
+                <header className="h-16 border-b border-border flex items-center px-6 justify-between md:justify-between">
+                    {/* Desktop Breadcrumbs */}
+                    <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                        <Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+                        <span>›</span>
+                        <span className="text-foreground font-medium">Diary</span>
+                    </div>
+
                     <Link href="/" className="md:hidden flex items-center gap-2 font-bold text-lg">
                         <div className="w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center">
                             <Play className="w-3 h-3 fill-primary text-primary" />
@@ -145,8 +152,8 @@ export default function ArchivePage() {
                     <div className="p-6 md:p-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <div className="flex items-center gap-4 mb-1">
-                                <h1 className="text-3xl font-bold">Archive</h1>
-                                <Link href="/archive/mystory" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
+                                <h1 className="text-3xl font-bold">Diary</h1>
+                                <Link href="/mystory" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
                                     Read MyStory
                                 </Link>
                             </div>

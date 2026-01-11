@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { Search, Bell, Globe, Loader2, Calendar, User } from "lucide-react";
+import { Search, Globe, Loader2, Calendar, User, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { searchContent, SearchResult } from "@/app/actions/search";
 import { useUser } from "@/components/user-provider";
 import { AnimatePresence, motion } from "framer-motion";
@@ -45,9 +46,19 @@ export function TopBar({ title = "My Profile" }: { title?: string }) {
 
             {/* Breadcrumbs / Page Title */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground hidden md:flex">
-                <span>Home</span>
-                <span>/</span>
-                <span className="text-foreground font-medium">{title}</span>
+                {title === "Dashboard" ? (
+                    <>
+                        <span>Overview</span>
+                        <ChevronRight className="w-4 h-4" />
+                        <span className="text-foreground font-medium">Dashboard</span>
+                    </>
+                ) : (
+                    <>
+                        <Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+                        <ChevronRight className="w-4 h-4" />
+                        <span className="text-foreground font-medium">{title}</span>
+                    </>
+                )}
             </div>
 
             {/* Center Search - AI Powered */}
@@ -106,10 +117,6 @@ export function TopBar({ title = "My Profile" }: { title?: string }) {
                 <button className="p-2 rounded-full hover:bg-secondary text-muted-foreground transition-colors flex items-center gap-2 text-xs font-semibold bg-secondary/30">
                     <Globe className="w-4 h-4" />
                     EN
-                </button>
-                <button className="p-2 rounded-full hover:bg-secondary text-muted-foreground transition-colors relative">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-2 border-background" />
                 </button>
             </div>
         </header>

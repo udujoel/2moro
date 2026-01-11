@@ -18,6 +18,37 @@ const NAV_ITEMS = [
     { label: "Diary", icon: Book, href: "/archive" },
 ];
 
+// Tooltip component for instant hover display
+function Tooltip({ children, label, side = "right" }: {
+    children: React.ReactNode;
+    label: string;
+    side?: "right" | "top";
+}) {
+    return (
+        <div className="relative group/tooltip">
+            {children}
+            <div className={cn(
+                "absolute z-50 px-2.5 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md shadow-lg",
+                "opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible",
+                "transition-opacity duration-0 delay-0", // Instant - no delay
+                "whitespace-nowrap pointer-events-none",
+                side === "right"
+                    ? "left-full ml-2 top-1/2 -translate-y-1/2"
+                    : "bottom-full mb-2 left-1/2 -translate-x-1/2"
+            )}>
+                {label}
+                {/* Arrow */}
+                <div className={cn(
+                    "absolute w-2 h-2 bg-gray-900 rotate-45",
+                    side === "right"
+                        ? "-left-1 top-1/2 -translate-y-1/2"
+                        : "-bottom-1 left-1/2 -translate-x-1/2"
+                )} />
+            </div>
+        </div>
+    );
+}
+
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -65,101 +96,144 @@ export function Sidebar({ className }: { className?: string }) {
                             </div>
                             <span className="font-bold text-lg whitespace-nowrap">2moro</span>
                         </Link>
-                        <button
-                            onClick={toggleSidebar}
-                            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            title="Collapse sidebar"
-                        >
-                            <PanelLeftClose className="w-5 h-5" />
-                        </button>
+                        {/* Collapse button with tooltip when expanded */}
+                        <Tooltip label="Close sidebar ⌘." side="right">
+                            <button
+                                onClick={toggleSidebar}
+                                className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-105"
+                            >
+                                <PanelLeftClose className="w-5 h-5" />
+                            </button>
+                        </Tooltip>
                     </>
                 ) : (
-                    <button
-                        onClick={toggleSidebar}
-                        className="w-full flex justify-center p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        title="Open sidebar"
-                    >
-                        <PanelLeft className="w-5 h-5" />
-                    </button>
+                    <Tooltip label="Open sidebar">
+                        <button
+                            onClick={toggleSidebar}
+                            className="w-full flex justify-center p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all hover:scale-110"
+                        >
+                            <PanelLeft className="w-5 h-5" />
+                        </button>
+                    </Tooltip>
                 )}
             </div>
 
             {/* Navigation */}
             <nav className="flex-1 space-y-2">
-                {NAV_ITEMS.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                            "flex items-center py-2.5 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap group",
-                            isExpanded ? "px-3 justify-start" : "px-0 justify-center",
-                            pathname?.startsWith(item.href)
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                        )}
-                        title={!isExpanded ? item.label : undefined}
-                    >
-                        <item.icon className="w-5 h-5 shrink-0" />
-                        <span
+                {NAV_ITEMS.map((item) => {
+                    const isActive = pathname?.startsWith(item.href);
+                    const NavContent = (
+                        <Link
+                            key={item.href}
+                            href={item.href}
                             className={cn(
-                                "whitespace-nowrap overflow-hidden transition-all duration-300",
-                                isExpanded ? "w-auto opacity-100 ml-3" : "w-0 opacity-0 ml-0"
+                                "flex items-center py-2.5 rounded-xl font-medium transition-all overflow-hidden whitespace-nowrap group",
+                                isExpanded ? "px-3 justify-start" : "px-0 justify-center",
+                                isActive
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                             )}
                         >
-                            {item.label}
-                        </span>
-                    </Link>
-                ))}
+                            <item.icon className={cn(
+                                "w-5 h-5 shrink-0 transition-transform duration-150",
+                                !isExpanded && "group-hover:scale-110 group-hover:rotate-3"
+                            )} />
+                            <span
+                                className={cn(
+                                    "whitespace-nowrap overflow-hidden transition-all duration-300",
+                                    isExpanded ? "w-auto opacity-100 ml-3" : "w-0 opacity-0 ml-0"
+                                )}
+                            >
+                                {item.label}
+                            </span>
+                        </Link>
+                    );
+
+                    // Only wrap with tooltip when collapsed
+                    return isExpanded ? (
+                        <div key={item.href}>{NavContent}</div>
+                    ) : (
+                        <Tooltip key={item.href} label={item.label}>
+                            {NavContent}
+                        </Tooltip>
+                    );
+                })}
             </nav>
 
             {/* MyStory Quick Link */}
-            <Link
-                href="/mystory"
-                className={cn(
-                    "flex items-center py-2.5 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap group mb-4",
-                    isExpanded ? "px-3 justify-start" : "px-0 justify-center",
-                    pathname === "/mystory"
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                )}
-                title={!isExpanded ? "MyStory" : undefined}
-            >
-                <BookOpen className="w-5 h-5 shrink-0" />
-                <span
+            {isExpanded ? (
+                <Link
+                    href="/mystory"
                     className={cn(
-                        "whitespace-nowrap overflow-hidden transition-all duration-300",
-                        isExpanded ? "w-auto opacity-100 ml-3" : "w-0 opacity-0 ml-0"
+                        "flex items-center py-2.5 rounded-xl font-medium transition-all overflow-hidden whitespace-nowrap group mb-4",
+                        "px-3 justify-start",
+                        pathname === "/mystory"
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     )}
                 >
-                    MyStory
-                </span>
-            </Link>
+                    <BookOpen className="w-5 h-5 shrink-0" />
+                    <span className="w-auto opacity-100 ml-3">MyStory</span>
+                </Link>
+            ) : (
+                <Tooltip label="MyStory">
+                    <Link
+                        href="/mystory"
+                        className={cn(
+                            "flex items-center py-2.5 rounded-xl font-medium transition-all overflow-hidden whitespace-nowrap group mb-4",
+                            "px-0 justify-center",
+                            pathname === "/mystory"
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                        )}
+                    >
+                        <BookOpen className={cn(
+                            "w-5 h-5 shrink-0 transition-transform duration-150",
+                            "group-hover:scale-110 group-hover:rotate-3"
+                        )} />
+                    </Link>
+                </Tooltip>
+            )}
 
             {/* Profile Section with Dropdown */}
             <div className="pt-4 border-t border-border relative">
-                <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className={cn(
-                        "w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors text-left",
-                        isExpanded ? "justify-start" : "justify-center"
-                    )}
-                >
-                    <div className="w-9 h-9 rounded-full bg-primary/20 overflow-hidden border border-border shrink-0">
-                        {profileImage ? (
-                            <img src={profileImage} alt="User" className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-primary font-bold text-sm">
-                                {user?.name?.[0] || "U"}
-                            </div>
-                        )}
-                    </div>
-                    {isExpanded && (
+                {isExpanded ? (
+                    <button
+                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                        className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors text-left justify-start"
+                    >
+                        <div className="w-9 h-9 rounded-full bg-primary/20 overflow-hidden border border-border shrink-0">
+                            {profileImage ? (
+                                <img src={profileImage} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-primary font-bold text-sm">
+                                    {user?.name?.[0] || "U"}
+                                </div>
+                            )}
+                        </div>
                         <div className="flex-1 overflow-hidden">
                             <p className="font-semibold text-sm truncate">{user?.name || "User"}</p>
                             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Account</p>
                         </div>
-                    )}
-                </button>
+                    </button>
+                ) : (
+                    <Tooltip label={user?.name || "Account"}>
+                        <button
+                            onClick={() => setShowProfileMenu(!showProfileMenu)}
+                            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-all justify-center group"
+                        >
+                            <div className="w-9 h-9 rounded-full bg-primary/20 overflow-hidden border border-border shrink-0 transition-transform duration-150 group-hover:scale-110">
+                                {profileImage ? (
+                                    <img src={profileImage} alt="User" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-primary font-bold text-sm">
+                                        {user?.name?.[0] || "U"}
+                                    </div>
+                                )}
+                            </div>
+                        </button>
+                    </Tooltip>
+                )}
 
                 {/* Profile Dropdown Menu */}
                 {showProfileMenu && (
