@@ -238,18 +238,24 @@ export function OracleVoice({ onClose, onSwitchToText }: OracleVoiceProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#050510] flex flex-col"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center"
         >
-            {/* Radial gradient background */}
+            {/* Backdrop with blur */}
             <div
-                className="absolute inset-0 opacity-40"
+                className="absolute inset-0 bg-black/60 backdrop-blur-xl transition-all duration-500"
+                onClick={endConversation}
+            />
+
+            {/* Radial gradient background - subtle glow */}
+            <div
+                className="absolute inset-0 opacity-40 pointer-events-none"
                 style={{
                     background: "radial-gradient(ellipse 60% 40% at 50% 35%, rgba(6,182,212,0.15), transparent 60%)"
                 }}
             />
 
             {/* Close button */}
-            <div className="absolute top-6 right-6 z-20">
+            <div className="absolute top-6 right-6 z-50">
                 <button
                     onClick={endConversation}
                     className="p-2 rounded-full bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
@@ -259,21 +265,27 @@ export function OracleVoice({ onClose, onSwitchToText }: OracleVoiceProps) {
             </div>
 
             {/* Main content */}
-            <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-6">
+            <div className="flex-1 flex flex-col items-center justify-center relative z-40 px-6 w-full max-w-4xl mx-auto">
                 {/* Status text */}
                 <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-slate-500 text-sm mb-10"
+                    className="text-slate-400 text-sm mb-12 font-medium tracking-wide"
                 >
                     {status}
                 </motion.p>
 
-                {/* 3D Orb */}
-                <ThreeOrb
-                    state={orbState}
-                    size={220}
-                />
+                {/* 3D Orb - with layoutId wrapper for transition */}
+                <motion.div
+                    layoutId="oracle-orb"
+                    className="relative z-50 mb-8"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.8 }}
+                >
+                    <ThreeOrb
+                        state={orbState}
+                        size={400}
+                    />
+                </motion.div>
 
                 {/* Transcript */}
                 <motion.div

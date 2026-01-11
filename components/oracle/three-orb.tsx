@@ -129,21 +129,15 @@ function ParticleOrb({ state, particleCount = 8000 }: ParticleOrbProps) {
             <bufferGeometry>
                 <bufferAttribute
                     attach="attributes-position"
-                    count={particleCount}
-                    array={positions}
-                    itemSize={3}
+                    args={[positions, 3]}
                 />
                 <bufferAttribute
                     attach="attributes-aScale"
-                    count={particleCount}
-                    array={scales}
-                    itemSize={1}
+                    args={[scales, 1]}
                 />
                 <bufferAttribute
                     attach="attributes-aRandomness"
-                    count={particleCount}
-                    array={randomness}
-                    itemSize={3}
+                    args={[randomness, 3]}
                 />
             </bufferGeometry>
             <shaderMaterial

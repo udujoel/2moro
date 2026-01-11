@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, MicOff, Sparkles, User, Volume2, Loader2, ImagePlus } from "lucide-react";
+import { Send, Plus, Mic, Sparkles, Copy, ThumbsUp, ThumbsDown, ChevronLeft, MoreVertical, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/components/user-provider";
@@ -11,28 +11,34 @@ interface Message {
     role: "user" | "assistant";
     content: string;
     timestamp: Date;
+    images?: string[];
 }
 
-const INITIAL_GREETING = `Welcome, traveler. I am the version of you that exists beyond this moment — shaped by the choices you're about to make and the wisdom you'll gather along the way.
+const INITIAL_GREETING = {
+    title: "Welcome, traveler",
+    content: `I am the version of you that exists beyond this moment — shaped by the choices you're about to make and the wisdom you'll gather along the way.
 
-I'm here not to give you answers, but to help you discover them. What's weighing on your mind today?`;
+I'm here not to give you answers, but to help you discover them. What's weighing on your mind today?`
+};
 
-export function OracleChat() {
+interface OracleChatProps {
+    onClose?: () => void;
+}
+
+export function OracleChat({ onClose }: OracleChatProps) {
     const { user } = useUser();
     const [messages, setMessages] = useState<Message[]>([
         {
             id: "initial",
             role: "assistant",
-            content: INITIAL_GREETING,
+            content: INITIAL_GREETING.content,
             timestamp: new Date(),
         },
     ]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [isVoiceMode, setIsVoiceMode] = useState(false);
-    const [isListening, setIsListening] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -123,113 +129,177 @@ export function OracleChat() {
         }
     };
 
-    const toggleVoiceMode = () => {
-        setIsVoiceMode(!isVoiceMode);
-        // Voice implementation would go here
+    const copyMessage = (content: string) => {
+        navigator.clipboard.writeText(content);
+    };
+
+    const formatTime = (date: Date) => {
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     };
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex flex-col h-full bg-gradient-to-b from-[#0a0a12] to-[#0f0f1a]">
+            {/* Header - Phone Style */}
+            <div className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-xl sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors"
+                        >
+                            <ChevronLeft className="w-6 h-6" />
+                        </button>
+                    )}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="font-semibold text-white">Future Self</h2>
+                        <p className="text-xs text-slate-500">Always here for you</p>
+                    </div>
+                </div>
+                <button className="p-2 text-slate-400 hover:text-white transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
                 <AnimatePresence initial={false}>
-                    {messages.map((message) => (
+                    {messages.map((message, index) => (
                         <motion.div
                             key={message.id}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
                             className={cn(
                                 "flex gap-3",
                                 message.role === "user" ? "justify-end" : "justify-start"
                             )}
                         >
+                            {/* Assistant Message */}
                             {message.role === "assistant" && (
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shrink-0">
-                                    <Sparkles className="w-4 h-4 text-white" />
+                                <div className="flex gap-3 max-w-[85%]">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center shrink-0 mt-1">
+                                        <Sparkles className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-xs text-slate-500">Future Self</span>
+                                        <div className="relative rounded-2xl rounded-tl-md bg-[#1a1a2e] border-l-4 border-cyan-500/50 px-4 py-3">
+                                            <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                                {message.content}
+                                            </p>
+                                        </div>
+                                        {/* Action buttons */}
+                                        <div className="flex items-center gap-2 px-1">
+                                            <button
+                                                onClick={() => copyMessage(message.content)}
+                                                className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                            <button className="p-1.5 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all">
+                                                <ThumbsUp className="w-4 h-4" />
+                                            </button>
+                                            <button className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all">
+                                                <ThumbsDown className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
-                            <div
-                                className={cn(
-                                    "max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-                                    message.role === "user"
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted/50 border border-border"
-                                )}
-                            >
-                                <p className="whitespace-pre-wrap">{message.content}</p>
-                            </div>
+
+                            {/* User Message */}
                             {message.role === "user" && (
-                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                                    <User className="w-4 h-4 text-primary" />
+                                <div className="flex gap-3 max-w-[85%]">
+                                    <div className="flex flex-col items-end gap-2">
+                                        <span className="text-xs text-slate-500">You</span>
+                                        <div className="rounded-2xl rounded-tr-md bg-gradient-to-br from-blue-500 to-indigo-600 px-4 py-3 shadow-lg shadow-blue-500/20">
+                                            <p className="text-sm text-white leading-relaxed whitespace-pre-wrap">
+                                                {message.content}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 mt-6 overflow-hidden">
+                                        {user?.image ? (
+                                            <img src={user.image} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-sm font-medium text-white">
+                                                {user?.name?.charAt(0) || "U"}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </motion.div>
                     ))}
                 </AnimatePresence>
 
-                {isLoading && messages[messages.length - 1]?.content === "" && (
-                    <div className="flex gap-3 justify-start">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                {/* Loading indicator */}
+                {isLoading && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex gap-3"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
                             <Sparkles className="w-4 h-4 text-white animate-pulse" />
                         </div>
-                        <div className="bg-muted/50 border border-border rounded-2xl px-4 py-3">
-                            <div className="flex gap-1">
-                                <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                                <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                                <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <div className="rounded-2xl rounded-tl-md bg-[#1a1a2e] border-l-4 border-cyan-500/50 px-4 py-3">
+                            <div className="flex gap-1.5">
+                                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
+
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="border-t border-border p-4 bg-background/50 backdrop-blur-sm">
-                <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+            {/* Input Area - Phone Style */}
+            <div className="px-4 py-3 border-t border-white/5 bg-[#0a0a12]/80 backdrop-blur-xl">
+                <form onSubmit={handleSubmit} className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        className="p-2.5 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </button>
+
                     <div className="flex-1 relative">
-                        <textarea
-                            ref={textareaRef}
+                        <input
+                            ref={inputRef}
+                            type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Share what's on your mind..."
-                            rows={1}
-                            className="w-full resize-none rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
-                            style={{ minHeight: "48px", maxHeight: "120px" }}
+                            placeholder="Type your message..."
+                            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-full px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
                         />
                     </div>
 
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={toggleVoiceMode}
-                            className={cn(
-                                "p-3 rounded-xl border transition-all",
-                                isVoiceMode
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
-                            )}
-                            title={isVoiceMode ? "Switch to text" : "Switch to voice"}
-                        >
-                            {isVoiceMode ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-                        </button>
+                    <button
+                        type="button"
+                        className="p-2.5 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+                    >
+                        <Mic className="w-5 h-5" />
+                    </button>
 
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || isLoading}
-                            className="p-3 rounded-xl bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-                        >
-                            {isLoading ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <Send className="w-5 h-5" />
-                            )}
-                        </button>
-                    </div>
+                    <button
+                        type="submit"
+                        disabled={!input.trim() || isLoading}
+                        className="p-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-blue-500/40 transition-all"
+                    >
+                        {isLoading ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                            <Send className="w-5 h-5" />
+                        )}
+                    </button>
                 </form>
-                <p className="text-xs text-muted-foreground text-center mt-2">
+                <p className="text-[10px] text-slate-600 text-center mt-2">
                     Your future self speaks through wisdom, not certainty
                 </p>
             </div>
