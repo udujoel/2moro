@@ -355,7 +355,7 @@ export default function OraclePage() {
                                             >
                                                 {/* Orb */}
                                                 <div className="absolute top-1/2 right-4 sm:right-12 -translate-y-1/2 scale-110">
-                                                    <ThreeOrb state="idle" size={300} />
+                                                    <ThreeOrb state="idle" size={500} />
                                                 </div>
 
                                                 {/* Text */}
@@ -519,7 +519,7 @@ export default function OraclePage() {
                                                             className="pointer-events-auto flex-1 flex items-center justify-center"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            <ThreeOrb state={orbState} size={600} />
+                                                            <ThreeOrb state={orbState} size={700} />
                                                         </motion.div>
 
                                                         {/* Bottom: Transcript & Controls */}
