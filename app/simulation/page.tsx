@@ -337,7 +337,7 @@ export default function OraclePage() {
                                     className="relative"
                                 >
                                     {/* Landing Content - Blurs when voice active */}
-                                    <div className={`transition-all duration-700 ease-out ${activeView === 'voice' ? 'blur-md opacity-30 scale-[0.98]' : ''}`}>
+                                    <div className={`transition-all duration-700 ease-out ${activeView === 'voice' ? 'blur-sm opacity-50 scale-[0.98]' : ''}`}>
                                         {/* Greeting */}
                                         <p className="text-amber-400 text-sm mb-1 font-medium bg-amber-400/10 inline-block px-3 py-1 rounded-full border border-amber-400/20">
                                             {getGreeting()}, {user?.name?.split(" ")[0] || "Susan"} ✨
@@ -477,125 +477,151 @@ export default function OraclePage() {
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                className="absolute inset-0 flex flex-col items-center justify-center z-40"
+                                                className="absolute inset-0 z-40"
                                             >
-                                                {/* Close button */}
-                                                <button
+                                                {/* Clickable Backdrop */}
+                                                <div
+                                                    className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
                                                     onClick={exitVoiceMode}
-                                                    className="absolute top-0 right-0 p-3 text-slate-400 hover:text-white transition-colors"
                                                 >
-                                                    <X className="w-6 h-6" />
-                                                </button>
+                                                    {/* Close button */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            exitVoiceMode();
+                                                        }}
+                                                        className="absolute top-0 right-0 p-3 text-slate-400 hover:text-white transition-colors z-50 auto-cursor"
+                                                    >
+                                                        <X className="w-6 h-6" />
+                                                    </button>
 
-                                                {/* Status */}
-                                                <motion.p
-                                                    initial={{ opacity: 0, y: -10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    className="text-slate-400 text-sm mb-8 font-medium"
-                                                >
-                                                    {voiceStatus}
-                                                </motion.p>
+                                                    {/* Content Container - Stop propagation to prevent accidental closing */}
+                                                    <div
+                                                        className="flex flex-col items-center justify-center w-full h-full pointer-events-none"
+                                                    >
+                                                        {/* Status */}
+                                                        <motion.p
+                                                            initial={{ opacity: 0, y: -10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            className="text-slate-400 text-sm mb-8 font-medium pointer-events-auto"
+                                                        >
+                                                            {voiceStatus}
+                                                        </motion.p>
 
-                                                {/* Expanded Orb */}
-                                                <motion.div
-                                                    initial={{ scale: 0.5, opacity: 0 }}
-                                                    animate={{ scale: 1, opacity: 1 }}
-                                                    exit={{ scale: 0.5, opacity: 0 }}
-                                                    transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
-                                                >
-                                                    <ThreeOrb state={orbState} size={400} />
-                                                </motion.div>
+                                                        {/* Expanded Orb */}
+                                                        <motion.div
+                                                            initial={{ scale: 0.5, opacity: 0 }}
+                                                            animate={{ scale: 1, opacity: 1 }}
+                                                            exit={{ scale: 0.5, opacity: 0 }}
+                                                            transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
+                                                            className="pointer-events-auto"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <ThreeOrb state={orbState} size={600} />
+                                                        </motion.div>
 
-                                                {/* Transcript */}
-                                                <motion.div
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    transition={{ delay: 0.2 }}
-                                                    className="mt-8 text-center max-w-lg px-4 min-h-[80px]"
-                                                >
-                                                    {displayText ? (
-                                                        <p className="text-lg leading-relaxed">
-                                                            <span className="text-white">{displayText.slice(0, Math.ceil(displayText.length * 0.65))}</span>
-                                                            <span className="text-slate-500">{displayText.slice(Math.ceil(displayText.length * 0.65))}</span>
-                                                            {currentUserSpeech && <span className="animate-pulse text-cyan-400">|</span>}
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-slate-500">Tap the microphone to begin your conversation</p>
-                                                    )}
-                                                </motion.div>
+                                                        {/* Transcript */}
+                                                        <motion.div
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ delay: 0.2 }}
+                                                            className="mt-8 text-center max-w-lg px-4 min-h-[80px] pointer-events-auto"
+                                                        >
+                                                            {displayText ? (
+                                                                <p className="text-lg leading-relaxed">
+                                                                    <span className="text-white">{displayText.slice(0, Math.ceil(displayText.length * 0.65))}</span>
+                                                                    <span className="text-slate-500">{displayText.slice(Math.ceil(displayText.length * 0.65))}</span>
+                                                                    {currentUserSpeech && <span className="animate-pulse text-cyan-400">|</span>}
+                                                                </p>
+                                                            ) : (
+                                                                <p className="text-slate-500">Tap the microphone to begin your conversation</p>
+                                                            )}
+                                                        </motion.div>
 
-                                                {/* Error */}
-                                                {voiceError && (
-                                                    <div className="mt-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
-                                                        {voiceError}
-                                                    </div>
-                                                )}
-
-                                                {/* Text input fallback */}
-                                                {showTextInput && (
-                                                    <form onSubmit={handleTextSubmit} className="mt-6 w-full max-w-md px-4">
-                                                        <div className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                value={textInput}
-                                                                onChange={(e) => setTextInput(e.target.value)}
-                                                                placeholder="Type your message..."
-                                                                className="flex-1 bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50"
-                                                                autoFocus
-                                                            />
-                                                            <button
-                                                                type="submit"
-                                                                disabled={!textInput.trim() || isProcessing}
-                                                                className="px-5 py-3 bg-cyan-500 text-white rounded-xl font-medium hover:bg-cyan-400 transition-colors disabled:opacity-50"
+                                                        {/* Error */}
+                                                        {voiceError && (
+                                                            <div className="mt-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm pointer-events-auto"
+                                                                onClick={(e) => e.stopPropagation()}
                                                             >
-                                                                Send
+                                                                {voiceError}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Text input fallback */}
+                                                        {showTextInput && (
+                                                            <form
+                                                                onSubmit={handleTextSubmit}
+                                                                className="mt-6 w-full max-w-md px-4 pointer-events-auto"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <div className="flex gap-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={textInput}
+                                                                        onChange={(e) => setTextInput(e.target.value)}
+                                                                        placeholder="Type your message..."
+                                                                        className="flex-1 bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50"
+                                                                        autoFocus
+                                                                    />
+                                                                    <button
+                                                                        type="submit"
+                                                                        disabled={!textInput.trim() || isProcessing}
+                                                                        className="px-5 py-3 bg-cyan-500 text-white rounded-xl font-medium hover:bg-cyan-400 transition-colors disabled:opacity-50"
+                                                                    >
+                                                                        Send
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        )}
+
+                                                        {/* Controls */}
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 20 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ delay: 0.3 }}
+                                                            className="mt-10 flex items-center gap-6 pointer-events-auto"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <button
+                                                                onClick={exitVoiceMode}
+                                                                className="w-14 h-14 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center hover:bg-red-500/30 transition-colors"
+                                                            >
+                                                                <Phone className="w-5 h-5 text-red-400 rotate-[135deg]" />
                                                             </button>
-                                                        </div>
-                                                    </form>
-                                                )}
 
-                                                {/* Controls */}
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 20 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: 0.3 }}
-                                                    className="mt-10 flex items-center gap-6"
-                                                >
-                                                    <button
-                                                        onClick={exitVoiceMode}
-                                                        className="w-14 h-14 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center hover:bg-red-500/30 transition-colors"
-                                                    >
-                                                        <Phone className="w-5 h-5 text-red-400 rotate-[135deg]" />
-                                                    </button>
+                                                            <button
+                                                                onClick={toggleListening}
+                                                                disabled={isProcessing}
+                                                                className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${isListening
+                                                                        ? "bg-white text-slate-900 shadow-white/20"
+                                                                        : "bg-slate-800 border-2 border-slate-600 text-slate-300 hover:border-cyan-500/50 shadow-cyan-500/10"
+                                                                    } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                            >
+                                                                {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                                                            </button>
 
-                                                    <button
-                                                        onClick={toggleListening}
-                                                        disabled={isProcessing}
-                                                        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${isListening
-                                                                ? "bg-white text-slate-900 shadow-white/20"
-                                                                : "bg-slate-800 border-2 border-slate-600 text-slate-300 hover:border-cyan-500/50 shadow-cyan-500/10"
-                                                            } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                    >
-                                                        {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                                                    </button>
+                                                            <button
+                                                                onClick={() => setShowTextInput(!showTextInput)}
+                                                                className={`w-14 h-14 rounded-full border flex items-center justify-center transition-colors ${showTextInput
+                                                                        ? "bg-cyan-500/20 border-cyan-500/30 text-cyan-400"
+                                                                        : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white"
+                                                                    }`}
+                                                            >
+                                                                <Keyboard className="w-5 h-5" />
+                                                            </button>
+                                                        </motion.div>
 
-                                                    <button
-                                                        onClick={() => setShowTextInput(!showTextInput)}
-                                                        className={`w-14 h-14 rounded-full border flex items-center justify-center transition-colors ${showTextInput
-                                                                ? "bg-cyan-500/20 border-cyan-500/30 text-cyan-400"
-                                                                : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white"
-                                                            }`}
-                                                    >
-                                                        <Keyboard className="w-5 h-5" />
-                                                    </button>
-                                                </motion.div>
-
-                                                <button
-                                                    onClick={exitVoiceMode}
-                                                    className="mt-6 text-sm text-slate-600 hover:text-slate-400 transition-colors"
-                                                >
-                                                    End conversation
-                                                </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                exitVoiceMode();
+                                                            }}
+                                                            className="mt-6 text-sm text-slate-600 hover:text-slate-400 transition-colors pointer-events-auto"
+                                                        >
+                                                            End conversation
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
