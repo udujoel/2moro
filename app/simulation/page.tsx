@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { OracleChat } from "@/components/oracle/oracle-chat";
 import { ThreeOrb } from "@/components/oracle/three-orb";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, Keyboard, X, SendHorizonal } from "lucide-react";
+import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/user-provider";
 
@@ -505,7 +505,7 @@ export default function OraclePage() {
                                                     {/* Layout Grid: Orb (Left) and Chat (Right) */}
                                                     <div className="grid grid-cols-1 md:grid-cols-[1fr_400px] w-full h-full max-w-7xl mx-auto px-8 md:px-12 pointer-events-none">
                                                         {/* Left Section: Orb & Mic Controls */}
-                                                        <div className="flex flex-col items-center justify-center pointer-events-auto">
+                                                        <div className="flex flex-col items-center justify-center pointer-events-auto relative">
                                                             {/* Status */}
                                                             <motion.p
                                                                 initial={{ opacity: 0, y: -10 }}
@@ -524,8 +524,8 @@ export default function OraclePage() {
                                                                 className="flex items-center justify-center"
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
-                                                                <div className="scale-110">
-                                                                    <ThreeOrb state={orbState} size={500} />
+                                                                <div style={{ transform: 'translateX(74px)', width: 400 }}> {/* Adjusted for perfect center */}
+                                                                    <ThreeOrb state={orbState} size={400} />
                                                                 </div>
                                                             </motion.div>
 
@@ -534,7 +534,7 @@ export default function OraclePage() {
                                                                 initial={{ opacity: 0, y: 20 }}
                                                                 animate={{ opacity: 1, y: 0 }}
                                                                 transition={{ delay: 0.3 }}
-                                                                className="mt-12 relative flex items-center justify-center w-full max-w-xs mx-auto"
+                                                                className="mt-12 flex items-center justify-center"
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 {/* Main Mic/End Toggle Button - Centered in flow */}
@@ -551,17 +551,6 @@ export default function OraclePage() {
                                                                     ) : (
                                                                         <Mic className="w-7 h-7" />
                                                                     )}
-                                                                </button>
-
-                                                                {/* Keyboard button toggle - Absolute positioned to the right */}
-                                                                <button
-                                                                    onClick={() => setShowTextInput(!showTextInput)}
-                                                                    className={`absolute left-[calc(50%+60px)] top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border flex items-center justify-center transition-colors ${showTextInput
-                                                                        ? "bg-cyan-500/20 border-cyan-500/30 text-cyan-400"
-                                                                        : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:text-white"
-                                                                        }`}
-                                                                >
-                                                                    <Keyboard className="w-5 h-5" />
                                                                 </button>
                                                             </motion.div>
                                                         </div>

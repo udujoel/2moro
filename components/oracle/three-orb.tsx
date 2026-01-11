@@ -198,7 +198,7 @@ export function ThreeOrb({
 
     return (
         <div
-            className={className}
+            className={`flex-none ${className}`}
             style={{
                 width: size,
                 height: size,
@@ -209,9 +209,10 @@ export function ThreeOrb({
             onMouseLeave={() => setIsHovered(false)}
         >
             <Canvas
+                className="block"
                 camera={{ position: [0, 0, 4.5], fov: 45 }}
                 gl={{ antialias: true, alpha: true }}
-                style={{ background: "transparent" }}
+                style={{ width: "100%", height: "100%", background: "transparent" }}
             >
                 <ParticleOrb state={isHovered ? "listening" : state} />
             </Canvas>
