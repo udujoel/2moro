@@ -221,8 +221,8 @@ export function OracleChat({ onClose }: OracleChatProps) {
                                         </div>
                                     </div>
                                     <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 mt-6 overflow-hidden">
-                                        {user?.image ? (
-                                            <img src={user.image} alt="" className="w-full h-full object-cover" />
+                                        {user?.avatar ? (
+                                            <img src={user.avatar} alt="" className="w-full h-full object-cover" />
                                         ) : (
                                             <span className="text-sm font-medium text-white">
                                                 {user?.name?.charAt(0) || "U"}
