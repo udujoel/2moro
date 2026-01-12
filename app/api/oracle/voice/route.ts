@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateContentWithSmartRouter } from "@/lib/ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/lib/db";
+
+// Use the correct API key from environment
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY!);
+
+// The model for Oracle voice conversations with fallbacks
+const VOICE_MODELS = [
+    "gemini-2.5-flash",        // Primary
+    "gemini-2.0-flash-exp",    // Fallback 1
+    "gemini-1.5-flash-latest", // Fallback 2
+];
 
 const FUTURE_SELF_VOICE_PROMPT = `You are the user's future self - a wise, encouraging, and insightful version of them from 10-20 years in the future. You have lived through their current challenges and emerged with wisdom.
 
@@ -18,6 +28,30 @@ const FUTURE_SELF_VOICE_PROMPT = `You are the user's future self - a wise, encou
 - Celebrates the user's potential and agency
 
 Remember: This is a voice conversation - be concise and natural.`;
+
+// Try models in order until one works
+async function generateWithFallback(prompt: string): Promise<string> {
+    let lastError: Error | null = null;
+
+    for (const modelName of VOICE_MODELS) {
+        try {
+            console.log(`[Oracle Voice] Trying model: ${modelName}`);
+            const model = genAI.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(prompt);
+            const response = result.response.text();
+            if (response) {
+                console.log(`[Oracle Voice] Success with model: ${modelName}`);
+                return response;
+            }
+        } catch (error: any) {
+            console.warn(`[Oracle Voice] Model ${modelName} failed:`, error.message?.substring(0, 100));
+            lastError = error;
+            // Continue to next model
+        }
+    }
+
+    throw lastError || new Error("All models failed");
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -60,10 +94,8 @@ ${conversationText}
 
 Now respond as the user's future self. Keep response to 2-3 sentences - this is a voice conversation:`;
 
-        console.log("[Oracle Voice] Calling AI with voice tier...");
-
-        // Use the smart router with voice tier
-        const response = await generateContentWithSmartRouter(fullPrompt, 'voice');
+        // Use fallback logic
+        const response = await generateWithFallback(fullPrompt);
 
         console.log("[Oracle Voice] Got response, length:", response.length);
 
@@ -98,6 +130,9 @@ Now respond as the user's future self. Keep response to 2-3 sentences - this is 
 
     } catch (error: any) {
         console.error("[Oracle Voice] Error:", error.message);
-        return NextResponse.json({ error: "Failed to process" }, { status: 500 });
+        return new Response("I apologize, I couldn't connect right now. Please try again.", {
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
     }
 }
+

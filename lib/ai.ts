@@ -28,8 +28,12 @@ const SMART_MODELS = [
 
 // Voice models for native audio conversations
 const VOICE_MODELS = [
-    "gemini-2.5-flash-native-audio-dialog",  // Primary voice model
-    "gemini-2.0-flash-exp",                   // Fallback for text response
+    "gemini-2.5-flash-native-audio-dialog", // User requested primary
+    "gemini-2.0-flash-exp",                 // Fallback
+    "gemini-1.5-flash-latest",              // Valid alias
+    "gemini-1.5-flash-001",                 // Specific version
+    "gemini-1.5-pro",                       // Strong fallback
+    "gemini-pro"                            // Last resort
 ];
 
 type ModelTier = 'fast' | 'smart' | 'voice';

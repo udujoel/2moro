@@ -5,9 +5,10 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { OracleChat } from "@/components/oracle/oracle-chat";
 import { ThreeOrb } from "@/components/oracle/three-orb";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal } from "lucide-react";
+import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/user-provider";
+import { GeminiLiveClient, createGeminiLiveClient, getAudioInputDevices, AudioInputDevice } from "@/lib/gemini-live-client";
 
 interface ConversationItem {
     id: string;
@@ -21,6 +22,23 @@ interface TranscriptEntry {
     role: "user" | "assistant";
     content: string;
 }
+
+const TypewriterText = ({ text }: { text: string }) => {
+    const [displayedText, setDisplayedText] = useState("");
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        if (currentIndex < text.length) {
+            const timeout = setTimeout(() => {
+                setDisplayedText(prev => prev + text[currentIndex]);
+                setCurrentIndex(prev => prev + 1);
+            }, 30); // Adjust typing speed here
+            return () => clearTimeout(timeout);
+        }
+    }, [currentIndex, text]);
+
+    return <span>{displayedText}</span>;
+};
 
 export default function OraclePage() {
     const [activeView, setActiveView] = useState<"landing" | "chat" | "vision" | "voice">("landing");
@@ -41,6 +59,13 @@ export default function OraclePage() {
     const [textInput, setTextInput] = useState("");
     const recognitionRef = useRef<any>(null);
     const transcriptEndRef = useRef<HTMLDivElement>(null);
+    const geminiClientRef = useRef<GeminiLiveClient | null>(null);
+    const [isLiveConnected, setIsLiveConnected] = useState(false);
+
+    // Microphone device selection
+    const [audioDevices, setAudioDevices] = useState<AudioInputDevice[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+    const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
     // Auto-scroll to bottom of transcript
     useEffect(() => {
@@ -71,10 +96,75 @@ export default function OraclePage() {
         fetchRecent();
     }, [activeView]);
 
-    // Initialize speech recognition
+    // Initialize Gemini Live client and load audio devices
     useEffect(() => {
         if (activeView !== "voice") return;
 
+        // Load available audio devices
+        const loadDevices = async () => {
+            const devices = await getAudioInputDevices();
+            setAudioDevices(devices);
+            console.log("[Oracle] Available audio devices:", devices);
+
+            // Try to find a default Mac microphone (not iPhone/iPad)
+            const macMic = devices.find(d =>
+                !d.label.toLowerCase().includes('iphone') &&
+                !d.label.toLowerCase().includes('ipad') &&
+                !d.label.toLowerCase().includes('airpods') &&
+                (d.label.toLowerCase().includes('macbook') ||
+                    d.label.toLowerCase().includes('built-in') ||
+                    d.label.toLowerCase().includes('internal'))
+            );
+
+            if (macMic && !selectedDeviceId) {
+                console.log("[Oracle] Auto-selecting Mac microphone:", macMic.label);
+                setSelectedDeviceId(macMic.deviceId);
+            } else if (devices.length > 0 && !selectedDeviceId) {
+                // Default to first device if no Mac mic found
+                setSelectedDeviceId(devices[0].deviceId);
+            }
+        };
+
+        loadDevices();
+
+        // Create Gemini Live client with callbacks
+        const client = createGeminiLiveClient({
+            onConnect: () => {
+                console.log("[Oracle] Gemini Live connected");
+                setIsLiveConnected(true);
+                setVoiceStatus("Connected - Tap mic to speak");
+            },
+            onDisconnect: () => {
+                console.log("[Oracle] Gemini Live disconnected");
+                setIsLiveConnected(false);
+            },
+            onSpeakingStart: () => {
+                setIsSpeaking(true);
+                setVoiceStatus("Oracle is speaking...");
+            },
+            onSpeakingEnd: () => {
+                setIsSpeaking(false);
+                setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
+            },
+            onError: (error) => {
+                console.error("[Oracle] Gemini Live error:", error);
+                setVoiceError(error);
+            },
+            onInterrupted: () => {
+                console.log("[Oracle] Playback interrupted");
+                setIsSpeaking(false);
+            }
+        });
+
+        geminiClientRef.current = client;
+
+        // Connect to the Live API
+        client.connect().catch((err) => {
+            console.error("[Oracle] Failed to connect:", err);
+            setVoiceError("Failed to connect to Oracle");
+        });
+
+        // Also set up browser speech recognition for transcription
         if (typeof window !== 'undefined') {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -105,14 +195,17 @@ export default function OraclePage() {
                 };
 
                 recognition.onerror = (event: any) => {
-                    if (event.error === 'not-allowed') {
+                    // Handle different error types
+                    if (event.error === 'network') {
+                        console.warn("[Oracle] Speech recognition network error - using text input");
+                        setVoiceError('Voice recognition unavailable. Please use text input.');
+                        setIsListening(false);
+                    } else if (event.error === 'not-allowed') {
                         setVoiceError('Microphone access denied');
-                        setShowTextInput(true);
-                    } else if (event.error !== 'no-speech') {
-                        setVoiceError('Voice error - try typing');
-                        setShowTextInput(true);
+                        setIsListening(false);
+                    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                        console.error("[Oracle] Speech recognition error:", event.error);
                     }
-                    setIsListening(false);
                 };
 
                 recognition.onend = () => {
@@ -124,18 +217,22 @@ export default function OraclePage() {
                 };
 
                 recognitionRef.current = recognition;
-            } else {
-                setVoiceError('Speech recognition not supported');
-                setShowTextInput(true);
             }
         }
 
+        setVoiceStatus("Tap to start speaking");
+
+        // Cleanup on unmount
         return () => {
+            if (geminiClientRef.current) {
+                geminiClientRef.current.disconnect();
+                geminiClientRef.current = null;
+            }
             if (recognitionRef.current) {
                 recognitionRef.current.stop();
             }
         };
-    }, [activeView, isListening]);
+    }, [activeView]);
 
     const handleVoiceInput = async (text: string) => {
         const userEntry: TranscriptEntry = {
@@ -147,45 +244,120 @@ export default function OraclePage() {
         setTranscript(prev => [...prev, userEntry]);
         setCurrentUserSpeech("");
         setIsProcessing(true);
-        setVoiceStatus("Processing...");
+        setVoiceStatus("Oracle is thinking...");
 
         try {
-            const response = await fetch("/api/oracle/voice", {
+            // Use the Live API for native audio streaming
+            const response = await fetch("/api/oracle/live", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    messages: [...transcript, userEntry].map(m => ({
-                        role: m.role,
-                        content: m.content
-                    }))
-                })
+                body: JSON.stringify({ text })
             });
 
             if (!response.ok) throw new Error("Failed to get response");
 
-            const responseText = await response.text();
+            // Process SSE stream for audio
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("No response stream");
 
+            const audioContext = new AudioContext({ sampleRate: 24000 });
+            const audioChunks: ArrayBuffer[] = [];
+            let textResponse = "";
+
+            setIsSpeaking(true);
+            setVoiceStatus("Oracle is speaking...");
+
+            // Read the stream
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const text = new TextDecoder().decode(value);
+                const lines = text.split("\n");
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === "audio" && data.data) {
+                                // Decode base64 to ArrayBuffer
+                                const binaryString = atob(data.data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                audioChunks.push(bytes.buffer);
+                            } else if (data.type === "text" && data.data) {
+                                textResponse += data.data;
+                            } else if (data.type === "complete") {
+                                console.log("[Oracle] Stream complete");
+                            } else if (data.type === "error") {
+                                throw new Error(data.message);
+                            }
+                        } catch (e) {
+                            // Ignore JSON parse errors for incomplete lines
+                        }
+                    }
+                }
+            }
+
+            // Play all audio chunks
+            if (audioChunks.length > 0) {
+                // Combine all chunks
+                const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
+                const combined = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const chunk of audioChunks) {
+                    combined.set(new Uint8Array(chunk), offset);
+                    offset += chunk.byteLength;
+                }
+
+                // Convert Int16 PCM to Float32
+                const int16Array = new Int16Array(combined.buffer);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768;
+                }
+
+                // Create and play audio buffer
+                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+                audioBuffer.getChannelData(0).set(float32Array);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.onended = () => {
+                    setIsSpeaking(false);
+                    setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
+                };
+                source.start();
+            }
+
+            // Add assistant entry with transcript or placeholder
             const assistantEntry: TranscriptEntry = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: responseText,
+                content: textResponse || "[Audio response played]",
             };
-
             setTranscript(prev => [...prev, assistantEntry]);
-            setVoiceStatus("Listening...");
-            speakResponse(responseText);
 
-        } catch (error) {
-            setVoiceError("Failed to get response");
+        } catch (error: any) {
+            console.error("[Oracle] Voice input error:", error);
+            setVoiceError(error.message || "Failed to get response");
             setVoiceStatus("Error - try again");
+            setIsSpeaking(false);
         } finally {
             setIsProcessing(false);
         }
     };
 
+    // Browser Text-to-Speech for Oracle responses
     const speakResponse = (text: string) => {
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
             setIsSpeaking(true);
+            setVoiceStatus("Oracle is speaking...");
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1;
             utterance.pitch = 1;
@@ -200,39 +372,62 @@ export default function OraclePage() {
 
             utterance.onend = () => {
                 setIsSpeaking(false);
-                setVoiceStatus("Listening...");
+                setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
             };
 
             utterance.onerror = () => {
                 setIsSpeaking(false);
+                setVoiceStatus("Tap to start speaking");
             };
 
             speechSynthesis.speak(utterance);
+        } else {
+            setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
         }
     };
 
+
     const toggleListening = useCallback(async () => {
         if (isListening) {
+            // Stop listening
             setIsListening(false);
             setVoiceStatus("Tap to start speaking");
             if (recognitionRef.current) {
                 recognitionRef.current.stop();
             }
+            if (geminiClientRef.current) {
+                geminiClientRef.current.stopRecording();
+            }
         } else {
+            // Start listening with selected device
             setVoiceError(null);
             try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Build audio constraints with selected device
+                const constraints: MediaStreamConstraints = {
+                    audio: selectedDeviceId
+                        ? { deviceId: { exact: selectedDeviceId } }
+                        : true
+                };
+
+                await navigator.mediaDevices.getUserMedia(constraints);
                 setIsListening(true);
                 setVoiceStatus("Listening...");
+
                 if (recognitionRef.current) {
                     recognitionRef.current.start();
                 }
-            } catch (err) {
-                setVoiceError('Unable to access microphone');
-                setShowTextInput(true);
+
+                // Also start Gemini Live recording if connected
+                if (geminiClientRef.current && geminiClientRef.current.connected) {
+                    geminiClientRef.current.startRecording(selectedDeviceId || undefined);
+                }
+            } catch (err: any) {
+                console.error("[Oracle] Microphone error:", err);
+                setVoiceError('Unable to access microphone. Try selecting a different device.');
+                setShowDeviceSelector(true);
             }
         }
-    }, [isListening]);
+    }, [isListening, selectedDeviceId]);
 
     const handleTextSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -243,11 +438,17 @@ export default function OraclePage() {
     };
 
     const exitVoiceMode = () => {
+        // Stop speech recognition and synthesis
         if (recognitionRef.current) {
             recognitionRef.current.stop();
         }
+        if (geminiClientRef.current) {
+            geminiClientRef.current.stopRecording();
+            geminiClientRef.current.disconnect();
+        }
         speechSynthesis.cancel();
         setIsListening(false);
+        setIsSpeaking(false);
         setTranscript([]);
         setActiveView("landing");
     };
@@ -506,15 +707,6 @@ export default function OraclePage() {
                                                     <div className="grid grid-cols-1 md:grid-cols-[1fr_400px] w-full h-full max-w-7xl mx-auto px-8 md:px-12 pointer-events-none">
                                                         {/* Left Section: Orb & Mic Controls */}
                                                         <div className="flex flex-col items-center justify-center pointer-events-auto relative">
-                                                            {/* Status */}
-                                                            <motion.p
-                                                                initial={{ opacity: 0, y: -10 }}
-                                                                animate={{ opacity: 1, y: 0 }}
-                                                                className="text-slate-400 text-sm mb-8 font-medium"
-                                                            >
-                                                                {voiceStatus}
-                                                            </motion.p>
-
                                                             {/* Expanded Orb */}
                                                             <motion.div
                                                                 initial={{ scale: 0.5, opacity: 0 }}
@@ -524,17 +716,17 @@ export default function OraclePage() {
                                                                 className="flex items-center justify-center"
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
-                                                                <div style={{ transform: 'translateX(74px)', width: 400 }}> {/* Adjusted for perfect center */}
-                                                                    <ThreeOrb state={orbState} size={400} />
+                                                                <div style={{ transform: 'translateX(102px)', width: 550 }}> {/* Scaled alignment for 550px size */}
+                                                                    <ThreeOrb state={orbState} size={550} />
                                                                 </div>
                                                             </motion.div>
 
-                                                            {/* Controls below Orb */}
+                                                            {/* Controls below Orb with Status */}
                                                             <motion.div
                                                                 initial={{ opacity: 0, y: 20 }}
                                                                 animate={{ opacity: 1, y: 0 }}
                                                                 transition={{ delay: 0.3 }}
-                                                                className="mt-12 flex items-center justify-center"
+                                                                className="mt-12 flex flex-col items-center justify-center gap-6"
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 {/* Main Mic/End Toggle Button - Centered in flow */}
@@ -543,7 +735,7 @@ export default function OraclePage() {
                                                                     disabled={isProcessing}
                                                                     className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl z-10 ${isListening
                                                                         ? "bg-red-500 hover:bg-red-400 text-white shadow-red-500/30"
-                                                                        : "bg-slate-800 border-2 border-slate-600 text-slate-300 hover:border-cyan-500/50 hover:text-cyan-400 shadow-cyan-500/10"
+                                                                        : "bg-slate-800 border-2 border-slate-600 text-slate-300 hover:border-cyan-500/50 hover:text-cyan-400 shadow-cyan-500/10 animate-pulse"
                                                                         } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
                                                                 >
                                                                     {isListening ? (
@@ -552,6 +744,30 @@ export default function OraclePage() {
                                                                         <Mic className="w-7 h-7" />
                                                                     )}
                                                                 </button>
+
+                                                                {/* Status - Moved below mic */}
+                                                                <p className="text-slate-400 text-sm font-medium">
+                                                                    {voiceStatus}
+                                                                </p>
+
+                                                                {/* Microphone Selector */}
+                                                                {audioDevices.length > 1 && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Settings className="w-4 h-4 text-slate-500" />
+                                                                        <select
+                                                                            value={selectedDeviceId || ''}
+                                                                            onChange={(e) => setSelectedDeviceId(e.target.value)}
+                                                                            className="bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-cyan-500/50 max-w-[200px]"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            {audioDevices.map((device) => (
+                                                                                <option key={device.deviceId} value={device.deviceId}>
+                                                                                    {device.label}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                )}
                                                             </motion.div>
                                                         </div>
 
@@ -579,7 +795,7 @@ export default function OraclePage() {
                                                             >
                                                                 {transcript.length > 0 || currentUserSpeech ? (
                                                                     <div className="space-y-4">
-                                                                        {transcript.map((entry) => (
+                                                                        {transcript.map((entry, idx) => (
                                                                             <div
                                                                                 key={entry.id}
                                                                                 className={`flex flex-col ${entry.role === "user" ? "items-end" : "items-start"}`}
@@ -593,7 +809,11 @@ export default function OraclePage() {
                                                                                         : "bg-slate-800/40 text-slate-200 border border-slate-700/30"
                                                                                         }`}
                                                                                 >
-                                                                                    {entry.content}
+                                                                                    {entry.role === "assistant" && idx === transcript.length - 1 ? (
+                                                                                        <TypewriterText text={entry.content} />
+                                                                                    ) : (
+                                                                                        entry.content
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -609,43 +829,46 @@ export default function OraclePage() {
                                                                         <div ref={transcriptEndRef} />
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="h-full flex items-center justify-center opacity-30 text-slate-500 italic text-sm text-center px-8">
-                                                                        Future memories will appear here...
+                                                                    <div className="h-full flex items-center justify-center opacity-30">
+                                                                        {/* Animated Dots Empty State */}
+                                                                        <div className="flex space-x-1">
+                                                                            <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                                                            <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                                                            <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></div>
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                             </motion.div>
 
-                                                            {/* Melting Text Input */}
-                                                            {showTextInput && (
-                                                                <motion.div
-                                                                    initial={{ opacity: 0, y: 10 }}
-                                                                    animate={{ opacity: 1, y: 0 }}
-                                                                    onClick={(e) => e.stopPropagation()}
+                                                            {/* Visible Input */}
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <form
+                                                                    onSubmit={handleTextSubmit}
+                                                                    className="relative group"
                                                                 >
-                                                                    <form
-                                                                        onSubmit={handleTextSubmit}
-                                                                        className="relative group"
-                                                                    >
-                                                                        <div className="flex items-center gap-3 border-b border-white/5 focus-within:border-cyan-500/30 transition-all duration-300 px-1">
-                                                                            <input
-                                                                                type="text"
-                                                                                value={textInput}
-                                                                                onChange={(e) => setTextInput(e.target.value)}
-                                                                                placeholder="Type to chat..."
-                                                                                className="flex-1 bg-transparent border-none py-4 text-white placeholder:text-slate-700 focus:outline-none text-sm"
-                                                                                autoFocus
-                                                                            />
-                                                                            <button
-                                                                                type="submit"
-                                                                                disabled={!textInput.trim() || isProcessing}
-                                                                                className="p-2 text-slate-500 hover:text-cyan-400 disabled:opacity-20 transition-colors"
-                                                                            >
-                                                                                <SendHorizonal className="w-5 h-5" />
-                                                                            </button>
-                                                                        </div>
-                                                                    </form>
-                                                                </motion.div>
-                                                            )}
+                                                                    <div className="flex items-center gap-3 border border-white/10 bg-white/5 rounded-xl px-4 py-1 focus-within:border-cyan-500/30 focus-within:bg-white/10 transition-all duration-300">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={textInput}
+                                                                            onChange={(e) => setTextInput(e.target.value)}
+                                                                            placeholder="Type to chat..."
+                                                                            className="flex-1 bg-transparent border-none py-3 text-white placeholder:text-slate-500 focus:outline-none text-sm"
+                                                                            autoFocus
+                                                                        />
+                                                                        <button
+                                                                            type="submit"
+                                                                            disabled={!textInput.trim() || isProcessing}
+                                                                            className="p-2 text-slate-500 hover:text-cyan-400 disabled:opacity-20 transition-colors"
+                                                                        >
+                                                                            <SendHorizonal className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </form>
+                                                            </motion.div>
                                                         </div>
                                                     </div>
                                                 </div>
