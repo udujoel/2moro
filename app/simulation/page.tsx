@@ -75,6 +75,11 @@ export default function OraclePage() {
     const geminiClientRef = useRef<GeminiLiveClient | null>(null);
     const [isLiveConnected, setIsLiveConnected] = useState(false);
 
+    // AssemblyAI WebSocket for speech-to-text
+    const assemblyWsRef = useRef<WebSocket | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
     // Microphone device selection
     const [audioDevices, setAudioDevices] = useState<AudioInputDevice[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -177,65 +182,6 @@ export default function OraclePage() {
             setVoiceError("Failed to connect to Oracle");
         });
 
-        // Also set up browser speech recognition for transcription
-        if (typeof window !== 'undefined') {
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-            if (SpeechRecognition) {
-                const recognition = new SpeechRecognition();
-                recognition.continuous = true;
-                recognition.interimResults = true;
-                recognition.lang = 'en-US';
-
-                recognition.onresult = (event: any) => {
-                    let interimTranscript = '';
-                    let finalTranscript = '';
-
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        const result = event.results[i];
-                        if (result.isFinal) {
-                            finalTranscript += result[0].transcript;
-                        } else {
-                            interimTranscript += result[0].transcript;
-                        }
-                    }
-
-                    setCurrentUserSpeech(interimTranscript || finalTranscript);
-
-                    if (finalTranscript) {
-                        handleVoiceInput(finalTranscript);
-                    }
-                };
-
-                recognition.onerror = (event: any) => {
-                    // Handle different error types
-                    if (event.error === 'network') {
-                        // Network error is common - just log and continue with text input
-                        console.warn("[Oracle] Speech recognition network error - text input available");
-                        // Show a brief warning that auto-dismisses
-                        setVoiceError('Voice-to-text unavailable. Use text input below.');
-                        setTimeout(() => setVoiceError(null), 4000);
-                        setIsListening(false);
-                    } else if (event.error === 'not-allowed') {
-                        setVoiceError('Microphone access denied. Check browser permissions.');
-                        setIsListening(false);
-                    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-                        console.error("[Oracle] Speech recognition error:", event.error);
-                    }
-                };
-
-                recognition.onend = () => {
-                    if (isListening) {
-                        try {
-                            recognition.start();
-                        } catch (e) { }
-                    }
-                };
-
-                recognitionRef.current = recognition;
-            }
-        }
-
         setVoiceStatus("Tap to start speaking");
 
         // Cleanup on unmount
@@ -244,8 +190,12 @@ export default function OraclePage() {
                 geminiClientRef.current.disconnect();
                 geminiClientRef.current = null;
             }
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
+            if (assemblyWsRef.current) {
+                assemblyWsRef.current.close();
+                assemblyWsRef.current = null;
+            }
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
             }
         };
     }, [activeView]);
@@ -263,37 +213,104 @@ export default function OraclePage() {
         setVoiceStatus("Oracle is thinking...");
 
         try {
-            // Use the reliable chat API for text-based responses
-            // Build messages array for the chat API
-            const messages = [
-                ...transcript.map(t => ({ role: t.role, content: t.content })),
-                { role: "user", content: text }
-            ];
-
-            const response = await fetch("/api/oracle/chat", {
+            // Use the Gemini Live API for audio streaming response
+            const response = await fetch("/api/oracle/live", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ messages })
+                body: JSON.stringify({ text })
             });
 
             if (!response.ok) throw new Error("Failed to get response");
 
-            // Get text response from chat API
-            const textResponse = await response.text();
+            // Process SSE stream for audio
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("No response stream");
 
-            // Clean up any markdown formatting from the response
-            const cleanedResponse = stripMarkdown(textResponse);
+            const audioContext = new AudioContext({ sampleRate: 24000 });
+            const audioChunks: ArrayBuffer[] = [];
+            let textResponse = "";
 
-            // Add assistant entry with the text response
+            setIsSpeaking(true);
+            setVoiceStatus("Oracle is speaking...");
+
+            // Read the stream
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split("\n");
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === "audio" && data.data) {
+                                // Decode base64 to ArrayBuffer
+                                const binaryString = atob(data.data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                audioChunks.push(bytes.buffer);
+                            } else if (data.type === "text" && data.data) {
+                                textResponse += data.data;
+                            } else if (data.type === "complete") {
+                                console.log("[Oracle] Stream complete");
+                            } else if (data.type === "error") {
+                                throw new Error(data.message);
+                            }
+                        } catch (e) {
+                            // Ignore JSON parse errors for incomplete lines
+                        }
+                    }
+                }
+            }
+
+            // Play all audio chunks
+            if (audioChunks.length > 0) {
+                // Combine all chunks
+                const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
+                const combined = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const chunk of audioChunks) {
+                    combined.set(new Uint8Array(chunk), offset);
+                    offset += chunk.byteLength;
+                }
+
+                // Convert Int16 PCM to Float32
+                const int16Array = new Int16Array(combined.buffer);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768;
+                }
+
+                // Create and play audio buffer
+                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+                audioBuffer.getChannelData(0).set(float32Array);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.onended = () => {
+                    setIsSpeaking(false);
+                    setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
+                };
+                source.start();
+            } else {
+                setIsSpeaking(false);
+                setVoiceStatus("Tap to start speaking");
+            }
+
+            // Add assistant entry with transcript or placeholder
+            const cleanedResponse = textResponse ? stripMarkdown(textResponse) : "[Audio response played]";
             const assistantEntry: TranscriptEntry = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
                 content: cleanedResponse,
             };
             setTranscript(prev => [...prev, assistantEntry]);
-
-            // Speak the response using browser TTS
-            speakResponse(cleanedResponse);
 
         } catch (error: any) {
             console.error("[Oracle] Voice input error:", error);
@@ -305,79 +322,178 @@ export default function OraclePage() {
         }
     };
 
-    // Browser Text-to-Speech for Oracle responses
-    const speakResponse = (text: string) => {
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            setIsSpeaking(true);
-            setVoiceStatus("Oracle is speaking...");
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1;
-            utterance.pitch = 1;
-
-            const voices = speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v =>
-                v.name.includes('Samantha') ||
-                v.name.includes('Alex') ||
-                v.lang.startsWith('en')
-            );
-            if (preferredVoice) utterance.voice = preferredVoice;
-
-            utterance.onend = () => {
-                setIsSpeaking(false);
-                setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
-            };
-
-            utterance.onerror = () => {
-                setIsSpeaking(false);
-                setVoiceStatus("Tap to start speaking");
-            };
-
-            speechSynthesis.speak(utterance);
-        } else {
-            setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
-        }
-    };
-
 
     const toggleListening = useCallback(async () => {
         if (isListening) {
             // Stop listening
             setIsListening(false);
+            setVoiceStatus("Processing...");
+
+            // Stop MediaRecorder and close WebSocket
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            if (assemblyWsRef.current) {
+                // Send terminate message
+                assemblyWsRef.current.send(JSON.stringify({ terminate_session: true }));
+                assemblyWsRef.current.close();
+                assemblyWsRef.current = null;
+            }
+
             setVoiceStatus("Tap to start speaking");
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
-            }
-            if (geminiClientRef.current) {
-                geminiClientRef.current.stopRecording();
-            }
         } else {
-            // Start listening with selected device
+            // Start listening with AssemblyAI
             setVoiceError(null);
+            setVoiceStatus("Connecting...");
+
             try {
+                // Get temporary token from our backend
+                const tokenRes = await fetch("/api/speech/token");
+                if (!tokenRes.ok) {
+                    throw new Error("Failed to get speech token");
+                }
+                const { token } = await tokenRes.json();
+                console.log("[AssemblyAI] Got temporary token");
+
                 // Build audio constraints with selected device
                 const constraints: MediaStreamConstraints = {
                     audio: selectedDeviceId
-                        ? { deviceId: { exact: selectedDeviceId } }
-                        : true
+                        ? {
+                            deviceId: { exact: selectedDeviceId },
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
+                        : {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        }
                 };
 
-                await navigator.mediaDevices.getUserMedia(constraints);
-                setIsListening(true);
-                setVoiceStatus("Listening...");
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log("[AssemblyAI] Got microphone stream");
 
-                if (recognitionRef.current) {
-                    recognitionRef.current.start();
-                }
+                // Connect to AssemblyAI v3 Universal Streaming WebSocket
+                const ws = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&encoding=pcm_s16le&token=${token}`);
+                assemblyWsRef.current = ws;
 
-                // Also start Gemini Live recording if connected
-                if (geminiClientRef.current && geminiClientRef.current.connected) {
-                    geminiClientRef.current.startRecording(selectedDeviceId || undefined);
-                }
+                let currentTranscript = "";
+
+                ws.onopen = () => {
+                    console.log("[AssemblyAI] WebSocket connected");
+                    setIsListening(true);
+                    setVoiceStatus("Listening...");
+
+                    // Use Web Audio API for PCM16 capture (AssemblyAI requires PCM16)
+                    const audioContext = new AudioContext({ sampleRate: 16000 });
+                    const source = audioContext.createMediaStreamSource(stream);
+                    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                    // Helper function to convert Float32 to Int16 PCM
+                    const float32ToInt16 = (float32Array: Float32Array): Int16Array => {
+                        const int16Array = new Int16Array(float32Array.length);
+                        for (let i = 0; i < float32Array.length; i++) {
+                            const s = Math.max(-1, Math.min(1, float32Array[i]));
+                            int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        }
+                        return int16Array;
+                    };
+
+                    // Helper function to convert ArrayBuffer to base64
+                    const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+                        let binary = '';
+                        const bytes = new Uint8Array(buffer);
+                        for (let i = 0; i < bytes.byteLength; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        return btoa(binary);
+                    };
+
+                    processor.onaudioprocess = (e) => {
+                        if (ws.readyState === WebSocket.OPEN) {
+                            const inputData = e.inputBuffer.getChannelData(0);
+                            const pcmData = float32ToInt16(inputData);
+                            // Send raw binary PCM16 audio data
+                            ws.send(pcmData.buffer);
+                        }
+                    };
+
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+
+                    // Store refs for cleanup
+                    (ws as any)._audioContext = audioContext;
+                    (ws as any)._processor = processor;
+                };
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log("[AssemblyAI] Message:", data.type || data.message_type);
+
+                    // Handle v3 Turn events
+                    if (data.type === 'Turn' || data.message_type === 'Turn') {
+                        // Turn object contains transcript and end_of_turn flag
+                        const transcript = data.transcript || '';
+                        if (transcript) {
+                            setCurrentUserSpeech(transcript);
+                            if (data.end_of_turn) {
+                                currentTranscript = transcript;
+                            }
+                        }
+                    } else if (data.type === 'Begin' || data.message_type === 'Begin') {
+                        console.log("[AssemblyAI] Session started:", data.id);
+                    } else if (data.type === 'Termination' || data.message_type === 'Termination') {
+                        console.log("[AssemblyAI] Session terminated");
+                        if (currentTranscript.trim()) {
+                            handleVoiceInput(currentTranscript.trim());
+                        }
+                    }
+                    // Also handle v2 message types for backward compatibility
+                    else if (data.message_type === 'PartialTranscript') {
+                        setCurrentUserSpeech(data.text);
+                    } else if (data.message_type === 'FinalTranscript') {
+                        if (data.text?.trim()) {
+                            currentTranscript += (currentTranscript ? " " : "") + data.text;
+                            setCurrentUserSpeech(currentTranscript);
+                        }
+                    } else if (data.message_type === 'SessionTerminated') {
+                        console.log("[AssemblyAI] Session terminated");
+                        if (currentTranscript.trim()) {
+                            handleVoiceInput(currentTranscript.trim());
+                        }
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error("[AssemblyAI] WebSocket error:", error);
+                    setVoiceError("Speech recognition error. Try again.");
+                    setIsListening(false);
+                };
+
+                ws.onclose = () => {
+                    console.log("[AssemblyAI] WebSocket closed");
+                    // Stop media recorder if still running
+                    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                        mediaRecorderRef.current.stop();
+                    }
+                    // Stop media stream
+                    stream.getTracks().forEach(track => track.stop());
+
+                    // If we have accumulated transcript and session wasn't terminated by server, send it
+                    if (currentTranscript.trim() && isListening) {
+                        handleVoiceInput(currentTranscript.trim());
+                    }
+                };
+
             } catch (err: any) {
-                console.error("[Oracle] Microphone error:", err);
-                setVoiceError('Unable to access microphone. Try selecting a different device.');
+                console.error("[Oracle] Microphone/AssemblyAI error:", err);
+                setVoiceError(err.message || 'Unable to start voice recognition.');
                 setShowDeviceSelector(true);
+                setIsListening(false);
+                setVoiceStatus("Tap to start speaking");
             }
         }
     }, [isListening, selectedDeviceId]);
@@ -391,18 +507,22 @@ export default function OraclePage() {
     };
 
     const exitVoiceMode = () => {
-        // Stop speech recognition and synthesis
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
+        // Stop AssemblyAI and MediaRecorder
+        if (assemblyWsRef.current) {
+            assemblyWsRef.current.close();
+            assemblyWsRef.current = null;
+        }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
         }
         if (geminiClientRef.current) {
             geminiClientRef.current.stopRecording();
             geminiClientRef.current.disconnect();
         }
-        speechSynthesis.cancel();
         setIsListening(false);
         setIsSpeaking(false);
         setTranscript([]);
+        setCurrentUserSpeech("");
         setActiveView("landing");
     };
 
