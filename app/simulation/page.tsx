@@ -200,7 +200,7 @@ export default function OraclePage() {
         };
     }, [activeView]);
 
-    const handleVoiceInput = async (text: string) => {
+    const handleVoiceInput = async (text: string, autoResume: boolean = false) => {
         const userEntry: TranscriptEntry = {
             id: Date.now().toString(),
             role: "user",
@@ -213,98 +213,25 @@ export default function OraclePage() {
         setVoiceStatus("Oracle is thinking...");
 
         try {
-            // Use the Gemini Live API for audio streaming response
-            const response = await fetch("/api/oracle/live", {
+            // Use the chat API for clean text responses (no meta-reasoning)
+            const messages = [
+                ...transcript.map(t => ({ role: t.role, content: t.content })),
+                { role: "user", content: text }
+            ];
+
+            const response = await fetch("/api/oracle/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text })
+                body: JSON.stringify({ messages })
             });
 
             if (!response.ok) throw new Error("Failed to get response");
 
-            // Process SSE stream for audio
-            const reader = response.body?.getReader();
-            if (!reader) throw new Error("No response stream");
+            // Get text response
+            const textResponse = await response.text();
+            const cleanedResponse = stripMarkdown(textResponse);
 
-            const audioContext = new AudioContext({ sampleRate: 24000 });
-            const audioChunks: ArrayBuffer[] = [];
-            let textResponse = "";
-
-            setIsSpeaking(true);
-            setVoiceStatus("Oracle is speaking...");
-
-            // Read the stream
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = new TextDecoder().decode(value);
-                const lines = chunk.split("\n");
-
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-
-                            if (data.type === "audio" && data.data) {
-                                // Decode base64 to ArrayBuffer
-                                const binaryString = atob(data.data);
-                                const bytes = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    bytes[i] = binaryString.charCodeAt(i);
-                                }
-                                audioChunks.push(bytes.buffer);
-                            } else if (data.type === "text" && data.data) {
-                                textResponse += data.data;
-                            } else if (data.type === "complete") {
-                                console.log("[Oracle] Stream complete");
-                            } else if (data.type === "error") {
-                                throw new Error(data.message);
-                            }
-                        } catch (e) {
-                            // Ignore JSON parse errors for incomplete lines
-                        }
-                    }
-                }
-            }
-
-            // Play all audio chunks
-            if (audioChunks.length > 0) {
-                // Combine all chunks
-                const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
-                const combined = new Uint8Array(totalLength);
-                let offset = 0;
-                for (const chunk of audioChunks) {
-                    combined.set(new Uint8Array(chunk), offset);
-                    offset += chunk.byteLength;
-                }
-
-                // Convert Int16 PCM to Float32
-                const int16Array = new Int16Array(combined.buffer);
-                const float32Array = new Float32Array(int16Array.length);
-                for (let i = 0; i < int16Array.length; i++) {
-                    float32Array[i] = int16Array[i] / 32768;
-                }
-
-                // Create and play audio buffer
-                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
-                audioBuffer.getChannelData(0).set(float32Array);
-
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.onended = () => {
-                    setIsSpeaking(false);
-                    setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
-                };
-                source.start();
-            } else {
-                setIsSpeaking(false);
-                setVoiceStatus("Tap to start speaking");
-            }
-
-            // Add assistant entry with transcript or placeholder
-            const cleanedResponse = textResponse ? stripMarkdown(textResponse) : "[Audio response played]";
+            // Add assistant entry
             const assistantEntry: TranscriptEntry = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
@@ -312,13 +239,197 @@ export default function OraclePage() {
             };
             setTranscript(prev => [...prev, assistantEntry]);
 
+            // Speak the response using browser TTS
+            speakResponse(cleanedResponse, autoResume);
+
         } catch (error: any) {
             console.error("[Oracle] Voice input error:", error);
             setVoiceError(error.message || "Failed to get response");
             setVoiceStatus("Error - try again");
             setIsSpeaking(false);
+            // Resume listening on error if autoResume was requested
+            if (autoResume) {
+                setTimeout(() => startListening(), 1000);
+            }
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    // Browser Text-to-Speech for Oracle responses
+    const speakResponse = (text: string, autoResume: boolean = false) => {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
+
+            setIsSpeaking(true);
+            setVoiceStatus("Oracle is speaking...");
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1;
+            utterance.pitch = 1;
+
+            // Try to find a good voice
+            const voices = speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v =>
+                v.name.includes('Samantha') ||
+                v.name.includes('Alex') ||
+                v.lang.startsWith('en')
+            );
+            if (preferredVoice) utterance.voice = preferredVoice;
+
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                if (autoResume) {
+                    // Auto-resume listening after Oracle finishes speaking
+                    setVoiceStatus("Listening...");
+                    startListening();
+                } else {
+                    setVoiceStatus("Tap to start speaking");
+                }
+            };
+
+            utterance.onerror = () => {
+                setIsSpeaking(false);
+                if (autoResume) {
+                    startListening();
+                } else {
+                    setVoiceStatus("Tap to start speaking");
+                }
+            };
+
+            speechSynthesis.speak(utterance);
+        } else {
+            if (autoResume) {
+                startListening();
+            } else {
+                setVoiceStatus("Tap to start speaking");
+            }
+        }
+    };
+
+    // Start listening function for auto-resume
+    const startListening = async () => {
+        if (isListening || isSpeaking || isProcessing) return;
+
+        setVoiceError(null);
+        setVoiceStatus("Connecting...");
+
+        try {
+            // Get temporary token from our backend
+            const tokenRes = await fetch("/api/speech/token");
+            if (!tokenRes.ok) {
+                throw new Error("Failed to get speech token");
+            }
+            const { token } = await tokenRes.json();
+            console.log("[AssemblyAI] Got temporary token");
+
+            // Build audio constraints with selected device
+            const constraints: MediaStreamConstraints = {
+                audio: selectedDeviceId
+                    ? {
+                        deviceId: { exact: selectedDeviceId },
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                    : {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            console.log("[AssemblyAI] Got microphone stream");
+
+            // Connect to AssemblyAI v3 Universal Streaming WebSocket
+            const ws = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&encoding=pcm_s16le&token=${token}`);
+            assemblyWsRef.current = ws;
+
+            let currentTranscript = "";
+
+            ws.onopen = () => {
+                console.log("[AssemblyAI] WebSocket connected");
+                setIsListening(true);
+                setVoiceStatus("Listening...");
+
+                // Use Web Audio API for PCM16 capture
+                const audioContext = new AudioContext({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                const float32ToInt16 = (float32Array: Float32Array): Int16Array => {
+                    const int16Array = new Int16Array(float32Array.length);
+                    for (let i = 0; i < float32Array.length; i++) {
+                        const s = Math.max(-1, Math.min(1, float32Array[i]));
+                        int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    return int16Array;
+                };
+
+                processor.onaudioprocess = (e) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcmData = float32ToInt16(inputData);
+                        ws.send(pcmData.buffer);
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                (ws as any)._audioContext = audioContext;
+                (ws as any)._processor = processor;
+                (ws as any)._stream = stream;
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log("[AssemblyAI] Message:", data.type || data.message_type);
+
+                // Handle v3 Turn events with auto-send on end_of_turn
+                if (data.type === 'Turn' || data.message_type === 'Turn') {
+                    const transcript = data.transcript || '';
+                    if (transcript) {
+                        setCurrentUserSpeech(transcript);
+                        // AUTO-SEND: When user finishes speaking, send to Oracle
+                        if (data.end_of_turn && transcript.trim()) {
+                            console.log("[AssemblyAI] End of turn detected, sending to Oracle");
+                            currentTranscript = transcript;
+                            // Close connection and send to Oracle
+                            ws.close();
+                            setIsListening(false);
+                            handleVoiceInput(transcript.trim(), true); // auto-resume after response
+                        }
+                    }
+                } else if (data.type === 'Begin' || data.message_type === 'Begin') {
+                    console.log("[AssemblyAI] Session started:", data.id);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error("[AssemblyAI] WebSocket error:", error);
+                setVoiceError("Speech recognition error. Try again.");
+                setIsListening(false);
+            };
+
+            ws.onclose = () => {
+                console.log("[AssemblyAI] WebSocket closed");
+                // Cleanup audio resources
+                const ctx = (ws as any)._audioContext;
+                const strm = (ws as any)._stream;
+                if (ctx) ctx.close();
+                if (strm) strm.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+            };
+
+        } catch (err: any) {
+            console.error("[Oracle] Microphone/AssemblyAI error:", err);
+            setVoiceError(err.message || 'Unable to start voice recognition.');
+            setIsListening(false);
+            setVoiceStatus("Tap to start speaking");
         }
     };
 
@@ -327,176 +438,18 @@ export default function OraclePage() {
         if (isListening) {
             // Stop listening
             setIsListening(false);
-            setVoiceStatus("Processing...");
+            setVoiceStatus("Tap to start speaking");
 
-            // Stop MediaRecorder and close WebSocket
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                mediaRecorderRef.current.stop();
-            }
             if (assemblyWsRef.current) {
-                // Send terminate message
-                assemblyWsRef.current.send(JSON.stringify({ terminate_session: true }));
+                // Cleanup happens in onclose handler
                 assemblyWsRef.current.close();
                 assemblyWsRef.current = null;
             }
-
-            setVoiceStatus("Tap to start speaking");
         } else {
-            // Start listening with AssemblyAI
-            setVoiceError(null);
-            setVoiceStatus("Connecting...");
-
-            try {
-                // Get temporary token from our backend
-                const tokenRes = await fetch("/api/speech/token");
-                if (!tokenRes.ok) {
-                    throw new Error("Failed to get speech token");
-                }
-                const { token } = await tokenRes.json();
-                console.log("[AssemblyAI] Got temporary token");
-
-                // Build audio constraints with selected device
-                const constraints: MediaStreamConstraints = {
-                    audio: selectedDeviceId
-                        ? {
-                            deviceId: { exact: selectedDeviceId },
-                            sampleRate: 16000,
-                            channelCount: 1,
-                            echoCancellation: true,
-                            noiseSuppression: true
-                        }
-                        : {
-                            sampleRate: 16000,
-                            channelCount: 1,
-                            echoCancellation: true,
-                            noiseSuppression: true
-                        }
-                };
-
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                console.log("[AssemblyAI] Got microphone stream");
-
-                // Connect to AssemblyAI v3 Universal Streaming WebSocket
-                const ws = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&encoding=pcm_s16le&token=${token}`);
-                assemblyWsRef.current = ws;
-
-                let currentTranscript = "";
-
-                ws.onopen = () => {
-                    console.log("[AssemblyAI] WebSocket connected");
-                    setIsListening(true);
-                    setVoiceStatus("Listening...");
-
-                    // Use Web Audio API for PCM16 capture (AssemblyAI requires PCM16)
-                    const audioContext = new AudioContext({ sampleRate: 16000 });
-                    const source = audioContext.createMediaStreamSource(stream);
-                    const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-                    // Helper function to convert Float32 to Int16 PCM
-                    const float32ToInt16 = (float32Array: Float32Array): Int16Array => {
-                        const int16Array = new Int16Array(float32Array.length);
-                        for (let i = 0; i < float32Array.length; i++) {
-                            const s = Math.max(-1, Math.min(1, float32Array[i]));
-                            int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                        }
-                        return int16Array;
-                    };
-
-                    // Helper function to convert ArrayBuffer to base64
-                    const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-                        let binary = '';
-                        const bytes = new Uint8Array(buffer);
-                        for (let i = 0; i < bytes.byteLength; i++) {
-                            binary += String.fromCharCode(bytes[i]);
-                        }
-                        return btoa(binary);
-                    };
-
-                    processor.onaudioprocess = (e) => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            const inputData = e.inputBuffer.getChannelData(0);
-                            const pcmData = float32ToInt16(inputData);
-                            // Send raw binary PCM16 audio data
-                            ws.send(pcmData.buffer);
-                        }
-                    };
-
-                    source.connect(processor);
-                    processor.connect(audioContext.destination);
-
-                    // Store refs for cleanup
-                    (ws as any)._audioContext = audioContext;
-                    (ws as any)._processor = processor;
-                };
-
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    console.log("[AssemblyAI] Message:", data.type || data.message_type);
-
-                    // Handle v3 Turn events
-                    if (data.type === 'Turn' || data.message_type === 'Turn') {
-                        // Turn object contains transcript and end_of_turn flag
-                        const transcript = data.transcript || '';
-                        if (transcript) {
-                            setCurrentUserSpeech(transcript);
-                            if (data.end_of_turn) {
-                                currentTranscript = transcript;
-                            }
-                        }
-                    } else if (data.type === 'Begin' || data.message_type === 'Begin') {
-                        console.log("[AssemblyAI] Session started:", data.id);
-                    } else if (data.type === 'Termination' || data.message_type === 'Termination') {
-                        console.log("[AssemblyAI] Session terminated");
-                        if (currentTranscript.trim()) {
-                            handleVoiceInput(currentTranscript.trim());
-                        }
-                    }
-                    // Also handle v2 message types for backward compatibility
-                    else if (data.message_type === 'PartialTranscript') {
-                        setCurrentUserSpeech(data.text);
-                    } else if (data.message_type === 'FinalTranscript') {
-                        if (data.text?.trim()) {
-                            currentTranscript += (currentTranscript ? " " : "") + data.text;
-                            setCurrentUserSpeech(currentTranscript);
-                        }
-                    } else if (data.message_type === 'SessionTerminated') {
-                        console.log("[AssemblyAI] Session terminated");
-                        if (currentTranscript.trim()) {
-                            handleVoiceInput(currentTranscript.trim());
-                        }
-                    }
-                };
-
-                ws.onerror = (error) => {
-                    console.error("[AssemblyAI] WebSocket error:", error);
-                    setVoiceError("Speech recognition error. Try again.");
-                    setIsListening(false);
-                };
-
-                ws.onclose = () => {
-                    console.log("[AssemblyAI] WebSocket closed");
-                    // Stop media recorder if still running
-                    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                        mediaRecorderRef.current.stop();
-                    }
-                    // Stop media stream
-                    stream.getTracks().forEach(track => track.stop());
-
-                    // If we have accumulated transcript and session wasn't terminated by server, send it
-                    if (currentTranscript.trim() && isListening) {
-                        handleVoiceInput(currentTranscript.trim());
-                    }
-                };
-
-            } catch (err: any) {
-                console.error("[Oracle] Microphone/AssemblyAI error:", err);
-                setVoiceError(err.message || 'Unable to start voice recognition.');
-                setShowDeviceSelector(true);
-                setIsListening(false);
-                setVoiceStatus("Tap to start speaking");
-            }
+            // Start listening using our startListening function
+            startListening();
         }
-    }, [isListening, selectedDeviceId]);
+    }, [isListening, selectedDeviceId, isSpeaking, isProcessing]);
 
     const handleTextSubmit = (e: React.FormEvent) => {
         e.preventDefault();
