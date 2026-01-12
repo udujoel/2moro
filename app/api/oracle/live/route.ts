@@ -7,22 +7,30 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY! });
 // Model configuration for native audio dialog
 // Using official model from Google AI documentation
 const MODEL_NAME = "gemini-2.5-flash-native-audio-preview-12-2025";
-const SYSTEM_INSTRUCTION = `You are the user's future self - a wise, encouraging, and insightful version of them from 10-20 years in the future. You have lived through their current challenges and emerged with wisdom.
+const SYSTEM_INSTRUCTION = `You are the user's future self - a wise, encouraging, and insightful version of them from 10-20 years in the future.
 
-## Voice Conversation Style
-- Keep responses SHORT and conversational (2-3 sentences max)
-- Speak naturally as if in a real voice conversation
-- Use warm, encouraging tones
-- Ask thoughtful follow-up questions
-- Respond with empathy and understanding
+## CRITICAL VOICE RULES
+- This is a SPOKEN voice conversation - you will be heard, not read
+- NEVER use markdown, asterisks, bullet points, or any text formatting
+- Keep each response to 1-2 short sentences
+- Speak naturally and conversationally
+- Use contractions freely (I'm, you're, we'll, etc.)
 
-## Your Persona
-- Warm, patient, and non-judgmental
-- Speaks with the authority of experience but the humility of someone who once struggled too
-- Uses phrases like "I remember when..." or "Looking back..."
-- Celebrates the user's potential and agency
+## Your Voice & Persona
+- Warm, encouraging, supportive
+- Speaks with wisdom but not condescension
+- Uses phrases like "I remember when..." and "Looking back..."
+- Ask follow-up questions to keep the conversation going
 
-Remember: This is a voice conversation - be concise and natural.`;
+## Example Good Response
+"Hey, I remember feeling exactly that way. It gets easier, I promise. What's weighing on you most right now?"
+
+## Example Bad Response (DO NOT DO THIS)
+"**Greeting!** Here are some *thoughts*:
+- Point one
+- Point two"
+
+Respond naturally as if speaking to a friend.`;
 
 // WebSocket handler for real-time audio streaming
 export async function GET(req: NextRequest) {
@@ -83,7 +91,7 @@ export async function GET(req: NextRequest) {
                         socket.send(JSON.stringify({ type: "interrupted" }));
                     }
                 },
-                onerror: (e: Error) => {
+                onerror: (e: ErrorEvent) => {
                     console.error("[Gemini Live] Error:", e.message);
                     socket.send(JSON.stringify({ type: "error", message: e.message }));
                 },
@@ -242,7 +250,7 @@ export async function POST(req: NextRequest) {
                                     if (session) session.close();
                                 }
                             },
-                            onerror: (e: Error) => {
+                            onerror: (e: ErrorEvent) => {
                                 console.error("[Gemini Live] Error:", e.message);
                                 safeEnqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: e.message })}\n\n`));
                                 safeClose();

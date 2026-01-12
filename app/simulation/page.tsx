@@ -40,6 +40,19 @@ const TypewriterText = ({ text }: { text: string }) => {
     return <span>{displayedText}</span>;
 };
 
+// Helper to strip markdown formatting from text responses
+const stripMarkdown = (text: string): string => {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
+        .replace(/\*(.*?)\*/g, '$1')     // Italic
+        .replace(/`(.*?)`/g, '$1')       // Code
+        .replace(/^#+\s*/gm, '')         // Headers
+        .replace(/^[-*]\s+/gm, '')       // Lists
+        .replace(/^\d+\.\s+/gm, '')      // Numbered lists
+        .replace(/\n+/g, ' ')            // Multiple newlines to space
+        .trim();
+};
+
 export default function OraclePage() {
     const [activeView, setActiveView] = useState<"landing" | "chat" | "vision" | "voice">("landing");
     const [recentConversations, setRecentConversations] = useState<ConversationItem[]>([]);
@@ -197,11 +210,14 @@ export default function OraclePage() {
                 recognition.onerror = (event: any) => {
                     // Handle different error types
                     if (event.error === 'network') {
-                        console.warn("[Oracle] Speech recognition network error - using text input");
-                        setVoiceError('Voice recognition unavailable. Please use text input.');
+                        // Network error is common - just log and continue with text input
+                        console.warn("[Oracle] Speech recognition network error - text input available");
+                        // Show a brief warning that auto-dismisses
+                        setVoiceError('Voice-to-text unavailable. Use text input below.');
+                        setTimeout(() => setVoiceError(null), 4000);
                         setIsListening(false);
                     } else if (event.error === 'not-allowed') {
-                        setVoiceError('Microphone access denied');
+                        setVoiceError('Microphone access denied. Check browser permissions.');
                         setIsListening(false);
                     } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
                         console.error("[Oracle] Speech recognition error:", event.error);
@@ -335,10 +351,12 @@ export default function OraclePage() {
             }
 
             // Add assistant entry with transcript or placeholder
+            // Clean up any markdown formatting from the response
+            const cleanedResponse = textResponse ? stripMarkdown(textResponse) : "[Audio response]";
             const assistantEntry: TranscriptEntry = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: textResponse || "[Audio response played]",
+                content: cleanedResponse,
             };
             setTranscript(prev => [...prev, assistantEntry]);
 

@@ -86,7 +86,7 @@ export class GeminiLiveClient {
                 // Convert Float32 to Int16 PCM
                 const pcmData = this.float32ToInt16(inputData);
                 // Convert to base64
-                const base64 = this.arrayBufferToBase64(pcmData.buffer);
+                const base64 = this.arrayBufferToBase64(pcmData.buffer as ArrayBuffer);
 
                 // Send audio chunk
                 this.sendAudioChunk(base64);
