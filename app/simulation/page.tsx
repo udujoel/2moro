@@ -263,102 +263,37 @@ export default function OraclePage() {
         setVoiceStatus("Oracle is thinking...");
 
         try {
-            // Use the Live API for native audio streaming
-            const response = await fetch("/api/oracle/live", {
+            // Use the reliable chat API for text-based responses
+            // Build messages array for the chat API
+            const messages = [
+                ...transcript.map(t => ({ role: t.role, content: t.content })),
+                { role: "user", content: text }
+            ];
+
+            const response = await fetch("/api/oracle/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text })
+                body: JSON.stringify({ messages })
             });
 
             if (!response.ok) throw new Error("Failed to get response");
 
-            // Process SSE stream for audio
-            const reader = response.body?.getReader();
-            if (!reader) throw new Error("No response stream");
+            // Get text response from chat API
+            const textResponse = await response.text();
 
-            const audioContext = new AudioContext({ sampleRate: 24000 });
-            const audioChunks: ArrayBuffer[] = [];
-            let textResponse = "";
-
-            setIsSpeaking(true);
-            setVoiceStatus("Oracle is speaking...");
-
-            // Read the stream
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const text = new TextDecoder().decode(value);
-                const lines = text.split("\n");
-
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-
-                            if (data.type === "audio" && data.data) {
-                                // Decode base64 to ArrayBuffer
-                                const binaryString = atob(data.data);
-                                const bytes = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    bytes[i] = binaryString.charCodeAt(i);
-                                }
-                                audioChunks.push(bytes.buffer);
-                            } else if (data.type === "text" && data.data) {
-                                textResponse += data.data;
-                            } else if (data.type === "complete") {
-                                console.log("[Oracle] Stream complete");
-                            } else if (data.type === "error") {
-                                throw new Error(data.message);
-                            }
-                        } catch (e) {
-                            // Ignore JSON parse errors for incomplete lines
-                        }
-                    }
-                }
-            }
-
-            // Play all audio chunks
-            if (audioChunks.length > 0) {
-                // Combine all chunks
-                const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
-                const combined = new Uint8Array(totalLength);
-                let offset = 0;
-                for (const chunk of audioChunks) {
-                    combined.set(new Uint8Array(chunk), offset);
-                    offset += chunk.byteLength;
-                }
-
-                // Convert Int16 PCM to Float32
-                const int16Array = new Int16Array(combined.buffer);
-                const float32Array = new Float32Array(int16Array.length);
-                for (let i = 0; i < int16Array.length; i++) {
-                    float32Array[i] = int16Array[i] / 32768;
-                }
-
-                // Create and play audio buffer
-                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
-                audioBuffer.getChannelData(0).set(float32Array);
-
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.onended = () => {
-                    setIsSpeaking(false);
-                    setVoiceStatus(isListening ? "Listening..." : "Tap to start speaking");
-                };
-                source.start();
-            }
-
-            // Add assistant entry with transcript or placeholder
             // Clean up any markdown formatting from the response
-            const cleanedResponse = textResponse ? stripMarkdown(textResponse) : "[Audio response]";
+            const cleanedResponse = stripMarkdown(textResponse);
+
+            // Add assistant entry with the text response
             const assistantEntry: TranscriptEntry = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
                 content: cleanedResponse,
             };
             setTranscript(prev => [...prev, assistantEntry]);
+
+            // Speak the response using browser TTS
+            speakResponse(cleanedResponse);
 
         } catch (error: any) {
             console.error("[Oracle] Voice input error:", error);
