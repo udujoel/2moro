@@ -40,9 +40,23 @@ const TypewriterText = ({ text }: { text: string }) => {
     return <span>{displayedText}</span>;
 };
 
-// Helper to strip markdown formatting from text responses
+// Helper to strip markdown formatting and meta-reasoning from text responses
 const stripMarkdown = (text: string): string => {
-    return text
+    // First, remove meta-reasoning patterns (internal model thoughts)
+    let cleaned = text
+        // Remove common meta-reasoning sentence starters
+        .replace(/^(I'm thinking about|I'm considering|Analyzing|Defining|Addressing|Acknowledging|Embracing|Focusing on|Looking at|Let me think|Thinking about|I want to|I need to|Now I'll|First I'll).*?[.!?]\s*/gim, '')
+        // Remove blocks that look like internal reasoning (capitalized titles)
+        .replace(/^[A-Z][a-zA-Z\s]+(?:ing|tion|ness|ment)[\s:]+.*?[.!?]\s*/gm, '')
+        // Remove "I'm [verb]ing..." patterns at start of sentences
+        .replace(/(?:^|\.\s+)I'm\s+\w+ing\s+(about|how|what|the|a|an)\s+[^.!?]+[.!?]\s*/gi, '. ')
+        // Remove meta sentences about framing/structuring response
+        .replace(/(?:^|\.\s+)(?:I'll|I will|Let me|I should)\s+(?:start|begin|frame|structure|focus|try|address|respond).*?[.!?]\s*/gi, '. ')
+        // Remove quotes around internal thought expressions
+        .replace(/"[^"]*(?:I'm|I'll|I want to|thinking|focusing)[^"]*"/gi, '');
+
+    // Then apply standard markdown stripping
+    return cleaned
         .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
         .replace(/\*(.*?)\*/g, '$1')     // Italic
         .replace(/`(.*?)`/g, '$1')       // Code
@@ -50,6 +64,8 @@ const stripMarkdown = (text: string): string => {
         .replace(/^[-*]\s+/gm, '')       // Lists
         .replace(/^\d+\.\s+/gm, '')      // Numbered lists
         .replace(/\n+/g, ' ')            // Multiple newlines to space
+        .replace(/\s{2,}/g, ' ')         // Multiple spaces to single
+        .replace(/^\.\s+/, '')           // Leading period
         .trim();
 };
 
@@ -212,42 +228,164 @@ export default function OraclePage() {
         setIsProcessing(true);
         setVoiceStatus("Oracle is thinking...");
 
-        try {
-            // Use the chat API for clean text responses (no meta-reasoning)
-            const messages = [
-                ...transcript.map(t => ({ role: t.role, content: t.content })),
-                { role: "user", content: text }
-            ];
+        // Create initial assistant entry for streaming updates
+        const assistantId = (Date.now() + 1).toString();
+        let fullText = "";
+        let lastChunkIndex = 0;
 
-            const response = await fetch("/api/oracle/chat", {
+        try {
+            // Use Gemini Live API for natural AI voice + streaming text
+            const response = await fetch("/api/oracle/live", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ messages })
+                body: JSON.stringify({ text })
             });
 
             if (!response.ok) throw new Error("Failed to get response");
 
-            // Get text response
-            const textResponse = await response.text();
-            const cleanedResponse = stripMarkdown(textResponse);
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("No response stream");
 
-            // Add assistant entry
-            const assistantEntry: TranscriptEntry = {
-                id: (Date.now() + 1).toString(),
-                role: "assistant",
-                content: cleanedResponse,
-            };
-            setTranscript(prev => [...prev, assistantEntry]);
+            // Set up audio playback
+            const audioContext = new AudioContext({ sampleRate: 24000 });
+            const audioChunks: ArrayBuffer[] = [];
 
-            // Speak the response using browser TTS
-            speakResponse(cleanedResponse, autoResume);
+            setIsSpeaking(true);
+            setVoiceStatus("Oracle is speaking...");
+
+            // Add initial empty assistant entry
+            setTranscript(prev => [...prev, { id: assistantId, role: "assistant", content: "..." }]);
+
+            // Read SSE stream
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split("\n");
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === "audio" && data.data) {
+                                // Decode base64 to ArrayBuffer
+                                const binaryString = atob(data.data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                audioChunks.push(bytes.buffer);
+                            } else if (data.type === "text" && data.data) {
+                                fullText += data.data;
+
+                                // Update transcript with accumulated text
+                                const cleanedText = stripMarkdown(fullText);
+                                setTranscript(prev =>
+                                    prev.map(entry =>
+                                        entry.id === assistantId
+                                            ? { ...entry, content: cleanedText }
+                                            : entry
+                                    )
+                                );
+
+                                // Chunk on sentence boundaries for visual effect
+                                const sentences = cleanedText.split(/(?<=[.!?])\s+/);
+                                if (sentences.length > lastChunkIndex + 2 && sentences.length > 2) {
+                                    const completedChunk = sentences.slice(lastChunkIndex, sentences.length - 1).join(" ");
+                                    if (completedChunk.trim()) {
+                                        setTranscript(prev =>
+                                            prev.map(entry =>
+                                                entry.id === assistantId
+                                                    ? { ...entry, content: completedChunk }
+                                                    : entry
+                                            )
+                                        );
+                                        const newAssistantId = (Date.now() + 100 + sentences.length).toString();
+                                        setTranscript(prev => [...prev, {
+                                            id: newAssistantId,
+                                            role: "assistant",
+                                            content: sentences[sentences.length - 1]
+                                        }]);
+                                        lastChunkIndex = sentences.length - 1;
+                                    }
+                                }
+                            } else if (data.type === "complete") {
+                                console.log("[Oracle] Stream complete");
+                            } else if (data.type === "error") {
+                                throw new Error(data.message);
+                            }
+                        } catch (e) {
+                            // Ignore JSON parse errors
+                        }
+                    }
+                }
+            }
+
+            // Final update with complete text
+            const finalText = stripMarkdown(fullText) || "I hear you. Let me think about that...";
+            setTranscript(prev =>
+                prev.map(entry =>
+                    entry.id === assistantId
+                        ? { ...entry, content: finalText }
+                        : entry
+                )
+            );
+
+            // Play all audio chunks
+            if (audioChunks.length > 0) {
+                const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
+                const combined = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const chunk of audioChunks) {
+                    combined.set(new Uint8Array(chunk), offset);
+                    offset += chunk.byteLength;
+                }
+
+                const int16Array = new Int16Array(combined.buffer);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768;
+                }
+
+                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+                audioBuffer.getChannelData(0).set(float32Array);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.onended = () => {
+                    setIsSpeaking(false);
+                    if (autoResume) {
+                        setVoiceStatus("Listening...");
+                        startListening();
+                    } else {
+                        setVoiceStatus("Tap to start speaking");
+                    }
+                };
+                source.start();
+            } else {
+                setIsSpeaking(false);
+                if (autoResume) {
+                    setTimeout(() => startListening(), 500);
+                } else {
+                    setVoiceStatus("Tap to start speaking");
+                }
+            }
 
         } catch (error: any) {
             console.error("[Oracle] Voice input error:", error);
             setVoiceError(error.message || "Failed to get response");
             setVoiceStatus("Error - try again");
             setIsSpeaking(false);
-            // Resume listening on error if autoResume was requested
+            setTranscript(prev =>
+                prev.map(entry =>
+                    entry.id === assistantId
+                        ? { ...entry, content: "Unable to generate AI content at this time. Please try again later." }
+                        : entry
+                )
+            );
             if (autoResume) {
                 setTimeout(() => startListening(), 1000);
             }
@@ -798,7 +936,7 @@ export default function OraclePage() {
                                                         </div>
 
                                                         {/* Right Section: Transcript & Input */}
-                                                        <div className="hidden md:flex flex-col justify-end py-12 pointer-events-auto border-l border-white/5 pl-12 h-full">
+                                                        <div className="hidden md:flex flex-col justify-end py-12 pointer-events-auto border-l border-white/5 pl-12 h-full max-h-[calc(100vh-100px)] overflow-hidden">
                                                             {/* Error Display (at top of chat) */}
                                                             {voiceError && (
                                                                 <motion.div
