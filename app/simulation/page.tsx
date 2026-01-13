@@ -1164,7 +1164,10 @@ export default function OraclePage() {
                                                     transition={{ type: "spring", bounce: 0, duration: 0.4 }}
                                                     className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-[#0a0a0f] border-l border-slate-800 z-50 flex flex-col shadow-2xl"
                                                 >
-                                                    <OracleChat onClose={() => setActiveView("landing")} />
+                                                    <OracleChat
+                                                        onClose={() => setActiveView("landing")}
+                                                        onMicClick={() => setActiveView("voice")}
+                                                    />
                                                 </motion.div>
                                             </>
                                         )}
