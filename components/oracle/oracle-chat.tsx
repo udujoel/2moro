@@ -14,12 +14,10 @@ interface Message {
     images?: string[];
 }
 
-const INITIAL_GREETING = {
-    title: "Welcome, traveler",
-    content: `I am the version of you that exists beyond this moment — shaped by the choices you're about to make and the wisdom you'll gather along the way.
-
-I'm here not to give you answers, but to help you discover them. What's weighing on your mind today?`
-};
+const getInitialGreeting = (userName: string) => ({
+    title: `Hey ${userName}!`,
+    content: `Hey ${userName}! What's on your mind?`
+});
 
 interface OracleChatProps {
     onClose?: () => void;
@@ -27,11 +25,13 @@ interface OracleChatProps {
 
 export function OracleChat({ onClose }: OracleChatProps) {
     const { user } = useUser();
+    const userName = user?.name?.split(" ")[0] || "there";
+
     const [messages, setMessages] = useState<Message[]>([
         {
             id: "initial",
             role: "assistant",
-            content: INITIAL_GREETING.content,
+            content: getInitialGreeting(userName).content,
             timestamp: new Date(),
         },
     ]);
@@ -42,6 +42,35 @@ export function OracleChat({ onClose }: OracleChatProps) {
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // Save conversation to database
+    const saveConversation = async () => {
+        if (!user?.id || messages.length <= 1) return; // Don't save if only initial message
+
+        try {
+            await fetch("/api/oracle/conversations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: user.id,
+                    type: "text",
+                    messages: messages.map(m => ({
+                        role: m.role,
+                        content: m.content,
+                        timestamp: m.timestamp.toISOString()
+                    }))
+                })
+            });
+        } catch (error) {
+            console.error("[OracleChat] Failed to save conversation:", error);
+        }
+    };
+
+    // Save when closing
+    const handleClose = async () => {
+        await saveConversation();
+        onClose?.();
     };
 
     useEffect(() => {
@@ -144,7 +173,7 @@ export function OracleChat({ onClose }: OracleChatProps) {
                 <div className="flex items-center gap-3">
                     {onClose && (
                         <button
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors"
                         >
                             <ChevronLeft className="w-6 h-6" />

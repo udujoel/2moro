@@ -101,6 +101,11 @@ export default function OraclePage() {
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
     const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
+    // Future vision state
+    const [futureVision, setFutureVision] = useState<string | null>(null);
+    const [isLoadingVision, setIsLoadingVision] = useState(false);
+    const [visionError, setVisionError] = useState<string | null>(null);
+
     // Auto-scroll to bottom of transcript
     useEffect(() => {
         transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -597,7 +602,33 @@ export default function OraclePage() {
         }
     };
 
-    const exitVoiceMode = () => {
+    // Save voice conversation to database
+    const saveVoiceConversation = async () => {
+        if (!user?.id || transcript.length === 0) return;
+
+        try {
+            await fetch("/api/oracle/conversations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: user.id,
+                    type: "voice",
+                    messages: transcript.map(t => ({
+                        role: t.role,
+                        content: t.content,
+                        timestamp: new Date().toISOString()
+                    }))
+                })
+            });
+        } catch (error) {
+            console.error("[VoiceMode] Failed to save conversation:", error);
+        }
+    };
+
+    const exitVoiceMode = async () => {
+        // Save conversation before exiting
+        await saveVoiceConversation();
+
         // Stop AssemblyAI and MediaRecorder
         if (assemblyWsRef.current) {
             assemblyWsRef.current.close();
@@ -615,6 +646,32 @@ export default function OraclePage() {
         setTranscript([]);
         setCurrentUserSpeech("");
         setActiveView("landing");
+    };
+
+    // Generate AI-powered future vision
+    const generateFutureVision = async () => {
+        if (!user?.id) return;
+
+        setIsLoadingVision(true);
+        setVisionError(null);
+
+        try {
+            const response = await fetch("/api/oracle/future", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: user.id, yearsAhead: 20 })
+            });
+
+            if (!response.ok) throw new Error("Failed to generate vision");
+
+            const data = await response.json();
+            setFutureVision(data.vision);
+        } catch (error: any) {
+            console.error("[Vision] Error:", error);
+            setVisionError(error.message || "Failed to generate future vision");
+        } finally {
+            setIsLoadingVision(false);
+        }
     };
 
     const formatTimeAgo = (date: Date) => {
@@ -683,20 +740,69 @@ export default function OraclePage() {
                                             <p className="text-sm text-slate-500">AI-powered timeline projection</p>
                                         </div>
                                     </div>
-                                    <div className="flex-1 bg-[#12121a] border border-slate-800/40 rounded-3xl flex items-center justify-center p-8">
-                                        <div className="text-center max-w-lg">
-                                            <div className="w-24 h-24 rounded-3xl bg-purple-500/10 flex items-center justify-center mx-auto mb-6 border border-purple-500/20">
-                                                <Eye className="w-10 h-10 text-purple-400" />
+                                    <div className="flex-1 bg-[#12121a] border border-slate-800/40 rounded-3xl overflow-hidden">
+                                        {futureVision ? (
+                                            // Vision has been generated
+                                            <div className="h-full overflow-y-auto p-8">
+                                                <div className="max-w-3xl mx-auto">
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center border border-purple-500/20">
+                                                            <Eye className="w-6 h-6 text-purple-400" />
+                                                        </div>
+                                                        <div>
+                                                            <h2 className="text-xl font-bold text-white">Your Future Self</h2>
+                                                            <p className="text-sm text-slate-500">20 years from now</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="prose prose-invert prose-purple max-w-none">
+                                                        <p className="text-slate-200 leading-relaxed whitespace-pre-wrap text-lg">
+                                                            {futureVision}
+                                                        </p>
+                                                    </div>
+                                                    <div className="mt-8 flex gap-4">
+                                                        <button
+                                                            onClick={() => setFutureVision(null)}
+                                                            className="px-6 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white transition-all"
+                                                        >
+                                                            Generate New Vision
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <h2 className="text-3xl font-bold mb-4">Vision Module</h2>
-                                            <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-                                                Upload a photo to generate a scientifically grounded projection of your appearance 20 years from now.
-                                            </p>
-                                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 text-purple-400 text-sm font-medium border border-purple-500/20">
-                                                <Sparkles className="w-4 h-4" />
-                                                Currently under development
+                                        ) : (
+                                            // Initial state - prompt to generate
+                                            <div className="h-full flex items-center justify-center p-8">
+                                                <div className="text-center max-w-lg">
+                                                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 flex items-center justify-center mx-auto mb-6 border border-purple-500/20">
+                                                        <Eye className="w-10 h-10 text-purple-400" />
+                                                    </div>
+                                                    <h2 className="text-3xl font-bold mb-4">Glimpse Your Future</h2>
+                                                    <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                                                        Based on your memories, personality, and goals, I'll paint a vivid picture of your life 20 years from now.
+                                                    </p>
+                                                    {visionError && (
+                                                        <p className="text-red-400 text-sm mb-4">{visionError}</p>
+                                                    )}
+                                                    <button
+                                                        onClick={generateFutureVision}
+                                                        disabled={isLoadingVision}
+                                                        className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold text-lg shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 mx-auto"
+                                                    >
+                                                        {isLoadingVision ? (
+                                                            <>
+                                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                                Peering into the future...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles className="w-5 h-5" />
+                                                                See My Future
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             ) : (
@@ -714,7 +820,7 @@ export default function OraclePage() {
                                             {getGreeting()}, {user?.name?.split(" ")[0] || "Susan"} ✨
                                         </p>
                                         <h1 className="text-3xl md:text-4xl font-bold mb-8 mt-4 tracking-tight">
-                                            What can I do for you today?!
+                                            How's it going?
                                         </h1>
 
                                         {/* Main Cards Row */}
@@ -811,9 +917,9 @@ export default function OraclePage() {
                                                     recentConversations.slice(0, showAllRecent ? undefined : 3).map((conv, index) => {
                                                         const { Icon, colorClass, bgClass } = getIconForType(conv.type, index);
                                                         return (
-                                                            <button
+                                                            <Link
                                                                 key={conv.id}
-                                                                onClick={() => setActiveView("chat")}
+                                                                href={`/oracle/session/${conv.id}`}
                                                                 className="flex flex-col justify-between p-5 rounded-2xl bg-[#12121a] border border-slate-800/30 hover:bg-[#16161f] transition-all text-left group h-36"
                                                             >
                                                                 <div className="flex justify-between items-start">
@@ -827,7 +933,7 @@ export default function OraclePage() {
                                                                 <div>
                                                                     <p className="text-sm font-medium line-clamp-2 text-slate-200 group-hover:text-white transition-colors">{conv.summary}</p>
                                                                 </div>
-                                                            </button>
+                                                            </Link>
                                                         );
                                                     })
                                                 ) : (
