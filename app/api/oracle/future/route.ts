@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import { prisma } from "@/lib/db";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY || "" });
+import { generateContentWithFallback } from "@/lib/ai";
 
 /**
  * POST /api/oracle/future
@@ -76,12 +74,7 @@ Create an inspiring, detailed vision of their life ${yearsAhead} years from now.
 Write in second person ("You wake up to..."). Be specific, warm, and inspiring.
 Keep it around 250-300 words. Make it feel like a gift of hope and possibility.`;
 
-        const response = await ai.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: prompt
-        });
-
-        const futureVision = response.text || "Unable to generate vision at this time.";
+        const futureVision = await generateContentWithFallback(prompt);
 
         return NextResponse.json({
             success: true,
@@ -94,3 +87,4 @@ Keep it around 250-300 words. Make it feel like a gift of hope and possibility.`
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
