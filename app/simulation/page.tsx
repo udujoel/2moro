@@ -102,9 +102,14 @@ export default function OraclePage() {
     const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
     // Future vision state
-    const [futureVision, setFutureVision] = useState<string | null>(null);
+    const [futureData, setFutureData] = useState<{
+        scenarios: any[];
+        wisdomContent: string;
+        createdAt: string;
+    } | null>(null);
     const [isLoadingVision, setIsLoadingVision] = useState(false);
     const [visionError, setVisionError] = useState<string | null>(null);
+    const [selectedScenario, setSelectedScenario] = useState<number>(1); // 0=optimistic, 1=current, 2=warning
 
     // Auto-scroll to bottom of transcript
     useEffect(() => {
@@ -133,6 +138,13 @@ export default function OraclePage() {
             }
         }
         fetchRecent();
+    }, [activeView]);
+
+    // Fetch existing vision when entering vision view
+    useEffect(() => {
+        if (activeView === "vision" && !futureData && !isLoadingVision) {
+            fetchExistingVision();
+        }
     }, [activeView]);
 
     // Initialize Gemini Live client and load audio devices
@@ -648,7 +660,28 @@ export default function OraclePage() {
         setActiveView("landing");
     };
 
-    // Generate AI-powered future vision
+    // Fetch existing future visualization on vision view open
+    const fetchExistingVision = async () => {
+        if (!user?.id) return;
+
+        try {
+            const response = await fetch(`/api/oracle/future/generate?userId=${user.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.exists) {
+                    setFutureData({
+                        scenarios: data.scenarios,
+                        wisdomContent: data.wisdomContent,
+                        createdAt: data.createdAt
+                    });
+                }
+            }
+        } catch (error) {
+            console.log("No existing vision found");
+        }
+    };
+
+    // Generate AI-powered future vision with 3 scenarios
     const generateFutureVision = async () => {
         if (!user?.id) return;
 
@@ -656,7 +689,7 @@ export default function OraclePage() {
         setVisionError(null);
 
         try {
-            const response = await fetch("/api/oracle/future", {
+            const response = await fetch("/api/oracle/future/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: user.id, yearsAhead: 20 })
@@ -665,7 +698,11 @@ export default function OraclePage() {
             if (!response.ok) throw new Error("Failed to generate vision");
 
             const data = await response.json();
-            setFutureVision(data.vision);
+            setFutureData({
+                scenarios: data.scenarios,
+                wisdomContent: data.wisdomContent,
+                createdAt: data.createdAt
+            });
         } catch (error: any) {
             console.error("[Vision] Error:", error);
             setVisionError(error.message || "Failed to generate future vision");
@@ -741,32 +778,94 @@ export default function OraclePage() {
                                         </div>
                                     </div>
                                     <div className="flex-1 bg-[#12121a] border border-slate-800/40 rounded-3xl overflow-hidden">
-                                        {futureVision ? (
-                                            // Vision has been generated
-                                            <div className="h-full overflow-y-auto p-8">
-                                                <div className="max-w-3xl mx-auto">
-                                                    <div className="flex items-center gap-3 mb-6">
-                                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center border border-purple-500/20">
-                                                            <Eye className="w-6 h-6 text-purple-400" />
-                                                        </div>
-                                                        <div>
-                                                            <h2 className="text-xl font-bold text-white">Your Future Self</h2>
-                                                            <p className="text-sm text-slate-500">20 years from now</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="prose prose-invert prose-purple max-w-none">
-                                                        <p className="text-slate-200 leading-relaxed whitespace-pre-wrap text-lg">
-                                                            {futureVision}
+                                        {futureData ? (
+                                            // Vision has been generated - show 3 scenarios
+                                            <div className="h-full overflow-y-auto">
+                                                {/* Scenario Tabs */}
+                                                <div className="sticky top-0 bg-[#12121a] border-b border-slate-800/40 p-4 z-10">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <p className="text-xs text-slate-500">
+                                                            Last glimpsed: {new Date(futureData.createdAt).toLocaleDateString()}
                                                         </p>
-                                                    </div>
-                                                    <div className="mt-8 flex gap-4">
                                                         <button
-                                                            onClick={() => setFutureVision(null)}
-                                                            className="px-6 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white transition-all"
+                                                            onClick={() => { setFutureData(null); generateFutureVision(); }}
+                                                            className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
                                                         >
-                                                            Generate New Vision
+                                                            <Sparkles className="w-3 h-3" /> Re-simulate
                                                         </button>
                                                     </div>
+                                                    <div className="flex gap-2">
+                                                        {futureData.scenarios.map((scenario: any, idx: number) => (
+                                                            <button
+                                                                key={idx}
+                                                                onClick={() => setSelectedScenario(idx)}
+                                                                className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all ${selectedScenario === idx
+                                                                        ? idx === 0 ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                                                            : idx === 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                                                                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                                                        : "bg-slate-800/50 text-slate-400 hover:bg-slate-800"
+                                                                    }`}
+                                                            >
+                                                                {idx === 0 ? "✨ Optimistic" : idx === 1 ? "📊 Current" : "⚠️ Warning"}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Selected Scenario Content */}
+                                                <div className="p-6">
+                                                    {futureData.scenarios[selectedScenario] && (
+                                                        <div className="space-y-6">
+                                                            {/* Scenario Header */}
+                                                            <div>
+                                                                <h2 className="text-2xl font-bold mb-2">{futureData.scenarios[selectedScenario].title}</h2>
+                                                                <p className="text-slate-400">{futureData.scenarios[selectedScenario].description}</p>
+                                                            </div>
+
+                                                            {/* Narrative */}
+                                                            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/5 to-indigo-500/5 border border-purple-500/20">
+                                                                <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                                                    {futureData.scenarios[selectedScenario].narrative}
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Life Path Breakdowns */}
+                                                            <div>
+                                                                <h3 className="text-lg font-semibold mb-4 text-slate-300">Life Path Breakdown</h3>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                    {futureData.scenarios[selectedScenario].lifePaths?.map((path: any, pathIdx: number) => (
+                                                                        <div key={pathIdx} className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30">
+                                                                            <div className="flex items-center justify-between mb-2">
+                                                                                <span className="text-lg">{path.icon} {path.category}</span>
+                                                                                <div className="flex items-center gap-1">
+                                                                                    {[...Array(10)].map((_, i) => (
+                                                                                        <div
+                                                                                            key={i}
+                                                                                            className={`w-1.5 h-4 rounded-full ${i < path.score
+                                                                                                    ? path.score >= 7 ? "bg-green-400" : path.score >= 5 ? "bg-blue-400" : "bg-amber-400"
+                                                                                                    : "bg-slate-700"
+                                                                                                }`}
+                                                                                        />
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                            <p className="text-xs text-slate-500 mb-1">Now: {path.current}</p>
+                                                                            <p className="text-sm text-slate-300">{path.projection}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Wisdom Content */}
+                                                            {futureData.wisdomContent && (
+                                                                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                                                                    <p className="text-sm text-amber-200/80 italic">
+                                                                        💫 {futureData.wisdomContent}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (
@@ -778,7 +877,7 @@ export default function OraclePage() {
                                                     </div>
                                                     <h2 className="text-3xl font-bold mb-4">Glimpse Your Future</h2>
                                                     <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-                                                        Based on your memories, personality, and goals, I'll paint a vivid picture of your life 20 years from now.
+                                                        Based on your memories, personality, and goals, I'll show you 3 possible futures 20 years from now.
                                                     </p>
                                                     {visionError && (
                                                         <p className="text-red-400 text-sm mb-4">{visionError}</p>

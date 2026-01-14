@@ -30,6 +30,7 @@ model User {
   userPreferences     UserPreferences?
   memorySuggestions   MemorySuggestion[]
   oracleConversations OracleConversation[]
+  futureVisualizations FutureVisualization[]
 }
 
 model OracleConversation {
@@ -251,4 +252,28 @@ model MemorySuggestion {
   
   @@index([userId, expiresAt])
   @@index([generatedAt])
+}
+
+model FutureVisualization {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // User photo and generated images (for future use)
+  originalPhotoUrl String?
+  scenarioImages   Json?    // Array of 3 scenario image URLs
+  
+  // 3 Scenarios: optimistic, current, warning
+  scenarios        Json     // Array of 3 scenario objects with life path breakdowns
+  
+  // AI-generated narrative and wisdom
+  narrative        String?  @db.Text
+  wisdomContent    String?  @db.Text
+  
+  // Data snapshot used for generation
+  dataSnapshot     Json?
+  
+  createdAt        DateTime @default(now())
+  
+  @@index([userId, createdAt])
 }
