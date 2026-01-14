@@ -86,7 +86,7 @@ export function TopBar({ title = "My Profile" }: { title?: string }) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            className="absolute top-full mt-2 w-full bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-50 p-2"
+                            className="absolute top-full mt-2 w-full bg-card text-card-foreground border border-border rounded-2xl shadow-xl overflow-hidden z-50 p-2"
                         >
                             {results.length === 0 ? (
                                 <div className="p-4 text-center text-sm text-muted-foreground">

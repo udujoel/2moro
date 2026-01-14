@@ -69,12 +69,48 @@ Now respond as the user's future self. Be warm, wise, and use Socratic questioni
         console.log("[Oracle] Calling AI with smart router...");
 
         // Use the proven smart router from lib/ai.ts
-        const response = await generateContentWithSmartRouter(fullPrompt, 'smart');
+        const responseText = await generateContentWithSmartRouter(fullPrompt, 'smart');
 
-        console.log("[Oracle] Got response, length:", response.length);
+        console.log("[Oracle] Got response, length:", responseText.length);
+
+        // PERSISTENCE: Save conversation to database
+        if (userId) {
+            try {
+                // Find recent active conversation (last 30 mins) to append to
+                const recentConv = await prisma.oracleConversation.findFirst({
+                    where: {
+                        userId,
+                        updatedAt: { gt: new Date(Date.now() - 30 * 60 * 1000) }
+                    },
+                    orderBy: { updatedAt: "desc" }
+                });
+
+                const newMessages = [
+                    ...messages,
+                    { role: "assistant", content: responseText, timestamp: new Date().toISOString() }
+                ];
+
+                if (recentConv) {
+                    await prisma.oracleConversation.update({
+                        where: { id: recentConv.id },
+                        data: { messages: newMessages }
+                    });
+                } else {
+                    await prisma.oracleConversation.create({
+                        data: {
+                            userId,
+                            messages: newMessages,
+                            summary: messages[0]?.content?.slice(0, 50) || "New conversation"
+                        }
+                    });
+                }
+            } catch (dbError) {
+                console.error("[Oracle] Failed to persist conversation:", dbError);
+            }
+        }
 
         // Return as streaming-compatible text response
-        return new Response(response, {
+        return new Response(responseText, {
             headers: { "Content-Type": "text/plain; charset=utf-8" },
         });
 

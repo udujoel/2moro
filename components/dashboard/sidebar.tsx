@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 import {
     Compass, BookOpen, Play, Moon, Sun, Book, Sparkles, LayoutDashboard,
     PanelLeft, PanelLeftClose, Settings, LogOut, User, ChevronRight, Monitor
@@ -49,6 +50,8 @@ function Tooltip({ children, label, side = "right" }: {
     );
 }
 
+import { Logo } from "@/components/logo";
+
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -73,9 +76,9 @@ export function Sidebar({ className }: { className?: string }) {
         setShowProfileMenu(false);
     };
 
-    const handleLogout = () => {
-        // Navigate to home or implement logout logic
-        router.push("/");
+    const handleLogout = async () => {
+        setShowProfileMenu(false);
+        await signOut({ callbackUrl: "/login" });
     };
 
     return (
@@ -92,7 +95,7 @@ export function Sidebar({ className }: { className?: string }) {
                     <>
                         <Link href="/" className="flex items-center gap-3 flex-1 group">
                             <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                                <Play className="w-4 h-4 fill-primary" />
+                                <Logo className="w-5 h-5" />
                             </div>
                             <span className="font-bold text-lg whitespace-nowrap">2moro</span>
                         </Link>
@@ -239,7 +242,7 @@ export function Sidebar({ className }: { className?: string }) {
                 {showProfileMenu && (
                     <div
                         className={cn(
-                            "absolute bottom-full mb-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50",
+                            "absolute bottom-full mb-2 bg-card text-card-foreground border border-border rounded-xl shadow-xl overflow-hidden z-50",
                             isExpanded ? "left-0 right-0 mx-2" : "left-full ml-2 w-48"
                         )}
                     >

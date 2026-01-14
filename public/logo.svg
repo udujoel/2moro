@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logo-gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#8b5cf6" />
+            <stop offset="100%" stopColor="#c084fc" />
+        </linearGradient>
+    </defs>
+    <path
+        d="M6 8C6 5.79086 7.79086 4 10 4H18C20.2091 4 22 5.79086 22 8C22 10.2091 20.2091 12 18 12H12L22 24V28H6V24H16L6 12V8Z"
+        fill="url(#logo-gradient)"
+    />
+    <path
+        d="M24 16L28 20L24 24"
+        stroke="#c084fc"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+</svg>

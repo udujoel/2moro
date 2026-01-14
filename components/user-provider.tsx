@@ -2,11 +2,11 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { getOrCreateUser, updateUser } from "@/lib/actions";
-import { loginAction } from "@/app/actions/auth";
+import { useSession, signOut } from "next-auth/react";
+import { updateUser } from "@/lib/actions";
 
 interface User {
-    id: string; // Add ID for DB operations
+    id: string;
     name: string | null;
     email: string;
     title?: string | null;
@@ -18,9 +18,8 @@ interface User {
 
 interface UserContextType {
     user: User | null;
-    login: (name?: string, email?: string) => Promise<void>;
+    isLoading: boolean;
     logout: () => void;
-    // Helper to keep UI consistent, though strictly we use user object now
     profileImage: string | null;
     onboardingCompleted: boolean;
     completeOnboarding: () => void;
@@ -32,30 +31,59 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
+    const { data: session, status } = useSession();
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
-    const login = useCallback(async (name: string = "Tim Watson", email: string = "tim@2moro.app") => {
-        // Call Server Action
-        const dbUser = await loginAction(email, name);
-        if (dbUser) {
-            setUser(dbUser as User);
-            localStorage.setItem("userEmail", email);
-            if (dbUser.onboardingCompleted) {
-                // Router push handled by consumer or standard flow
-                // For direct login calls, let's ensure we are on dashboard if safe
-                if (window.location.pathname === "/login") {
-                    router.push("/dashboard");
-                }
+    // Fetch full user data from database when session changes
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (status === "loading") {
+                return;
             }
-        }
-    }, [router]);
 
-    const logout = () => {
-        // Disabled per user request
-        console.log("Logout is disabled.");
-        // Optional: Show a toast? For now, no-op.
-    };
+            if (status === "authenticated" && session?.user?.id) {
+                try {
+                    // Fetch full user data from database
+                    const response = await fetch(`/api/auth/user?id=${session.user.id}`);
+                    if (response.ok) {
+                        const userData = await response.json();
+                        setUser(userData);
+                    } else {
+                        // Fallback to session data
+                        setUser({
+                            id: session.user.id,
+                            email: session.user.email || "",
+                            name: session.user.name || null,
+                            avatar: session.user.image || null,
+                            onboardingCompleted: false,
+                        });
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch user data:", error);
+                    // Fallback to session data
+                    setUser({
+                        id: session.user.id,
+                        email: session.user.email || "",
+                        name: session.user.name || null,
+                        avatar: session.user.image || null,
+                        onboardingCompleted: false,
+                    });
+                }
+            } else {
+                setUser(null);
+            }
+
+            setIsLoading(false);
+        };
+
+        fetchUserData();
+    }, [session, status]);
+
+    const logout = useCallback(async () => {
+        await signOut({ callbackUrl: "/login" });
+    }, []);
 
     const completeOnboarding = async () => {
         if (!user) return;
@@ -65,9 +93,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     const resetOnboarding = async () => {
-        // We do NOT set onboardingCompleted to false in DB, 
-        // to preserve "Existing User" status for UI logic.
-        // We just redirect them to update their data.
         router.push("/onboarding");
     };
 
@@ -79,7 +104,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const updateProfileAction = async (data: Partial<User>) => {
         if (!user) return;
-        // Clean data for Prisma (undefined instead of null)
         const cleanData: any = { ...data };
         Object.keys(cleanData).forEach(key => {
             if (cleanData[key] === null) cleanData[key] = undefined;
@@ -89,37 +113,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setUser(prev => prev ? { ...prev, ...data } : null);
     };
 
-    useEffect(() => {
-        // Hydrate from localStorage for valid session check? 
-        // OR better: check for a simple "userId" in local storage to fetch fresh data?
-        // For this hybrid approach (Client Component + Server Actions), we'll do:
-        // 1. Check if we have a userId in localStorage.
-        // 2. If yes, fetch that user from DB to get latest state.
-        // 3. If no, and DEV, do auto-login.
-
-        const initUser = async () => {
-            // PERMANENT AUTO-LOGIN (User Request)
-            // Always log in as default user regardless of stored state
-            console.log("Debug: Permanent auto-login for Default Account (Forced)");
-            await login("Tim Watson", "tim@2moro.app");
-
-            /*
-            const storedEmail = localStorage.getItem("userEmail");
-            console.log("Debug: Checking stored user", storedEmail);
-
-            if (storedEmail) {
-                // ... (rest of logic disabled)
-            }
-            */
-        };
-
-        initUser();
-    }, []);
-
     return (
         <UserContext.Provider value={{
             user,
-            login,
+            isLoading,
             logout,
             profileImage: user?.avatar || null,
             onboardingCompleted: user?.onboardingCompleted || false,

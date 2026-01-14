@@ -4,9 +4,13 @@ import { cookies } from "next/headers";
 
 export async function GET(req: NextRequest) {
     try {
-        // Get user from cookies
+        // Get user from cookies or search params
         const cookieStore = await cookies();
-        const userId = cookieStore.get("userId")?.value;
+        let userId = cookieStore.get("userId")?.value;
+
+        if (!userId) {
+            userId = req.nextUrl.searchParams.get("userId") || undefined;
+        }
 
         if (!userId) {
             return NextResponse.json({ conversations: [] });

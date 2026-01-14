@@ -116,22 +116,41 @@ Generate exactly 3 scenarios in this JSON format:
 
 Respond ONLY with valid JSON, no markdown or explanation.`;
 
-        const scenariosResponse = await generateContentWithFallback(scenariosPrompt);
-
-        // Parse the JSON response
+        // Use direct model call with JSON enforcement for reliability
         let parsedScenarios;
         try {
-            // Clean up potential markdown code blocks
-            const cleanJson = scenariosResponse
-                .replace(/```json\n?/g, "")
-                .replace(/```\n?/g, "")
-                .trim();
-            parsedScenarios = JSON.parse(cleanJson);
-        } catch (parseError) {
-            console.error("[Future/Generate] JSON parse error:", parseError);
-            return NextResponse.json({
-                error: "Failed to parse AI response"
-            }, { status: 500 });
+            // Try gemini-1.5-flash with native JSON mode first (Faster & more reliable for structure)
+            console.log("[Future/Generate] Generating scenarios with Gemini 1.5 Flash...");
+            const { GoogleGenerativeAI } = require("@google/generative-ai");
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY as string);
+            const model = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                generationConfig: { responseMimeType: "application/json" }
+            });
+
+            const result = await model.generateContent(scenariosPrompt);
+            const text = result.response.text();
+
+            if (!text) throw new Error("Empty response from AI");
+            parsedScenarios = JSON.parse(text);
+
+        } catch (primaryError: any) {
+            console.warn("[Future/Generate] Primary model failed, switching to fallback. Error:", primaryError.message);
+
+            // Fallback to standard router
+            const scenariosResponse = await generateContentWithFallback(scenariosPrompt + "\n\nRefer to the JSON format strictly.");
+            try {
+                const cleanJson = scenariosResponse
+                    .replace(/```json\n?/g, "")
+                    .replace(/```\n?/g, "")
+                    .trim();
+                parsedScenarios = JSON.parse(cleanJson);
+            } catch (parseError) {
+                console.error("[Future/Generate] Fallback JSON parse error:", parseError);
+                return NextResponse.json({
+                    error: "Failed to generate valid vision data. Please try again."
+                }, { status: 500 });
+            }
         }
 
         // Save to database

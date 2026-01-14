@@ -62,7 +62,7 @@ export function ProfileDropdown() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.1 }}
-                        className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-3xl shadow-xl overflow-hidden z-50 p-2"
+                        className="absolute right-0 top-full mt-2 w-56 bg-card text-card-foreground border border-border rounded-3xl shadow-xl overflow-hidden z-50 p-2"
                     >
                         <div className="px-4 py-3 border-b border-border/50 mb-2">
                             <p className="font-semibold text-sm">Signed in as</p>
@@ -78,7 +78,6 @@ export function ProfileDropdown() {
                             Settings
                         </Link>
 
-                        {/* Logout Hidden
                         <button
                             onClick={() => {
                                 logout();
@@ -89,7 +88,6 @@ export function ProfileDropdown() {
                             <LogOut className="w-4 h-4" />
                             Log Out
                         </button>
-                        */}
                     </motion.div>
                 )}
             </AnimatePresence>

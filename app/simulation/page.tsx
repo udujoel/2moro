@@ -111,6 +111,9 @@ export default function OraclePage() {
     const [isLoadingVision, setIsLoadingVision] = useState(false);
     const [visionError, setVisionError] = useState<string | null>(null);
     const [selectedScenario, setSelectedScenario] = useState<number>(1); // 0=optimistic, 1=current, 2=warning
+    const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+    const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+    const [scenarioImages, setScenarioImages] = useState<string[]>([]);
 
     // Auto-scroll to bottom of transcript
     useEffect(() => {
@@ -124,10 +127,13 @@ export default function OraclePage() {
         return "Good Evening";
     };
 
+    const userId = user?.id;
+
     useEffect(() => {
         async function fetchRecent() {
+            if (!userId) return;
             try {
-                const res = await fetch("/api/oracle/recent");
+                const res = await fetch(`/api/oracle/recent?userId=${userId}`);
                 if (res.ok) {
                     const data = await res.json();
                     setRecentConversations(data.conversations || []);
@@ -139,7 +145,7 @@ export default function OraclePage() {
             }
         }
         fetchRecent();
-    }, [activeView]);
+    }, [activeView, userId]);
 
     // Fetch existing vision when entering vision view
     useEffect(() => {
@@ -688,6 +694,7 @@ export default function OraclePage() {
 
         setIsLoadingVision(true);
         setVisionError(null);
+        setScenarioImages([]);
 
         try {
             const response = await fetch("/api/oracle/future/generate", {
@@ -696,7 +703,10 @@ export default function OraclePage() {
                 body: JSON.stringify({ userId: user.id, yearsAhead: 20 })
             });
 
-            if (!response.ok) throw new Error("Failed to generate vision");
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || "Failed to generate vision");
+            }
 
             const data = await response.json();
             setFutureData({
@@ -704,6 +714,33 @@ export default function OraclePage() {
                 wisdomContent: data.wisdomContent,
                 createdAt: data.createdAt
             });
+
+            // If photo was uploaded, generate age-progressed images
+            if (uploadedPhoto && data.scenarios) {
+                setIsGeneratingImages(true);
+                try {
+                    const imageResponse = await fetch("/api/oracle/future/image", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            userId: user.id,
+                            scenarios: data.scenarios,
+                            originalPhotoBase64: uploadedPhoto
+                        })
+                    });
+
+                    if (imageResponse.ok) {
+                        const imageData = await imageResponse.json();
+                        if (imageData.images && imageData.images.length > 0) {
+                            setScenarioImages(imageData.images);
+                        }
+                    }
+                } catch (imgError) {
+                    console.error("[Vision] Image generation error:", imgError);
+                } finally {
+                    setIsGeneratingImages(false);
+                }
+            }
         } catch (error: any) {
             console.error("[Vision] Error:", error);
             setVisionError(error.message || "Failed to generate future vision");
@@ -796,7 +833,7 @@ export default function OraclePage() {
                                                                 <Download className="w-3 h-3" /> Download PDF
                                                             </button>
                                                             <button
-                                                                onClick={() => { setFutureData(null); generateFutureVision(); }}
+                                                                onClick={() => { setFutureData(null); }}
                                                                 className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
                                                             >
                                                                 <Sparkles className="w-3 h-3" /> Re-simulate
@@ -819,6 +856,54 @@ export default function OraclePage() {
                                                             </button>
                                                         ))}
                                                     </div>
+
+                                                    {/* Three Age-Progressed Images Gallery */}
+                                                    {(scenarioImages.length > 0 || isGeneratingImages) && (
+                                                        <div className="mt-4 grid grid-cols-3 gap-4">
+                                                            {[0, 1, 2].map((idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    onClick={() => setSelectedScenario(idx)}
+                                                                    className={`relative aspect-square rounded-2xl overflow-hidden transition-all ${selectedScenario === idx
+                                                                        ? 'ring-2 ring-offset-2 ring-offset-[#12121a] ' +
+                                                                        (idx === 0 ? 'ring-green-500' : idx === 1 ? 'ring-blue-500' : 'ring-amber-500')
+                                                                        : 'opacity-70 hover:opacity-100'
+                                                                        }`}
+                                                                >
+                                                                    {isGeneratingImages ? (
+                                                                        <div className="w-full h-full bg-slate-700/50 animate-pulse flex items-center justify-center">
+                                                                            <div className="text-center">
+                                                                                <div className="w-6 h-6 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-1" />
+                                                                                <p className="text-[10px] text-slate-500">
+                                                                                    {idx === 0 ? 'Best' : idx === 1 ? 'Current' : 'Warning'}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : scenarioImages[idx] ? (
+                                                                        <>
+                                                                            <img
+                                                                                src={scenarioImages[idx]}
+                                                                                alt={`${idx === 0 ? 'Optimistic' : idx === 1 ? 'Current trajectory' : 'Warning'} future`}
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                            <div className={`absolute bottom-0 left-0 right-0 p-2 text-center text-xs font-medium ${idx === 0 ? 'bg-green-500/80 text-white'
+                                                                                : idx === 1 ? 'bg-blue-500/80 text-white'
+                                                                                    : 'bg-amber-500/80 text-white'
+                                                                                }`}>
+                                                                                {idx === 0 ? '✨ Best Future' : idx === 1 ? '📊 Current Path' : '⚠️ Warning'}
+                                                                            </div>
+                                                                        </>
+                                                                    ) : (
+                                                                        <div className="w-full h-full bg-slate-800/50 flex items-center justify-center">
+                                                                            <p className="text-xs text-slate-500 text-center px-2">
+                                                                                {idx === 0 ? 'Optimistic' : idx === 1 ? 'Current' : 'Warning'}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Selected Scenario Content */}
@@ -826,9 +911,34 @@ export default function OraclePage() {
                                                     {futureData.scenarios[selectedScenario] && (
                                                         <div className="space-y-6">
                                                             {/* Scenario Header */}
-                                                            <div>
-                                                                <h2 className="text-2xl font-bold mb-2">{futureData.scenarios[selectedScenario].title}</h2>
-                                                                <p className="text-slate-400">{futureData.scenarios[selectedScenario].description}</p>
+                                                            <div className="flex flex-col md:flex-row gap-6">
+                                                                {/* Age-Progressed Image */}
+                                                                <div className="flex-shrink-0">
+                                                                    {isGeneratingImages ? (
+                                                                        <div className="w-48 h-48 rounded-2xl bg-slate-700/50 animate-pulse flex items-center justify-center">
+                                                                            <div className="text-center">
+                                                                                <div className="w-8 h-8 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-2" />
+                                                                                <p className="text-xs text-slate-500">Generating your future...</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : scenarioImages[selectedScenario] ? (
+                                                                        <img
+                                                                            src={scenarioImages[selectedScenario]}
+                                                                            alt={`Your ${selectedScenario === 0 ? 'optimistic' : selectedScenario === 1 ? 'current' : 'warning'} future`}
+                                                                            className="w-48 h-48 rounded-2xl object-cover border-2 border-purple-500/30 shadow-lg shadow-purple-500/10"
+                                                                        />
+                                                                    ) : uploadedPhoto ? (
+                                                                        <div className="w-48 h-48 rounded-2xl bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-center">
+                                                                            <p className="text-xs text-slate-500 text-center px-4">Image generation unavailable</p>
+                                                                        </div>
+                                                                    ) : null}
+                                                                </div>
+
+                                                                {/* Title and Description */}
+                                                                <div className="flex-1">
+                                                                    <h2 className="text-2xl font-bold mb-2">{futureData.scenarios[selectedScenario].title}</h2>
+                                                                    <p className="text-slate-400">{futureData.scenarios[selectedScenario].description}</p>
+                                                                </div>
                                                             </div>
 
                                                             {/* Narrative */}
@@ -891,24 +1001,49 @@ export default function OraclePage() {
 
                                                     {/* Optional Photo Upload */}
                                                     <div className="mb-6 p-4 rounded-xl bg-slate-800/30 border border-dashed border-slate-700/50">
-                                                        <p className="text-xs text-slate-500 mb-2">📷 Optional: Upload a photo for age progression</p>
-                                                        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 text-sm hover:bg-slate-700 transition-all">
-                                                            <Upload className="w-4 h-4" />
-                                                            Upload Photo
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                onChange={(e) => {
-                                                                    // Photo handling for future image generation
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) {
-                                                                        console.log("Photo selected for age progression:", file.name);
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </label>
-                                                        <p className="text-xs text-slate-600 mt-2">Coming soon: AI-powered age progression</p>
+                                                        <p className="text-xs text-slate-500 mb-3">📷 Optional: Upload a photo for age progression</p>
+
+                                                        {uploadedPhoto ? (
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="relative">
+                                                                    <img
+                                                                        src={uploadedPhoto}
+                                                                        alt="Uploaded photo"
+                                                                        className="w-20 h-20 rounded-xl object-cover border-2 border-purple-500/50"
+                                                                    />
+                                                                    <button
+                                                                        onClick={() => setUploadedPhoto(null)}
+                                                                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-all"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm text-green-400">✓ Photo attached</p>
+                                                                    <p className="text-xs text-slate-500">AI will generate age-progressed versions</p>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 text-sm hover:bg-slate-700 transition-all">
+                                                                <Upload className="w-4 h-4" />
+                                                                Upload Photo
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) {
+                                                                            const reader = new FileReader();
+                                                                            reader.onload = (event) => {
+                                                                                setUploadedPhoto(event.target?.result as string);
+                                                                            };
+                                                                            reader.readAsDataURL(file);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </label>
+                                                        )}
                                                     </div>
 
                                                     {visionError && (
@@ -927,7 +1062,7 @@ export default function OraclePage() {
                                                         ) : (
                                                             <>
                                                                 <Sparkles className="w-5 h-5" />
-                                                                See My Future
+                                                                {uploadedPhoto ? "Continue with existing Photo" : "See My Future"}
                                                             </>
                                                         )}
                                                     </button>
