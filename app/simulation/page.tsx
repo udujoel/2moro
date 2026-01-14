@@ -5,10 +5,11 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { OracleChat } from "@/components/oracle/oracle-chat";
 import { ThreeOrb } from "@/components/oracle/three-orb";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal, Settings } from "lucide-react";
+import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal, Settings, Download, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/user-provider";
 import { GeminiLiveClient, createGeminiLiveClient, getAudioInputDevices, AudioInputDevice } from "@/lib/gemini-live-client";
+import { generateFutureBlueprintPDF } from "@/lib/future-pdf";
 
 interface ConversationItem {
     id: string;
@@ -787,12 +788,20 @@ export default function OraclePage() {
                                                         <p className="text-xs text-slate-500">
                                                             Last glimpsed: {new Date(futureData.createdAt).toLocaleDateString()}
                                                         </p>
-                                                        <button
-                                                            onClick={() => { setFutureData(null); generateFutureVision(); }}
-                                                            className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
-                                                        >
-                                                            <Sparkles className="w-3 h-3" /> Re-simulate
-                                                        </button>
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                onClick={() => generateFutureBlueprintPDF(futureData, user?.name?.split(" ")[0] || "Your")}
+                                                                className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                                                            >
+                                                                <Download className="w-3 h-3" /> Download PDF
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setFutureData(null); generateFutureVision(); }}
+                                                                className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                                                            >
+                                                                <Sparkles className="w-3 h-3" /> Re-simulate
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="flex gap-2">
                                                         {futureData.scenarios.map((scenario: any, idx: number) => (
@@ -800,10 +809,10 @@ export default function OraclePage() {
                                                                 key={idx}
                                                                 onClick={() => setSelectedScenario(idx)}
                                                                 className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all ${selectedScenario === idx
-                                                                        ? idx === 0 ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                                                            : idx === 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                                                                                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                                                                        : "bg-slate-800/50 text-slate-400 hover:bg-slate-800"
+                                                                    ? idx === 0 ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                                                        : idx === 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                                                            : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                                                    : "bg-slate-800/50 text-slate-400 hover:bg-slate-800"
                                                                     }`}
                                                             >
                                                                 {idx === 0 ? "✨ Optimistic" : idx === 1 ? "📊 Current" : "⚠️ Warning"}
@@ -842,8 +851,8 @@ export default function OraclePage() {
                                                                                         <div
                                                                                             key={i}
                                                                                             className={`w-1.5 h-4 rounded-full ${i < path.score
-                                                                                                    ? path.score >= 7 ? "bg-green-400" : path.score >= 5 ? "bg-blue-400" : "bg-amber-400"
-                                                                                                    : "bg-slate-700"
+                                                                                                ? path.score >= 7 ? "bg-green-400" : path.score >= 5 ? "bg-blue-400" : "bg-amber-400"
+                                                                                                : "bg-slate-700"
                                                                                                 }`}
                                                                                         />
                                                                                     ))}
@@ -876,9 +885,32 @@ export default function OraclePage() {
                                                         <Eye className="w-10 h-10 text-purple-400" />
                                                     </div>
                                                     <h2 className="text-3xl font-bold mb-4">Glimpse Your Future</h2>
-                                                    <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                                                    <p className="text-slate-400 text-lg mb-6 leading-relaxed">
                                                         Based on your memories, personality, and goals, I'll show you 3 possible futures 20 years from now.
                                                     </p>
+
+                                                    {/* Optional Photo Upload */}
+                                                    <div className="mb-6 p-4 rounded-xl bg-slate-800/30 border border-dashed border-slate-700/50">
+                                                        <p className="text-xs text-slate-500 mb-2">📷 Optional: Upload a photo for age progression</p>
+                                                        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 text-sm hover:bg-slate-700 transition-all">
+                                                            <Upload className="w-4 h-4" />
+                                                            Upload Photo
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                className="hidden"
+                                                                onChange={(e) => {
+                                                                    // Photo handling for future image generation
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        console.log("Photo selected for age progression:", file.name);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                        <p className="text-xs text-slate-600 mt-2">Coming soon: AI-powered age progression</p>
+                                                    </div>
+
                                                     {visionError && (
                                                         <p className="text-red-400 text-sm mb-4">{visionError}</p>
                                                     )}
