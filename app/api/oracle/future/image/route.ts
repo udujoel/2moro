@@ -58,7 +58,11 @@ export async function POST(req: NextRequest) {
                         const base64Data = originalPhotoBase64.replace(/^data:image\/\w+;base64,/, "");
 
                         // Create reference image from the uploaded photo
-                        const referenceImage = RawReferenceImage.fromBase64(base64Data, "image/jpeg");
+                        const referenceImage = new RawReferenceImage();
+                        referenceImage.referenceImage = {
+                            bytes: base64Data,
+                            format: "image/jpeg"
+                        } as any;
 
                         const response = await ai.models.editImage({
                             model: modelName,
