@@ -114,10 +114,7 @@ export function TopBar({ title = "My Profile" }: { title?: string }) {
 
             {/* Right Actions */}
             <div className="flex items-center gap-4">
-                <button className="p-2 rounded-full hover:bg-secondary text-muted-foreground transition-colors flex items-center gap-2 text-xs font-semibold bg-secondary/30">
-                    <Globe className="w-4 h-4" />
-                    EN
-                </button>
+                {/* Language ID Removed */}
             </div>
         </header>
     );
