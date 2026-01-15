@@ -10,10 +10,10 @@ import { useState } from "react";
 export function DevLoginButton() {
     const [isLoading, setIsLoading] = useState(false);
 
-    // Only render in development mode
-    if (process.env.NODE_ENV !== "development") {
-        return null;
-    }
+    // Environment check removed to allow default login in production as requested
+    // if (process.env.NODE_ENV !== "development") {
+    //     return null;
+    // }
 
     const handleDevLogin = async () => {
         setIsLoading(true);

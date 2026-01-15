@@ -20,9 +20,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
             async authorize(credentials) {
                 // Only allow in development
-                if (process.env.NODE_ENV !== "development") {
-                    return null;
-                }
+                // Environment check removed to allow default login in production as requested
+                // if (process.env.NODE_ENV !== "development") {
+                //     return null;
+                // }
 
                 const email = credentials?.email as string;
                 if (!email) return null;
