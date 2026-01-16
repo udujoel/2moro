@@ -1,32 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
     try {
-        // Find any user for demo
-        const user = await prisma.user.findFirst();
-
-        if (!user) {
-            // Return time-based suggestions
-            const hour = new Date().getHours();
-            const suggestions = hour < 12
-                ? ["Morning workout", "Breakfast spot", "Early meeting"]
-                : hour < 17
-                    ? ["Lunch break", "Afternoon walk", "Work milestone"]
-                    : ["Evening plans", "Dinner notes", "Day reflection"];
-
-            return NextResponse.json({
-                suggestions,
-                generatedAt: new Date(),
-                canRegenerate: true,
-            });
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const userId = session.user.id;
 
         // Rate limiting: Check if suggestions were generated in the last 5 minutes
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         const recentSuggestions = await prisma.memorySuggestion.findFirst({
             where: {
-                userId: user.id,
+                userId,
                 generatedAt: { gt: fiveMinutesAgo },
             },
             orderBy: { generatedAt: "desc" },
@@ -44,7 +33,7 @@ export async function POST(req: NextRequest) {
 
         // Delete old suggestions for this user
         await prisma.memorySuggestion.deleteMany({
-            where: { userId: user.id },
+            where: { userId },
         });
 
         // Trigger regeneration by making internal request

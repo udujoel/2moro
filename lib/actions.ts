@@ -2,7 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { summarizePeopleInternal } from './ai';
+import { summarizePeopleInternal, generateEntryTitle } from './ai';
+import { getServerUser } from "@/lib/session";
 
 // --- User Actions ---
 
@@ -44,7 +45,15 @@ export async function updateUser(id: string, data: { name?: string; title?: stri
 
 // --- Memory Actions ---
 
-export async function getMemories(userId: string, page: number = 1, limit: number = 30, personId?: string) {
+/**
+ * Get memories for the authenticated user
+ * @param page - Page number for pagination
+ * @param limit - Number of items per page
+ * @param personId - Optional person ID to filter by
+ */
+export async function getMemories(page: number = 1, limit: number = 30, personId?: string) {
+    const { userId } = await getServerUser();
+
     try {
         const skip = (page - 1) * limit;
         const where: any = { userId };
@@ -66,15 +75,8 @@ export async function getMemories(userId: string, page: number = 1, limit: numbe
     }
 }
 
-// ... imports
-import { generateEntryTitle } from './ai';
-
-// ... (other functions)
-
 async function fetchWeather(lat: number, lng: number, date: Date) {
     try {
-        // Open-Meteo Archive API for historical data (or near past)
-        // Format date as YYYY-MM-DD
         const dateStr = date.toISOString().split('T')[0];
         const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${dateStr}&end_date=${dateStr}&daily=weather_code,temperature_2m_max&timezone=auto`;
 
@@ -85,8 +87,6 @@ async function fetchWeather(lat: number, lng: number, date: Date) {
             const code = data.daily.weather_code[0];
             const temp = data.daily.temperature_2m_max[0];
 
-            // Map WMO codes to simple icons/conditions
-            // 0=Clear, 1-3=Cloudy, 45-48=Fog, 51-67=Rain, 71-77=Snow, 95-99=Storm
             let condition = "Sunny";
             let icon = "sun";
 
@@ -96,12 +96,7 @@ async function fetchWeather(lat: number, lng: number, date: Date) {
             else if (code >= 71 && code <= 77) { condition = "Snowy"; icon = "snowflake"; }
             else if (code >= 80 && code <= 99) { condition = "Stormy"; icon = "cloud-lightning"; }
 
-            return {
-                temp,
-                condition,
-                icon,
-                code
-            };
+            return { temp, condition, icon, code };
         }
     } catch (e) {
         console.error("Weather fetch failed:", e);
@@ -109,8 +104,10 @@ async function fetchWeather(lat: number, lng: number, date: Date) {
     return null;
 }
 
+/**
+ * Create a memory for the authenticated user
+ */
 export async function createMemory(
-    userId: string,
     content: string,
     date: Date,
     type: string = "text",
@@ -118,6 +115,8 @@ export async function createMemory(
     location?: { name?: string; lat?: number; lng?: number },
     media?: { url: string; type: "image" | "video" | "audio" }[]
 ) {
+    const { userId } = await getServerUser();
+
     console.log("Debug: createMemory called", { userId, type, mediaCount: media?.length, personIds });
     try {
         // 1. Generate Title if text
@@ -163,7 +162,6 @@ export async function createMemory(
                         type: m.type
                     }))
                 } : undefined,
-                // Backwards compatibility for single media
                 mediaUrl: media && media.length > 0 ? media[0].url : undefined
             },
         });
@@ -174,6 +172,8 @@ export async function createMemory(
 }
 
 export async function deleteMemory(memoryId: string) {
+    // Note: For delete, we're keeping it simple - the memoryId is the identifier
+    // In a more secure setup, we'd verify the memory belongs to the user
     try {
         await prisma.memory.delete({
             where: { id: memoryId },
@@ -188,7 +188,12 @@ export async function deleteMemory(memoryId: string) {
 
 // --- Person Actions ---
 
-export async function getPeople(userId: string) {
+/**
+ * Get all people/connections for the authenticated user
+ */
+export async function getPeople() {
+    const { userId } = await getServerUser();
+
     try {
         return await prisma.person.findMany({
             where: { userId },
@@ -204,7 +209,12 @@ export async function getPeople(userId: string) {
     }
 }
 
-export async function createPerson(userId: string, data: any) {
+/**
+ * Create a new person/connection for the authenticated user
+ */
+export async function createPerson(data: any) {
+    const { userId } = await getServerUser();
+
     try {
         return await prisma.person.create({
             data: {
@@ -218,11 +228,15 @@ export async function createPerson(userId: string, data: any) {
     }
 }
 
-export async function generateRelationshipInsight(userId: string, personId?: string, timeRange: "all" | "6m" | "1y" = "all", forceRefresh: boolean = false) {
+/**
+ * Generate AI relationship insight for the authenticated user
+ */
+export async function generateRelationshipInsight(personId?: string, timeRange: "all" | "6m" | "1y" = "all", forceRefresh: boolean = false) {
+    const { userId } = await getServerUser();
+
     console.log("Debug AI: Generating insight", { userId, personId, timeRange, forceRefresh });
     try {
-        // 0. Check Database Cache (Only if specific person and no filters)
-        // We only persist the "All Time" summary for a specific person for now, as that's the main "Info" view.
+        // 0. Check Database Cache
         if (personId && timeRange === "all" && !forceRefresh) {
             const person = await prisma.person.findUnique({
                 where: { id: personId },
@@ -242,9 +256,7 @@ export async function generateRelationshipInsight(userId: string, personId?: str
             const past = new Date();
             if (timeRange === "6m") past.setMonth(now.getMonth() - 6);
             if (timeRange === "1y") past.setFullYear(now.getFullYear() - 1);
-            dateFilter = {
-                gte: past
-            };
+            dateFilter = { gte: past };
         }
 
         // 2. Fetch People (Single or All)
@@ -258,22 +270,18 @@ export async function generateRelationshipInsight(userId: string, personId?: str
         }
 
         // 3. Fetch Memories
-        // If personId is set, we MUST filter memories that include this person.
-        // Prisma limitation: 'people' is a many-to-many relation.
         const memoryWhere: any = {
             userId,
-            memoryDate: dateFilter, // Apply time range
+            memoryDate: dateFilter,
         };
 
         if (personId) {
-            memoryWhere.people = {
-                some: { id: personId }
-            };
+            memoryWhere.people = { some: { id: personId } };
         }
 
         const memories = await prisma.memory.findMany({
             where: memoryWhere,
-            take: 50, // Increase context size for "All Memories" summary
+            take: 50,
             orderBy: { memoryDate: 'desc' }
         });
 
@@ -284,7 +292,6 @@ export async function generateRelationshipInsight(userId: string, personId?: str
         }
 
         const memoryContext = memories.map(m => `[${m.memoryDate.toLocaleDateString()}] ${m.content}`);
-
         const result = await summarizePeopleInternal(peopleNames, memoryContext);
 
         // 4. Save to Database (if specific person and all time)

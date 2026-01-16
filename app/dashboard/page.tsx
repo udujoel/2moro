@@ -25,11 +25,11 @@ export default async function DashboardPage() {
 
     // Fetch all data in parallel
     const [stats, topPeople, aiContext, autobiography, activityData] = await Promise.all([
-        getDashboardStats(userId),
-        getTopPeople(userId),
-        getAiGreeting(userId, timeOfDay),
-        getAutobiographySnippets(userId),
-        getActivityData(userId)
+        getDashboardStats(),
+        getTopPeople(),
+        getAiGreeting(timeOfDay),
+        getAutobiographySnippets(),
+        getActivityData()
     ]);
 
     return (

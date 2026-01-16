@@ -52,7 +52,7 @@ function CompassContent() {
         if (!user) return;
 
         setIsLoading(true);
-        const result = await getLatestPersonalityTest(user.id);
+        const result = await getLatestPersonalityTest();
         setHasPersonalityTest(!!result.test);
         setIsLoading(false);
     };
@@ -177,7 +177,6 @@ function CompassContent() {
                                         </button>
                                     </div>
                                     <AIRecommendations
-                                        userId={user.id}
                                         onAccept={handleTodoUpdate}
                                         forceRefresh={forceRefresh}
                                         onLoadComplete={() => setForceRefresh(false)}
@@ -188,11 +187,11 @@ function CompassContent() {
                             {/* To-Do Sections */}
                             <div className="bg-card border border-border rounded-xl p-6">
                                 <h3 className="font-semibold text-lg mb-4">Your Action Plan</h3>
-                                <TodoSections userId={user.id} refreshTrigger={refreshTrigger} />
+                                <TodoSections refreshTrigger={refreshTrigger} />
                             </div>
 
                             {/* Streak Tracker */}
-                            <StreakTracker userId={user.id} refreshTrigger={refreshTrigger} />
+                            <StreakTracker refreshTrigger={refreshTrigger} />
                         </motion.div>
 
                         {/* SECTION 2: Financial Wellness */}
@@ -225,13 +224,13 @@ function CompassContent() {
                             </div>
 
                             {/* Financial Health Score */}
-                            <FinancialHealth userId={user.id} />
+                            <FinancialHealth />
 
                             {/* Investment Projection Calculator */}
-                            <InvestmentProjection userId={user.id} />
+                            <InvestmentProjection />
 
                             {/* Portfolio/Market Chart */}
-                            <PortfolioChart userId={user.id} />
+                            <PortfolioChart />
                         </motion.div>
                     </div>
                 </main>

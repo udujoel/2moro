@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 // Use the correct API key from environment
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY!);
@@ -55,7 +56,14 @@ async function generateWithFallback(prompt: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
     try {
-        const { messages, userId } = await req.json();
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
+
+        const { messages } = await req.json();
 
         if (!messages || messages.length === 0) {
             return NextResponse.json({ error: "No messages provided" }, { status: 400 });
@@ -63,23 +71,21 @@ export async function POST(req: NextRequest) {
 
         console.log("[Oracle Voice] Processing voice chat request", {
             messageCount: messages.length,
-            userId: userId || "anonymous"
+            userId
         });
 
         // Fetch user context
         let userContext = "";
-        if (userId) {
-            try {
-                const user = await prisma.user.findUnique({
-                    where: { id: userId },
-                    select: { name: true }
-                });
-                if (user) {
-                    userContext = `\n\nUser's name: ${user.name}`;
-                }
-            } catch (e) {
-                console.log("[Oracle Voice] Could not fetch user context");
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { name: true }
+            });
+            if (user) {
+                userContext = `\n\nUser's name: ${user.name}`;
             }
+        } catch (e) {
+            console.log("[Oracle Voice] Could not fetch user context");
         }
 
         // Build conversation as a single prompt

@@ -6,17 +6,19 @@ import { getMonthlyHoroscope, getZodiacSign } from "@/lib/horoscope";
 import { calculateFinancialHealthScore } from "@/lib/finance";
 import { createCalendarEvent, calculateDueDate } from "@/lib/google-calendar";
 import { revalidatePath } from "next/cache";
+import { getServerUser } from "@/lib/session";
 
 /**
  * Save personality test results to database
  */
 export async function savePersonalityTest(
-    userId: string,
     mbtiType: string,
     description: string,
     traits: any,
     responses: any
 ) {
+    const { userId } = await getServerUser();
+
     try {
         const test = await prisma.personalityTest.create({
             data: {
@@ -40,7 +42,9 @@ export async function savePersonalityTest(
 /**
  * Get user's latest personality test
  */
-export async function getLatestPersonalityTest(userId: string) {
+export async function getLatestPersonalityTest() {
+    const { userId } = await getServerUser();
+
     try {
         const test = await prisma.personalityTest.findFirst({
             where: { userId },
@@ -57,7 +61,9 @@ export async function getLatestPersonalityTest(userId: string) {
 /**
  * Get or fetch monthly horoscope (with caching)
  */
-export async function getMonthlyHoroscopeForUser(userId: string) {
+export async function getMonthlyHoroscopeForUser() {
+    const { userId } = await getServerUser();
+
     try {
         // Get or create user preferences
         let prefs = await prisma.userPreferences.findUnique({
@@ -127,7 +133,9 @@ export async function getMonthlyHoroscopeForUser(userId: string) {
  * Generate AI-powered recommendations based on personality and horoscope
  * Caches recommendations to DB and only regenerates when forced
  */
-export async function generateAIRecommendations(userId: string, forceRefresh: boolean = false) {
+export async function generateAIRecommendations(forceRefresh: boolean = false) {
+    const { userId } = await getServerUser();
+
     try {
         // Check for cached recommendations first (unless force refresh)
         if (!forceRefresh) {
@@ -299,7 +307,6 @@ Return ONLY valid JSON in this exact format:
  * AI breaks down the goal into practical steps across timeframes
  */
 export async function acceptRecommendation(
-    userId: string,
     recommendation: {
         id?: string; // AIRecommendation ID if from cache
         category: string;
@@ -307,6 +314,8 @@ export async function acceptRecommendation(
         description?: string | null;
     }
 ) {
+    const { userId } = await getServerUser();
+
     try {
         // Use AI to break down into atomic todos across timeframes
         const prompt = `
@@ -407,7 +416,9 @@ export async function dismissRecommendation(recommendationId: string) {
 /**
  * Get todos by timeframe
  */
-export async function getTodosByTimeframe(userId: string, timeframe: string) {
+export async function getTodosByTimeframe(timeframe: string) {
+    const { userId } = await getServerUser();
+
     try {
         const todos = await prisma.compassTodo.findMany({
             where: {
@@ -454,12 +465,13 @@ export async function updateTodoStatus(
  * Create a manual todo
  */
 export async function createTodo(
-    userId: string,
     task: string,
     category: string,
     timeframe: string,
     description?: string
 ) {
+    const { userId } = await getServerUser();
+
     try {
         const todo = await prisma.compassTodo.create({
             data: {
@@ -501,7 +513,9 @@ export async function deleteTodo(todoId: string) {
 /**
  * Calculate user's completion streak
  */
-export async function calculateStreak(userId: string) {
+export async function calculateStreak() {
+    const { userId } = await getServerUser();
+
     try {
         const completedTodos = await prisma.compassTodo.findMany({
             where: {
@@ -551,7 +565,9 @@ export async function calculateStreak(userId: string) {
 /**
  * Get completion heatmap data (for calendar visualization)
  */
-export async function getCompletionHeatmap(userId: string, year: number) {
+export async function getCompletionHeatmap(year: number) {
+    const { userId } = await getServerUser();
+
     try {
         const startDate = new Date(year, 0, 1);
         const endDate = new Date(year, 11, 31);
@@ -589,7 +605,6 @@ export async function getCompletionHeatmap(userId: string, year: number) {
  * Save financial snapshot to database
  */
 export async function saveFinancialSnapshot(
-    userId: string,
     financialData: {
         debt: number;
         liabilities: number;
@@ -599,6 +614,8 @@ export async function saveFinancialSnapshot(
         investments?: any[];
     }
 ) {
+    const { userId } = await getServerUser();
+
     try {
         const snapshot = await prisma.financialSnapshot.create({
             data: {
@@ -618,7 +635,9 @@ export async function saveFinancialSnapshot(
 /**
  * Generate AI financial analysis
  */
-export async function generateFinancialAnalysis(userId: string) {
+export async function generateFinancialAnalysis() {
+    const { userId } = await getServerUser();
+
     try {
         const snapshot = await prisma.financialSnapshot.findFirst({
             where: { userId },
@@ -687,7 +706,9 @@ Return ONLY valid JSON:
 /**
  * Get latest financial snapshot
  */
-export async function getLatestFinancialSnapshot(userId: string) {
+export async function getLatestFinancialSnapshot() {
+    const { userId } = await getServerUser();
+
     try {
         const snapshot = await prisma.financialSnapshot.findFirst({
             where: { userId },
@@ -703,7 +724,9 @@ export async function getLatestFinancialSnapshot(userId: string) {
 /**
  * Update investment preference
  */
-export async function updateInvestmentPreference(userId: string, monthlyInvestment: number) {
+export async function updateInvestmentPreference(monthlyInvestment: number) {
+    const { userId } = await getServerUser();
+
     try {
         let prefs = await prisma.userPreferences.findUnique({ where: { userId } });
         if (!prefs) {
@@ -722,7 +745,9 @@ export async function updateInvestmentPreference(userId: string, monthlyInvestme
 /**
  * Get user preferences
  */
-export async function getUserPreferences(userId: string) {
+export async function getUserPreferences() {
+    const { userId } = await getServerUser();
+
     try {
         let prefs = await prisma.userPreferences.findUnique({ where: { userId } });
         if (!prefs) {
@@ -738,7 +763,9 @@ export async function getUserPreferences(userId: string) {
 /**
  * Check if user has Google Calendar connected
  */
-export async function isCalendarConnected(userId: string) {
+export async function isCalendarConnected() {
+    const { userId } = await getServerUser();
+
     try {
         const prefs = await prisma.userPreferences.findUnique({
             where: { userId },

@@ -6,25 +6,24 @@ import { Flame, TrendingUp } from "lucide-react";
 import { calculateStreak, getCompletionHeatmap } from "@/app/actions/compass";
 
 interface StreakTrackerProps {
-    userId: string;
     refreshTrigger?: number;
 }
 
-export function StreakTracker({ userId, refreshTrigger }: StreakTrackerProps) {
+export function StreakTracker({ refreshTrigger }: StreakTrackerProps) {
     const [streak, setStreak] = useState(0);
     const [heatmapData, setHeatmapData] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         loadData();
-    }, [userId, refreshTrigger]);
+    }, [refreshTrigger]);
 
     const loadData = async () => {
         setIsLoading(true);
 
         const [streakResult, heatmapResult] = await Promise.all([
-            calculateStreak(userId),
-            getCompletionHeatmap(userId, new Date().getFullYear()),
+            calculateStreak(),
+            getCompletionHeatmap(new Date().getFullYear()),
         ]);
 
         if (streakResult.success) {

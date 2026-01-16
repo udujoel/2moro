@@ -7,17 +7,16 @@ import { useRouter } from "next/navigation";
 
 interface BookCoverProps {
     coverImage?: string;
-    userId: string;
 }
 
-export function BookCover({ coverImage, userId }: BookCoverProps) {
+export function BookCover({ coverImage }: BookCoverProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const router = useRouter();
 
     const handleUpdate = async () => {
         setIsUpdating(true);
         try {
-            const result = await regenerateStory(userId);
+            const result = await regenerateStory();
             if (result.success) {
                 router.refresh();
             } else {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 /**
  * GET /api/speech/token
@@ -7,6 +8,15 @@ import { NextResponse } from "next/server";
  * This keeps the API key secure on the server while allowing client WebSocket connections.
  */
 export async function GET() {
+    // Authenticate request
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json(
+            { error: "Unauthorized" },
+            { status: 401 }
+        );
+    }
+
     const apiKey = process.env.ASSEMBLYAI_API;
 
     if (!apiKey) {

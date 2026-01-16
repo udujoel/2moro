@@ -32,7 +32,7 @@ export default async function MyStoryPage() {
                     <span className="mx-2 text-gray-400">›</span>
                     <span className="text-gray-900 font-medium">MyStory</span>
                 </header>
-                <BookReader chapters={formattedChapters} userId={userId} />
+                <BookReader chapters={formattedChapters} />
             </main>
         </div>
     );

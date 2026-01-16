@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { cookies } from "next/headers";
+import { auth } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
     try {
-        // Get user from cookies or search params
-        const cookieStore = await cookies();
-        let userId = cookieStore.get("userId")?.value;
-
-        if (!userId) {
-            userId = req.nextUrl.searchParams.get("userId") || undefined;
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        if (!userId) {
-            return NextResponse.json({ conversations: [] });
-        }
+        const userId = session.user.id;
 
         // Fetch recent conversations
         const conversations = await prisma.oracleConversation.findMany({

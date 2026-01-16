@@ -75,7 +75,7 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
         if (!selectedPerson || !user) return;
         setInsightLoading(true);
         // FORCE REFRESH = TRUE
-        const res = await generateRelationshipInsight(user.id, selectedPerson.id, personTimeRange, true);
+        const res = await generateRelationshipInsight(selectedPerson.id, personTimeRange, true);
         setInsight(res);
         setInsightLoading(false);
     };
@@ -89,7 +89,7 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
             if (!insight || selectedPerson.id !== prevPersonIdRef.current) {
                 // If it's a new person selected, we let the backend decide to return cached or new.
                 // We don't force refresh by default.
-                generateRelationshipInsight(user.id, selectedPerson.id, personTimeRange, false).then(res => {
+                generateRelationshipInsight(selectedPerson.id, personTimeRange, false).then(res => {
                     setInsight(res);
                     setInsightLoading(false);
                 });
@@ -101,7 +101,7 @@ export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) 
 
             // Fetch Memories (Load up to 50 for now)
             // Note: reusing getMemories action which we updated to support personId
-            getMemories(user.id, 1, 50, selectedPerson.id).then((mems: any) => {
+            getMemories(1, 50, selectedPerson.id).then((mems: any) => {
                 // Map raw DB memories to ArchiveEntry format
                 const mappedMems = mems.map((m: any) => ({
                     id: m.id,

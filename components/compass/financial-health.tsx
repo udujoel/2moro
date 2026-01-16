@@ -9,22 +9,20 @@ import {
 } from "@/app/actions/compass";
 import { getHealthRating } from "@/lib/finance";
 
-interface FinancialHealthProps {
-    userId: string;
-}
+interface FinancialHealthProps { }
 
-export function FinancialHealth({ userId }: FinancialHealthProps) {
+export function FinancialHealth({ }: FinancialHealthProps) {
     const [snapshot, setSnapshot] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     useEffect(() => {
         loadSnapshot();
-    }, [userId]);
+    }, []);
 
     const loadSnapshot = async () => {
         setIsLoading(true);
-        const result = await getLatestFinancialSnapshot(userId);
+        const result = await getLatestFinancialSnapshot();
         if (result.success && result.snapshot) {
             setSnapshot(result.snapshot);
 
@@ -38,10 +36,10 @@ export function FinancialHealth({ userId }: FinancialHealthProps) {
 
     const analyzeFinancials = async () => {
         setIsAnalyzing(true);
-        const result = await generateFinancialAnalysis(userId);
+        const result = await generateFinancialAnalysis();
         if (result.success) {
             // Reload snapshot to get updated data
-            const updated = await getLatestFinancialSnapshot(userId);
+            const updated = await getLatestFinancialSnapshot();
             if (updated.success) {
                 setSnapshot(updated.snapshot);
             }
@@ -134,12 +132,12 @@ export function FinancialHealth({ userId }: FinancialHealthProps) {
                                 animate={{ width: `${healthScore}%` }}
                                 transition={{ duration: 1, ease: "easeOut" }}
                                 className={`h-full ${healthScore >= 80
-                                        ? "bg-green-500"
-                                        : healthScore >= 60
-                                            ? "bg-blue-500"
-                                            : healthScore >= 40
-                                                ? "bg-yellow-500"
-                                                : "bg-red-500"
+                                    ? "bg-green-500"
+                                    : healthScore >= 60
+                                        ? "bg-blue-500"
+                                        : healthScore >= 40
+                                            ? "bg-yellow-500"
+                                            : "bg-red-500"
                                     }`}
                             />
                         </div>

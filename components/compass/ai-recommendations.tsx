@@ -26,7 +26,6 @@ interface Recommendation {
 }
 
 interface AIRecommendationsProps {
-    userId: string;
     onAccept?: () => void;
     forceRefresh?: boolean;
     onLoadComplete?: () => void;
@@ -53,7 +52,7 @@ const CATEGORY_TEXT_COLORS: Record<string, string> = {
     "Personal Development": "text-purple-500",
 };
 
-export function AIRecommendations({ userId, onAccept, forceRefresh = false, onLoadComplete }: AIRecommendationsProps) {
+export function AIRecommendations({ onAccept, forceRefresh = false, onLoadComplete }: AIRecommendationsProps) {
     const { showToast } = useToast();
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -65,13 +64,13 @@ export function AIRecommendations({ userId, onAccept, forceRefresh = false, onLo
 
     useEffect(() => {
         loadRecommendations(forceRefresh);
-    }, [userId, forceRefresh]);
+    }, [forceRefresh]);
 
     const loadRecommendations = async (force: boolean = false) => {
         setIsLoading(true);
         setError(null);
 
-        const result = await generateAIRecommendations(userId, force);
+        const result = await generateAIRecommendations(force);
 
         if (result.success) {
             setRecommendations(result.recommendations || []);
@@ -92,7 +91,7 @@ export function AIRecommendations({ userId, onAccept, forceRefresh = false, onLo
         const recId = recommendation.id || `temp-${Date.now()}`;
         setAcceptingIds((prev) => new Set(prev).add(recId));
 
-        const result = await acceptRecommendation(userId, recommendation);
+        const result = await acceptRecommendation(recommendation);
 
         if (result.success) {
             // Remove from list after accepting

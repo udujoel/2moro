@@ -13,10 +13,9 @@ interface Habit {
 
 interface HabitStackProps {
     initialHabits: Habit[];
-    userId: string;
 }
 
-export function HabitStack({ initialHabits, userId }: HabitStackProps) {
+export function HabitStack({ initialHabits }: HabitStackProps) {
     const [isPending, startTransition] = useTransition();
     // Optimistic state: [habits list, pending operation]
     const [optimisticHabits, addOptimisticHabit] = useOptimistic(
@@ -72,7 +71,7 @@ export function HabitStack({ initialHabits, userId }: HabitStackProps) {
 
         startTransition(async () => {
             addOptimisticHabit({ action: 'add', newHabit });
-            await createHabit(userId, newHabit.title);
+            await createHabit(newHabit.title);
         });
     };
 

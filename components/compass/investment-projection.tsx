@@ -6,9 +6,7 @@ import { TrendingUp, DollarSign } from "lucide-react";
 import { calculateInvestmentProjection, formatCurrency } from "@/lib/finance";
 import { getUserPreferences, updateInvestmentPreference } from "@/app/actions/compass";
 
-interface InvestmentProjectionProps {
-    userId: string;
-}
+interface InvestmentProjectionProps { }
 
 const INVESTMENT_OPTIONS = [50, 100, 200, 500, 1000, 2000, 5000];
 const MILESTONES = [
@@ -18,18 +16,18 @@ const MILESTONES = [
     { years: 40, label: "40 Years" },
 ];
 
-export function InvestmentProjection({ userId }: InvestmentProjectionProps) {
+export function InvestmentProjection({ }: InvestmentProjectionProps) {
     const [monthlyInvestment, setMonthlyInvestment] = useState(100);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         loadPreferences();
-    }, [userId]);
+    }, []);
 
     const loadPreferences = async () => {
         setIsLoading(true);
-        const result = await getUserPreferences(userId);
+        const result = await getUserPreferences();
         if (result.success && result.preferences) {
             setMonthlyInvestment(result.preferences.monthlyInvestment);
         }
@@ -39,7 +37,7 @@ export function InvestmentProjection({ userId }: InvestmentProjectionProps) {
     const handleChange = async (value: number) => {
         setMonthlyInvestment(value);
         setIsSaving(true);
-        await updateInvestmentPreference(userId, value);
+        await updateInvestmentPreference(value);
         setIsSaving(false);
     };
 
@@ -87,8 +85,8 @@ export function InvestmentProjection({ userId }: InvestmentProjectionProps) {
                             onClick={() => handleChange(amount)}
                             disabled={isSaving}
                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${monthlyInvestment === amount
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-secondary hover:bg-secondary/80"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary hover:bg-secondary/80"
                                 } disabled:opacity-50`}
                         >
                             {amount >= 1000 ? `$${amount / 1000}K` : `$${amount}`}

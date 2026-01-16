@@ -28,7 +28,6 @@ export default function AssessmentPage() {
 
         setIsSaving(true);
         const response = await savePersonalityTest(
-            user.id,
             result.mbtiType,
             result.description,
             result.traits,

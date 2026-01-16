@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateContentWithFallback } from "@/lib/ai";
+import { auth } from "@/lib/auth";
 
 /**
  * POST /api/oracle/future
@@ -8,11 +9,14 @@ import { generateContentWithFallback } from "@/lib/ai";
  */
 export async function POST(req: NextRequest) {
     try {
-        const { userId, yearsAhead = 20 } = await req.json();
-
-        if (!userId) {
-            return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const userId = session.user.id;
+
+        const { yearsAhead = 20 } = await req.json();
 
         // Fetch user data for context
         const user = await prisma.user.findUnique({

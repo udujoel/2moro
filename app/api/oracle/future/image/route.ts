@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, RawReferenceImage } from "@google/genai";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY as string });
 
@@ -23,10 +24,17 @@ const GENERATE_IMAGE_MODELS = [
  */
 export async function POST(req: NextRequest) {
     try {
-        const { userId, scenarios, originalPhotoBase64 } = await req.json();
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
 
-        if (!userId || !scenarios) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        const { scenarios, originalPhotoBase64 } = await req.json();
+
+        if (!scenarios) {
+            return NextResponse.json({ error: "Missing scenarios" }, { status: 400 });
         }
 
         // Fetch user for context

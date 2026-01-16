@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { auth } from "@/lib/auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -28,11 +29,16 @@ async function fetchRegionalNews(location?: string): Promise<string[]> {
 
 export async function GET(req: NextRequest) {
     try {
-        // For demo purposes, generate suggestions using available context
-        // In production, implement proper authentication
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
 
-        // Try to find any user to get their data
-        const user = await prisma.user.findFirst({
+        // Fetch user context
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
             include: {
                 userPreferences: true,
             }

@@ -33,7 +33,7 @@ export function Icebreaker({ onComplete }: IcebreakerProps) {
         formData.append("file", file);
 
         try {
-            const result = await analyzeImageAndCreateMemory(user.id, formData);
+            const result = await analyzeImageAndCreateMemory(formData);
             if (result.success && result.avatar) {
                 // Update global context immediately so everything uses the DB image (which we just returned)
                 // Note: we need to access updateProfileImage from context? 

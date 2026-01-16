@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { GoogleGenAI, Modality } from "@google/genai";
+import { auth } from "@/lib/auth";
 
 // Initialize the Gemini AI client with the API key
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY! });
@@ -34,6 +35,15 @@ Respond naturally as if speaking to a friend.`;
 
 // WebSocket handler for real-time audio streaming
 export async function GET(req: NextRequest) {
+    // Authenticate request
+    const session = await auth();
+    if (!session?.user?.id) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" }
+        });
+    }
+
     // Check if this is a WebSocket upgrade request
     const upgradeHeader = req.headers.get("upgrade");
     if (upgradeHeader !== "websocket") {
@@ -139,6 +149,15 @@ export async function GET(req: NextRequest) {
 // POST endpoint for non-WebSocket environments (SSE streaming)
 export async function POST(req: NextRequest) {
     try {
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                status: 401,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
         const { audio, text, sessionId } = await req.json();
 
         console.log("[Gemini Live] POST request received", { hasAudio: !!audio, hasText: !!text });

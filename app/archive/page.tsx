@@ -48,7 +48,7 @@ export default function ArchivePage() {
         if (!user) return;
         setIsLoading(true);
         try {
-            const dbMemories = await getMemories(user.id, pageNum, LIMIT);
+            const dbMemories = await getMemories(pageNum, LIMIT);
 
             // Map DB Memories to UI format
             const mappedMemories = dbMemories.map((m: any) => ({
@@ -104,7 +104,7 @@ export default function ArchivePage() {
         const initData = async () => {
             // Fetch people separately as they are not paginated yet (or logic differs)
             try {
-                const dbPeople = await getPeople(user.id);
+                const dbPeople = await getPeople();
                 // Map DB People...
                 const mappedPeople = dbPeople.map((p: any) => ({
                     id: p.id,
@@ -226,7 +226,6 @@ export default function ArchivePage() {
                         // Optimistic update (optional, but good for UX) - skipping for now to rely on server response
 
                         const newMemory = await createMemory(
-                            user.id,
                             entry.content,
                             new Date(), // use current date
                             entry.type,

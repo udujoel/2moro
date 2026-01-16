@@ -5,18 +5,16 @@ import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { getSP500Data, formatCurrency } from "@/lib/finance";
 
-interface PortfolioChartProps {
-    userId: string;
-}
+interface PortfolioChartProps { }
 
-export function PortfolioChart({ userId }: PortfolioChartProps) {
+export function PortfolioChart({ }: PortfolioChartProps) {
     const [data, setData] = useState<Array<{ date: string; value: number }>>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     useEffect(() => {
         loadData();
-    }, [userId]);
+    }, []);
 
     const loadData = async () => {
         setIsLoading(true);

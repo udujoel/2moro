@@ -18,7 +18,6 @@ interface Chapter {
 
 interface BookReaderProps {
     chapters: Chapter[];
-    userId: string;
 }
 
 type BookState = "closed" | "opening" | "open";
@@ -45,7 +44,7 @@ const LOREM_CHAPTERS = [
     }
 ];
 
-export function BookReader({ chapters: initialChapters, userId }: BookReaderProps) {
+export function BookReader({ chapters: initialChapters }: BookReaderProps) {
     const [bookState, setBookState] = useState<BookState>("closed");
     const [currentSpread, setCurrentSpread] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -164,7 +163,7 @@ export function BookReader({ chapters: initialChapters, userId }: BookReaderProp
     const handleUpdateStory = async () => {
         setIsUpdating(true);
         try {
-            const result = await regenerateStory(userId);
+            const result = await regenerateStory();
             if (result.success) {
                 router.refresh();
             }

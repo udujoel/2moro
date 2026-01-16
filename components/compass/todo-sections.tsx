@@ -17,7 +17,6 @@ interface Todo {
 }
 
 interface TodoSectionsProps {
-    userId: string;
     refreshTrigger?: number;
 }
 
@@ -27,7 +26,7 @@ const TIMEFRAMES = [
     { key: "month", label: "This Month", emoji: "🗓️" },
 ];
 
-export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
+export function TodoSections({ refreshTrigger }: TodoSectionsProps) {
     const { showToast } = useToast();
     const [todos, setTodos] = useState<Record<string, Todo[]>>({
         today: [],
@@ -43,14 +42,14 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
     useEffect(() => {
         loadTodos();
         checkCalendarConnection();
-    }, [userId, refreshTrigger]);
+    }, [refreshTrigger]);
 
     const loadTodos = async () => {
         setIsLoading(true);
 
         const results = await Promise.all(
             TIMEFRAMES.map(async (tf) => {
-                const result = await getTodosByTimeframe(userId, tf.key);
+                const result = await getTodosByTimeframe(tf.key);
                 return { timeframe: tf.key, todos: result.todos || [] };
             })
         );
@@ -65,7 +64,7 @@ export function TodoSections({ userId, refreshTrigger }: TodoSectionsProps) {
     };
 
     const checkCalendarConnection = async () => {
-        const result = await isCalendarConnected(userId);
+        const result = await isCalendarConnected();
         setCalendarConnected(result.isConnected);
     };
 

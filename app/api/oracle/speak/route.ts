@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { generateTTS } from "@/lib/elevenlabs";
+import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,15 @@ export const runtime = "nodejs";
  */
 export async function POST(req: NextRequest) {
     try {
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                status: 401,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
         const { text } = await req.json();
 
         if (!text) {

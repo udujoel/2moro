@@ -3,8 +3,14 @@
 import { generateContentWithFallback } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getServerUser } from "@/lib/session";
 
-export async function analyzeImageAndCreateMemory(userId: string, formData: FormData) {
+/**
+ * Analyze uploaded profile image and create a memory
+ */
+export async function analyzeImageAndCreateMemory(formData: FormData) {
+    const { userId } = await getServerUser();
+
     const file = formData.get("file") as File;
     if (!file) return { error: "No file uploaded" };
 
@@ -21,7 +27,6 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
         });
 
         // 3. AI Analysis
-        // For gemini-1.5-flash, we pass inline data
         const imagePart = {
             inlineData: {
                 data: buffer.toString("base64"),
@@ -31,13 +36,10 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
 
         const prompt = "Analyze this profile picture. Predict the person's age (just a number) and give me 3 personality keywords that describe the vibe, comma separated. Format: Age: [number], Vibe: [word, word, word].";
 
-        // USE FALLBACK
         const responseText = await generateContentWithFallback([prompt, imagePart]);
 
         console.log("AI Image Analysis:", responseText);
 
-        // Parse (Simple regex or split)
-        // Expected: "Age: 25, Vibe: Cheerful, Professional, Creative"
         let age = "25";
         let vibe = "Adventurer";
 
@@ -53,7 +55,7 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
                 userId,
                 type: "image",
                 content: `Uploaded profile picture. AI Analysis: ${responseText}`,
-                mediaUrl: base64Image, // CRITICAL FIX: Save the image data here for Archive
+                mediaUrl: base64Image,
                 memoryDate: new Date()
             }
         });
@@ -67,7 +69,6 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
 
     } catch (error: any) {
         console.error("Error in analyzeImageAndCreateMemory:", error);
-        // Log specific Gemini error details if available
         if (error.response) {
             console.error("Gemini Response Error:", JSON.stringify(error.response, null, 2));
         }
@@ -75,9 +76,9 @@ export async function analyzeImageAndCreateMemory(userId: string, formData: Form
     }
 }
 
-// ... existing imports ...
-
-// New function for Personality + Traits generation
+/**
+ * Analyze personality and traits based on quiz results (doesn't need userId)
+ */
 export async function analyzePersonalityAndTraits(zodiac: string, quizResults: any) {
     try {
         const prompt = `
@@ -101,7 +102,6 @@ export async function analyzePersonalityAndTraits(zodiac: string, quizResults: a
 
         const text = await generateContentWithFallback(prompt);
 
-        // Usage cleaning
         const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
         const data = JSON.parse(jsonStr);
 
@@ -118,13 +118,10 @@ export async function analyzePersonalityAndTraits(zodiac: string, quizResults: a
     }
 }
 
+/**
+ * Analyze horoscope and traits from DOB (doesn't need userId)
+ */
 export async function analyzeHoroscopeAndTraits(dobString: string) {
-    // ... keepting existing for now, but strictly returning Zodiac only might be cleaner 
-    // since we do traits later. But existing flow expects negatives/fixes. 
-    // We can simplify this to just return Zodiac if we want, OR keep it as a fallback/first pass.
-    // The user requirement says "after reading the horoscope... personality check... THEN generate Me Now".
-    // So this function should primarily return the ZODIAC sign now.
-
     if (!dobString) return { error: "No DOB" };
 
     try {
@@ -139,6 +136,6 @@ export async function analyzeHoroscopeAndTraits(dobString: string) {
 
         return { success: true, zodiac };
     } catch (error) {
-        return { success: true, zodiac: "Unknown" }; // Fail graceful
+        return { success: true, zodiac: "Unknown" };
     }
 }

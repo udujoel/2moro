@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 /**
  * GET /api/oracle/conversations
- * Fetch recent Oracle conversations for a user
+ * Fetch recent Oracle conversations for authenticated user
  */
 export async function GET(req: NextRequest) {
-    const userId = req.nextUrl.searchParams.get("userId");
-
-    if (!userId) {
-        return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    // Authenticate request
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
     try {
         const conversations = await prisma.oracleConversation.findMany({
@@ -35,13 +37,20 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/oracle/conversations
- * Save an Oracle conversation
+ * Save an Oracle conversation for authenticated user
  */
 export async function POST(req: NextRequest) {
     try {
-        const { userId, type, messages, summary } = await req.json();
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
 
-        if (!userId || !messages || !Array.isArray(messages)) {
+        const { type, messages, summary } = await req.json();
+
+        if (!messages || !Array.isArray(messages)) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 

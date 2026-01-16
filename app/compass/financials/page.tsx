@@ -36,7 +36,7 @@ export default function FinancialsPage() {
         setIsSaving(true);
 
         // Save snapshot
-        const saveResult = await saveFinancialSnapshot(user.id, {
+        const saveResult = await saveFinancialSnapshot({
             debt: parseInt(formData.debt) || 0,
             liabilities: parseInt(formData.liabilities) || 0,
             assets: parseInt(formData.assets) || 0,
@@ -45,7 +45,7 @@ export default function FinancialsPage() {
 
         if (saveResult.success) {
             // Generate AI analysis
-            await generateFinancialAnalysis(user.id);
+            await generateFinancialAnalysis();
 
             // Redirect back to Compass
             setTimeout(() => {

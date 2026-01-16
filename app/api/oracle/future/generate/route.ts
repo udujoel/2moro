@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateContentWithFallback } from "@/lib/ai";
+import { auth } from "@/lib/auth";
 
 interface LifePathCategory {
     category: string;
@@ -24,11 +25,14 @@ interface Scenario {
  */
 export async function POST(req: NextRequest) {
     try {
-        const { userId, yearsAhead = 20 } = await req.json();
-
-        if (!userId) {
-            return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+        // Authenticate request
+        const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const userId = session.user.id;
+
+        const { yearsAhead = 20 } = await req.json();
 
         // Fetch comprehensive user data
         const user = await prisma.user.findUnique({
@@ -189,11 +193,12 @@ Respond ONLY with valid JSON, no markdown or explanation.`;
  * Fetch the most recent visualization for a user
  */
 export async function GET(req: NextRequest) {
-    const userId = req.nextUrl.searchParams.get("userId");
-
-    if (!userId) {
-        return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    // Authenticate request
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
     try {
         const visualization = await prisma.futureVisualization.findFirst({

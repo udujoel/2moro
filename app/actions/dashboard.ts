@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { generateContentWithFallback } from "@/lib/ai";
+import { getServerUser } from "@/lib/session";
 
 export interface DashboardStats {
     total: number;
@@ -18,7 +19,12 @@ export interface TopPerson {
     lastInteraction?: Date;
 }
 
-export async function getDashboardStats(userId: string): Promise<DashboardStats> {
+/**
+ * Get dashboard statistics for the authenticated user
+ */
+export async function getDashboardStats(): Promise<DashboardStats> {
+    const { userId } = await getServerUser();
+
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -34,16 +40,12 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     return { total, thisYear, thisMonth, thisWeek };
 }
 
-export async function getTopPeople(userId: string, limit: number = 5): Promise<TopPerson[]> {
-    // Group memories by personId to count interactions
-    // This assumes we have a relation or we just count occurrences.
-    // If Prisma doesn't support complex groupBy with relations easily in one go, we might do raw query or step-by-step.
-    // Let's assume we want to count how many memories include a specific person.
-    // Since Memory <-> Person is Many-to-Many via implicit or explicit table?
-    // Let's check schema via what we know. `lib/actions.ts` might show usage.
-    // Assuming `people` relation on Memory.
+/**
+ * Get top people/connections for the authenticated user
+ */
+export async function getTopPeople(limit: number = 5): Promise<TopPerson[]> {
+    const { userId } = await getServerUser();
 
-    // Efficient approach: fetch people for this user, include count of memories.
     const people = await prisma.person.findMany({
         where: { userId },
         include: {
@@ -73,13 +75,17 @@ export async function getTopPeople(userId: string, limit: number = 5): Promise<T
     }));
 }
 
-export async function getAiGreeting(userId: string, timeOfDay: string): Promise<{ greeting: string, message: string }> {
+/**
+ * Get AI-powered greeting for the authenticated user
+ */
+export async function getAiGreeting(timeOfDay: string): Promise<{ greeting: string, message: string }> {
+    const { userId } = await getServerUser();
+
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
     if (!user) return { greeting: "Hello", message: "Welcome back." };
 
     const name = user.name?.split(' ')[0] || "Traveler";
 
-    // Simple prompt for now
     const prompt = `
         Generate a very short, warm, and astute greeting message for a user named ${name}.
         Time of day: ${timeOfDay}.
@@ -94,12 +100,10 @@ export async function getAiGreeting(userId: string, timeOfDay: string): Promise<
 
     try {
         const result = await generateContentWithFallback(prompt);
-        // Clean markdown code blocks if any
         const cleanJson = result.replace(/```json/g, '').replace(/```/g, '').trim();
         return JSON.parse(cleanJson);
     } catch (e) {
         console.warn("AI Greeting Failed (Using Router Fallback).", e);
-        // Fallback
         return {
             greeting: `Good ${timeOfDay}, ${name}`,
             message: "Ready to capture a new day?"
@@ -107,8 +111,12 @@ export async function getAiGreeting(userId: string, timeOfDay: string): Promise<
     }
 }
 
-export async function getAutobiographySnippets(userId: string): Promise<string[]> {
-    // Fetch last 10 memories to generate a "current" narrative
+/**
+ * Get autobiography snippets for the authenticated user
+ */
+export async function getAutobiographySnippets(): Promise<string[]> {
+    const { userId } = await getServerUser();
+
     const memories = await prisma.memory.findMany({
         where: { userId },
         orderBy: { memoryDate: 'desc' },
@@ -141,7 +149,6 @@ export async function getAutobiographySnippets(userId: string): Promise<string[]
         const parsed = JSON.parse(cleanJson);
         return Array.isArray(parsed) ? parsed : ["Writing your story..."];
     } catch (e) {
-        // Fallback to default snippets if AI fails
         console.warn("Autobiography Gen Failed (Using Router Fallback).", e);
         return [
             "Your story is unfolding day by day.",
@@ -151,6 +158,9 @@ export async function getAutobiographySnippets(userId: string): Promise<string[]
     }
 }
 
+/**
+ * Handle AI query action (doesn't need userId - uses prompt only)
+ */
 export async function handleAiQueryAction(query: string): Promise<string> {
     const prompt = `
         You are an intelligent audio assistant for a personal Life OS.
@@ -183,14 +193,19 @@ export interface ActivityData {
     }[];
 }
 
-export async function getActivityData(userId: string): Promise<ActivityData> {
+/**
+ * Get activity data (habits + recent memories) for the authenticated user
+ */
+export async function getActivityData(): Promise<ActivityData> {
+    const { userId } = await getServerUser();
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const [habits, memories] = await Promise.all([
         prisma.habit.findMany({
             where: { userId },
-            orderBy: { createdAt: 'desc' } // or specific order
+            orderBy: { createdAt: 'desc' }
         }),
         prisma.memory.findMany({
             where: { userId },

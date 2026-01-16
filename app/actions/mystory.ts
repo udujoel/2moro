@@ -3,8 +3,14 @@
 import { generateMyStory } from "@/lib/mystory";
 import { revalidatePath } from "next/cache";
 import { generateTTS } from "@/lib/elevenlabs";
+import { getServerUser } from "@/lib/session";
 
-export async function regenerateStory(userId: string) {
+/**
+ * Regenerate the user's autobiography story
+ */
+export async function regenerateStory() {
+    const { userId } = await getServerUser();
+
     try {
         const result = await generateMyStory(userId);
 
@@ -20,6 +26,9 @@ export async function regenerateStory(userId: string) {
     }
 }
 
+/**
+ * Generate audiobook audio from text (doesn't need userId)
+ */
 export async function generateAudiobook(text: string) {
     try {
         const audioBuffer = await generateTTS(text);
@@ -34,17 +43,28 @@ export async function generateAudiobook(text: string) {
     }
 }
 
-export async function generateCoverAction(userId: string, title: string) {
+/**
+ * Generate book cover (not yet implemented)
+ */
+export async function generateCoverAction(title: string) {
+    const { userId } = await getServerUser();
     // Phase 9: Implement DALL-E cover generation
     return { success: false, message: "Cover generation not yet implemented" };
 }
 
+/**
+ * Generate chapter illustration (doesn't need userId directly)
+ */
 export async function generateIllustrationAction(chapterId: string, prompt: string) {
     // Phase 9: Implement chapter illustration generation
     return { success: false, message: "Illustration generation not yet implemented" };
 }
 
-export async function exportStoryAsPDF(userId: string) {
+/**
+ * Export story as PDF
+ */
+export async function exportStoryAsPDF() {
+    const { userId } = await getServerUser();
     // Phase 9: Implement PDF export
     return { success: false, message: "PDF export not yet implemented" };
 }
