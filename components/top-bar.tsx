@@ -75,7 +75,7 @@ export function TopBar({ title = "My Profile" }: { title?: string }) {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => { if (results.length > 0) setIsOpen(true); }}
-                    placeholder="Search memories... (e.g., 'What did I eat?')"
+                    placeholder="Search memories... (e.g., 'dinner with the team')"
                     className="w-full h-12 pl-11 pr-4 rounded-full bg-secondary/50 border-transparent focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none text-sm"
                 />
 

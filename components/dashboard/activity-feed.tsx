@@ -23,7 +23,7 @@ export function ActivityFeed({ habits, recentMemories }: ActivityFeedProps) {
         <div className="bg-card border border-border rounded-2xl p-6 h-full flex flex-col">
             <h3 className="font-bold text-lg mb-4">Breakdown</h3>
 
-            <div className="space-y-6 overflow-y-auto pr-2">
+            <div className="space-y-6 overflow-y-auto pr-2 flex-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {/* Habits Section */}
                 <div className="space-y-3">
                     <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Daily Habits</h4>

@@ -11,22 +11,42 @@ import { useToast } from "@/components/ui/toast-context";
 import { useState, useEffect } from "react";
 import { getMemories, getPeople, createMemory } from "@/lib/actions";
 import { useUser } from "@/components/user-provider";
+import { useSearchParams } from "next/navigation";
 
 export default function ArchivePage() {
     const { user } = useUser();
     const { showToast } = useToast();
+    const searchParams = useSearchParams();
 
     const [viewMode, setViewMode] = useState<"grid" | "timeline" | "people">("grid");
     const [mounted, setMounted] = useState(false);
+    const [initialPersonId, setInitialPersonId] = useState<string | null>(null);
 
-    // Initial load from localStorage
+    // Initial load from localStorage OR URL params
     useEffect(() => {
         setMounted(true);
-        const saved = localStorage.getItem('archive-view-mode');
-        if (saved === 'grid' || saved === 'timeline' || saved === 'people') {
-            setViewMode(saved);
+
+        // Check URL params first (takes priority)
+        const viewParam = searchParams.get('view');
+        const personParam = searchParams.get('person');
+
+        if (viewParam === 'people') {
+            setViewMode('people');
+            if (personParam) {
+                setInitialPersonId(personParam);
+            }
+        } else if (viewParam === 'timeline') {
+            setViewMode('timeline');
+        } else if (viewParam === 'grid') {
+            setViewMode('grid');
+        } else {
+            // Fall back to localStorage
+            const saved = localStorage.getItem('archive-view-mode');
+            if (saved === 'grid' || saved === 'timeline' || saved === 'people') {
+                setViewMode(saved);
+            }
         }
-    }, []);
+    }, [searchParams]);
 
     // Save viewMode to localStorage when it changes
     useEffect(() => {
@@ -206,7 +226,7 @@ export default function ArchivePage() {
                                 )}
                             </div>
                         ) : viewMode === "people" ? (
-                            <PeopleView entries={memories} people={people} />
+                            <PeopleView entries={memories} people={people} initialPersonId={initialPersonId} />
                         ) : (
                             <TimelineView entries={memories} people={people} />
                         )}

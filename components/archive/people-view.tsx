@@ -32,12 +32,13 @@ interface Person {
 interface PeopleViewProps {
     entries: ArchiveEntry[];
     people: Person[];
+    initialPersonId?: string | null;
 }
 
-export function PeopleView({ entries, people: initialPeople }: PeopleViewProps) {
+export function PeopleView({ entries, people: initialPeople, initialPersonId }: PeopleViewProps) {
     const [selectedDate, setSelectedDate] = useState(new Date()); // Default to today
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+    const [selectedPersonId, setSelectedPersonId] = useState<string | null>(initialPersonId || null);
     const [hoveredMemory, setHoveredMemory] = useState<number | null>(null);
     const [editingMemory, setEditingMemory] = useState<number | null>(null);
     const [peopleFilter, setPeopleFilter] = useState<"all" | string>("all");

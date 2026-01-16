@@ -9,6 +9,7 @@ import { AudioAgent } from "@/components/dashboard/audio-agent";
 import { TopBar } from "@/components/top-bar";
 import { redirect } from "next/navigation";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import Link from "next/link";
 
 // Calendar is tricky to build from scratch quickly with "adjustable" features mentioned in prompt.
 // We'll use a placeholder or simple calendar for now to meet the visual layout.
@@ -42,48 +43,50 @@ export default async function DashboardPage() {
                 {/* Mobile Header / TopBar context */}
                 <TopBar title="Dashboard" />
 
-                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+                <div className="flex-1 overflow-hidden p-6 md:p-8 flex flex-col">
                     {/* Banner Header with Mic */}
                     <DashboardHeader greeting={aiContext.greeting} message={aiContext.message} />
 
-                    {/* Breakdown (Stats) */}
-                    <div className="space-y-4">
+                    {/* Breakdown (Stats) - No View All */}
+                    <div className="space-y-4 mb-6">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-bold">Breakdown</h2>
-                            <button className="text-sm text-muted-foreground hover:text-primary">View All</button>
                         </div>
                         <StatsCards stats={stats} />
                     </div>
 
                     {/* Report Progress / Activity Log (replaces Work with Clients) */}
-                    <div className="space-y-4 h-[400px]">
+                    <div className="flex-1 min-h-0">
                         <ActivityFeed habits={activityData.habits} recentMemories={activityData.recentMemories} />
                     </div>
                 </div>
             </main>
 
             {/* 3. Right Panel (Right) */}
-            <aside className="hidden xl:flex w-96 flex-col border-l border-border bg-card p-6 space-y-8 overflow-y-auto z-20 shadow-sm">
-
-
+            <aside className="hidden xl:flex w-96 flex-col border-l border-border bg-card p-6 space-y-6 overflow-hidden z-20 shadow-sm">
 
                 {/* Calendar */}
-                <div>
+                <div className="shrink-0">
                     <h3 className="font-bold text-lg mb-4">Calendar</h3>
                     <CalendarWidget />
                 </div>
 
                 {/* Autobiography / Earnings */}
-                <div className="h-[280px] flex flex-col">
+                <div className="h-[200px] flex flex-col shrink-0">
                     <h3 className="font-bold text-lg mb-4">Autobiography</h3>
                     <AutobiographyWidget snippets={autobiography} />
                 </div>
 
                 {/* Connections (Moved from Main) */}
-                <div className="flex-1 min-h-[300px]">
+                <div className="flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="font-bold text-lg">Connections</h3>
-                        <button className="text-sm text-muted-foreground hover:text-primary">View All</button>
+                        <Link
+                            href="/archive?view=people"
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                        >
+                            View All
+                        </Link>
                     </div>
                     <TopPeople people={topPeople} />
                 </div>

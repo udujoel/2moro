@@ -1,6 +1,7 @@
 "use client";
 
 import { MoreVertical, User } from "lucide-react";
+import Link from "next/link";
 
 interface TopPeopleProps {
     people: {
@@ -22,14 +23,18 @@ export function TopPeople({ people }: TopPeopleProps) {
                 </button>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {people.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8 text-sm">
                         No connections yet.
                     </div>
                 ) : (
                     people.map((person) => (
-                        <div key={person.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-secondary/50 transition-colors group cursor-pointer">
+                        <Link
+                            key={person.id}
+                            href={`/archive?view=people&person=${person.id}`}
+                            className="flex items-center gap-4 p-3 rounded-xl hover:bg-secondary/50 transition-colors group cursor-pointer"
+                        >
                             <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center overflow-hidden shrink-0">
                                 {person.avatar ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -49,7 +54,7 @@ export function TopPeople({ people }: TopPeopleProps) {
                                     {person.count}
                                 </span>
                             </div>
-                        </div>
+                        </Link>
                     ))
                 )}
             </div>

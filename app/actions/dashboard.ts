@@ -106,7 +106,7 @@ export async function getAiGreeting(timeOfDay: string): Promise<{ greeting: stri
         console.warn("AI Greeting Failed (Using Router Fallback).", e);
         return {
             greeting: `Good ${timeOfDay}, ${name}`,
-            message: "Ready to capture a new day?"
+            message: "Here's how we're looking."
         };
     }
 }
@@ -231,3 +231,102 @@ export async function getActivityData(): Promise<ActivityData> {
         }))
     };
 }
+
+export interface CalendarDayData {
+    hasMemories: boolean;
+    hasHabits: boolean;
+    memoryCount: number;
+    habitCount: number;
+    summaries: string[];
+}
+
+export interface CalendarData {
+    [dateKey: string]: CalendarDayData;
+}
+
+/**
+ * Get calendar activity data for a specific month
+ */
+export async function getCalendarData(year: number, month: number): Promise<CalendarData> {
+    const { userId } = await getServerUser();
+
+    // Get start and end of month
+    const startOfMonth = new Date(year, month, 1);
+    const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+
+    // Fetch memories for the month
+    const memories = await prisma.memory.findMany({
+        where: {
+            userId,
+            memoryDate: {
+                gte: startOfMonth,
+                lte: endOfMonth
+            }
+        },
+        select: {
+            memoryDate: true,
+            content: true,
+            type: true
+        }
+    });
+
+    // Fetch habit completions for the month (if tracking exists)
+    const habits = await prisma.habit.findMany({
+        where: { userId },
+        select: {
+            lastCompletedAt: true,
+            title: true
+        }
+    });
+
+    const calendarData: CalendarData = {};
+
+    // Process memories
+    for (const memory of memories) {
+        const dateKey = memory.memoryDate.toISOString().split('T')[0];
+        if (!calendarData[dateKey]) {
+            calendarData[dateKey] = {
+                hasMemories: false,
+                hasHabits: false,
+                memoryCount: 0,
+                habitCount: 0,
+                summaries: []
+            };
+        }
+        calendarData[dateKey].hasMemories = true;
+        calendarData[dateKey].memoryCount++;
+        if (calendarData[dateKey].summaries.length < 2) {
+            const preview = memory.content.substring(0, 40) + (memory.content.length > 40 ? "..." : "");
+            calendarData[dateKey].summaries.push(
+                memory.type === 'image' ? `📷 ${preview}` : `📝 ${preview}`
+            );
+        }
+    }
+
+    // Process habits (check lastCompletedAt dates)
+    for (const habit of habits) {
+        if ((habit as any).lastCompletedAt) {
+            const completedDate = new Date((habit as any).lastCompletedAt);
+            if (completedDate >= startOfMonth && completedDate <= endOfMonth) {
+                const dateKey = completedDate.toISOString().split('T')[0];
+                if (!calendarData[dateKey]) {
+                    calendarData[dateKey] = {
+                        hasMemories: false,
+                        hasHabits: false,
+                        memoryCount: 0,
+                        habitCount: 0,
+                        summaries: []
+                    };
+                }
+                calendarData[dateKey].hasHabits = true;
+                calendarData[dateKey].habitCount++;
+                if (calendarData[dateKey].summaries.length < 3) {
+                    calendarData[dateKey].summaries.push(`✅ ${habit.title}`);
+                }
+            }
+        }
+    }
+
+    return calendarData;
+}
+
