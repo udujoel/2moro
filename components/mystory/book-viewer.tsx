@@ -18,10 +18,9 @@ interface BookViewerProps {
         order: number;
     }>;
     coverImage?: string;
-    userId: string;
 }
 
-export function BookViewer({ chapters, coverImage, userId }: BookViewerProps) {
+export function BookViewer({ chapters, coverImage }: BookViewerProps) {
     const [currentView, setCurrentView] = useState<PageView>("cover");
     const [currentChapter, setCurrentChapter] = useState(0);
     const [theme, setTheme] = useState<BookTheme>("classic");
@@ -93,7 +92,7 @@ export function BookViewer({ chapters, coverImage, userId }: BookViewerProps) {
                     }
                 >
                     {currentView === "cover" && (
-                        <BookCover coverImage={coverImage} userId={userId} />
+                        <BookCover coverImage={coverImage} />
                     )}
                     {currentView === "contents" && (
                         <TableOfContents

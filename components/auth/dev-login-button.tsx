@@ -32,7 +32,12 @@ export function DevLoginButton() {
         <button
             onClick={handleDevLogin}
             disabled={isLoading}
-            className="w-full px-4 py-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-amber-300 hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full px-4 py-3 bg-accent/20 border border-accent/50 rounded-xl text-accent-foreground hover:bg-accent/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-medium"
+            style={{
+                backgroundColor: 'rgba(224, 122, 95, 0.15)',
+                borderColor: 'rgba(224, 122, 95, 0.5)',
+                color: '#c45a3a'
+            }}
         >
             {isLoading ? (
                 <>
@@ -41,8 +46,7 @@ export function DevLoginButton() {
                 </>
             ) : (
                 <>
-                    🚀 Login as Default User
-                    <span className="text-xs opacity-60">(Dev Only)</span>
+                    🚀 Login as Test User
                 </>
             )}
         </button>

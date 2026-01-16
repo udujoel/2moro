@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: "2moro",
   description: "Your digital biography and memory timeline.",
   icons: {
-    icon: "/logo.svg",
+    icon: "/favicon.png",
   },
 };
 

@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { summarizePeopleInternal, generateEntryTitle } from './ai';
 import { getServerUser } from "@/lib/session";
+import { z } from "zod";
+import { deleteMemorySchema } from "@/lib/validations/memory";
+import { personSchema } from "@/lib/validations/user";
 
 // --- User Actions ---
 
@@ -172,9 +175,25 @@ export async function createMemory(
 }
 
 export async function deleteMemory(memoryId: string) {
-    // Note: For delete, we're keeping it simple - the memoryId is the identifier
-    // In a more secure setup, we'd verify the memory belongs to the user
+    // Validate input
+    const validation = deleteMemorySchema.safeParse({ memoryId });
+    if (!validation.success) {
+        console.error("Validation error:", validation.error.flatten());
+        return { success: false, error: "Invalid memory ID" };
+    }
+
+    const { userId } = await getServerUser();
+
     try {
+        // Verify ownership before deleting
+        const memory = await prisma.memory.findFirst({
+            where: { id: memoryId, userId },
+        });
+
+        if (!memory) {
+            return { success: false, error: "Memory not found or access denied" };
+        }
+
         await prisma.memory.delete({
             where: { id: memoryId },
         });
@@ -182,7 +201,7 @@ export async function deleteMemory(memoryId: string) {
         return { success: true };
     } catch (error) {
         console.error("Error deleting memory:", error);
-        return { success: false, error };
+        return { success: false, error: "Failed to delete memory" };
     }
 }
 

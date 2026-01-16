@@ -7,6 +7,12 @@ import { calculateFinancialHealthScore } from "@/lib/finance";
 import { createCalendarEvent, calculateDueDate } from "@/lib/google-calendar";
 import { revalidatePath } from "next/cache";
 import { getServerUser } from "@/lib/session";
+import { z } from "zod";
+import {
+    createTodoSchema,
+    updateTodoStatusSchema,
+    deleteTodoSchema,
+} from "@/lib/validations/compass";
 
 /**
  * Save personality test results to database
@@ -163,7 +169,7 @@ export async function generateAIRecommendations(forceRefresh: boolean = false) {
         }
 
         // Fetch latest personality test
-        const { test } = await getLatestPersonalityTest(userId);
+        const { test } = await getLatestPersonalityTest();
         if (!test) {
             return {
                 success: false,
@@ -172,7 +178,7 @@ export async function generateAIRecommendations(forceRefresh: boolean = false) {
         }
 
         // Fetch monthly horoscope
-        const { horoscope } = await getMonthlyHoroscopeForUser(userId);
+        const { horoscope } = await getMonthlyHoroscopeForUser();
 
         // Generate recommendations using Gemini AI
         const prompt = `
@@ -317,8 +323,11 @@ export async function acceptRecommendation(
     const { userId } = await getServerUser();
 
     try {
-        // Use AI to break down into atomic todos across timeframes
-        const prompt = `
+        let todosToCreate: Array<{ task: string; description?: string; timeframe: string }> = [];
+
+        // Try to use AI to break down into atomic todos
+        try {
+            const prompt = `
 You are a productivity coach. Break down this goal into practical, atomic action items.
 
 **Goal:** "${recommendation.task}"
@@ -350,17 +359,28 @@ Return ONLY valid JSON:
 }
 `;
 
-        const response = await generateContentWithSmartRouter(prompt, "smart");
-        const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
-        const data = JSON.parse(jsonStr);
+            const response = await generateContentWithSmartRouter(prompt, "smart");
+            const jsonStr = response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
+            const data = JSON.parse(jsonStr);
 
-        if (!data.todos || !Array.isArray(data.todos)) {
-            throw new Error("Invalid AI response format");
+            if (data.todos && Array.isArray(data.todos) && data.todos.length > 0) {
+                todosToCreate = data.todos;
+            } else {
+                throw new Error("Invalid AI response format");
+            }
+        } catch (aiError) {
+            // Fallback: Create a single todo directly from the recommendation
+            console.warn("AI breakdown failed, creating single todo:", aiError);
+            todosToCreate = [{
+                task: recommendation.task,
+                description: recommendation.description || undefined,
+                timeframe: "week"
+            }];
         }
 
         // Create all the todos
         const createdTodos = await Promise.all(
-            data.todos.map(async (item: any) => {
+            todosToCreate.map(async (item: any) => {
                 return prisma.compassTodo.create({
                     data: {
                         userId,
@@ -443,7 +463,24 @@ export async function updateTodoStatus(
     todoId: string,
     status: "pending" | "completed" | "dismissed"
 ) {
+    // Validate input
+    const validation = updateTodoStatusSchema.safeParse({ todoId, status });
+    if (!validation.success) {
+        console.error("Validation error:", validation.error.flatten());
+        return { success: false, error: "Invalid input data" };
+    }
+
+    const { userId } = await getServerUser();
+
     try {
+        // Verify ownership
+        const existingTodo = await prisma.compassTodo.findFirst({
+            where: { id: todoId, userId },
+        });
+        if (!existingTodo) {
+            return { success: false, error: "Todo not found or access denied" };
+        }
+
         const todo = await prisma.compassTodo.update({
             where: { id: todoId },
             data: {
@@ -470,16 +507,23 @@ export async function createTodo(
     timeframe: string,
     description?: string
 ) {
+    // Validate input
+    const validation = createTodoSchema.safeParse({ task, category, timeframe, description });
+    if (!validation.success) {
+        console.error("Validation error:", validation.error.flatten());
+        return { success: false, error: "Invalid input: " + validation.error.issues[0]?.message };
+    }
+
     const { userId } = await getServerUser();
 
     try {
         const todo = await prisma.compassTodo.create({
             data: {
                 userId,
-                task,
-                description,
-                category,
-                timeframe,
+                task: validation.data.task,
+                description: validation.data.description,
+                category: validation.data.category,
+                timeframe: validation.data.timeframe,
                 status: "pending",
                 source: "manual",
             },

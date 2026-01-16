@@ -22,6 +22,7 @@
     "framer-motion": "^12.23.26",
     "googleapis": "^170.0.0",
     "html2canvas": "^1.4.1",
+    "jimp": "^1.6.0",
     "jspdf": "^4.0.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
@@ -29,7 +30,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0",
-    "three": "^0.182.0"
+    "three": "^0.182.0",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

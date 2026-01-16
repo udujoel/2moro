@@ -94,8 +94,8 @@ export function Sidebar({ className }: { className?: string }) {
                 {isExpanded ? (
                     <>
                         <Link href="/" className="flex items-center gap-3 flex-1 group">
-                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                                <Logo className="w-5 h-5" />
+                            <div className="w-7 h-7 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                <Logo size={22} />
                             </div>
                             <span className="font-bold text-lg whitespace-nowrap">2moro</span>
                         </Link>
