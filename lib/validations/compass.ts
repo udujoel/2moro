@@ -24,13 +24,13 @@ export const createTodoSchema = z.object({
 
 // Schema for updating todo status
 export const updateTodoStatusSchema = z.object({
-    todoId: z.string().uuid("Invalid todo ID"),
+    todoId: z.string().min(1, "Invalid todo ID"),
     status: z.enum(["pending", "completed", "dismissed"]),
 });
 
 // Schema for deleting a todo
 export const deleteTodoSchema = z.object({
-    todoId: z.string().uuid("Invalid todo ID"),
+    todoId: z.string().min(1, "Invalid todo ID"),
 });
 
 // Schema for financial snapshot

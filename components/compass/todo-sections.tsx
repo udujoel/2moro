@@ -78,6 +78,9 @@ export function TodoSections({ refreshTrigger }: TodoSectionsProps) {
                 ...prev,
                 [timeframe]: prev[timeframe].filter((t) => t.id !== todoId),
             }));
+        } else {
+            console.error("Failed to complete todo:", result.error);
+            showToast(result.error || "Failed to complete task", "error");
         }
 
         setCompletingIds((prev) => {
@@ -246,9 +249,13 @@ export function TodoSections({ refreshTrigger }: TodoSectionsProps) {
                                         className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 group hover:border-primary/30 transition-colors"
                                     >
                                         <button
-                                            onClick={() => handleComplete(todo.id, tf.key)}
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleComplete(todo.id, tf.key);
+                                            }}
                                             disabled={isCompleting}
-                                            className="mt-0.5 p-1 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
+                                            className="mt-0.5 p-1 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50 relative z-10 cursor-pointer"
                                         >
                                             {isCompleting ? (
                                                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
