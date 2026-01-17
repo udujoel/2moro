@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useTheme } from "@/components/theme-provider";
-import { cn } from "@/lib/utils";
 
 interface LogoProps {
     className?: string;
@@ -11,20 +10,20 @@ interface LogoProps {
 
 export function Logo({ className, size = 20 }: LogoProps) {
     const { theme } = useTheme();
-    const isDark = theme === "midnight";
+
+    // Use white logo for dark theme, black logo for light themes
+    const isDarkTheme = theme === "midnight";
+    const logoSrc = isDarkTheme ? "/logo-light.png" : "/logo-dark.png";
 
     return (
-        <div className={cn("relative flex items-center justify-center", className)} style={{ width: size, height: size }}>
-            <Image
-                src="/logo-correct.png"
-                alt="2moro Logo"
-                fill
-                className={cn(
-                    "object-contain transition-all duration-300",
-                    isDark && "invert brightness-0" // Invert black to white for dark mode
-                )}
-                priority
-            />
-        </div>
+        <Image
+            src={logoSrc}
+            alt="2moro Logo"
+            width={size}
+            height={size}
+            className={className}
+            style={{ objectFit: "contain" }}
+            priority
+        />
     );
 }
