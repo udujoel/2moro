@@ -1,105 +1,78 @@
-# 2moro - Personal Life Companion
+# 2moro
 
-<div align="center">
+## *Slogan: "What if you had known?"*
 
-![2moro Logo](public/logo-dark.png)
-
-**A comprehensive personal life management platform powered by AI**
+**2moro** is a comprehensive **Life Operating System (LifeOS)** designed specifically to bridge the gap between youthful energy and long-term wisdom. By leveraging AI and behavioral data, it transforms the concept of mentorship from an external lecture into an internal dialogue with one's own future self.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://typescriptlang.org)
 [![Prisma](https://img.shields.io/badge/Prisma-5.22-2D3748?logo=prisma)](https://prisma.io)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 
-</div>
-
 ---
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
+- [The Philosophy](#the-core-philosophy-closing-the-wisdom-gap)
+- [The Future Self Engine](#the-future-self-engine)
+- [Key Features](#key-features--functionality)
+- [Value Proposition](#the-value-proposition)
 - [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
 - [API Reference](#api-reference)
-- [Authentication & Security](#authentication--security)
-- [AI Integration](#ai-integration)
-- [Database Schema](#database-schema)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Environment Variables](#environment-variables)
 
 ---
 
-## Overview
+## The Core Philosophy: Closing the Wisdom Gap
 
-**2moro** is a full-stack personal life companion application that combines AI-powered insights with practical life management tools. It helps users track memories, manage personal growth, monitor financial wellness, and receive personalized guidance through an intelligent Oracle interface.
+While the prefrontal cortex—the area of the brain responsible for planning and impulse control—does not fully mature until the mid-20s, young people are expected to make decisions that define their lifetimes.
 
-### 📖 The User Story
-Imagine a professional navigating the complexities of modern life—balancing career ambitions, financial goals, personal relationships, and mental well-being. They use one app for tasks, another for journaling, a spreadsheet for finance, and various disconnected tools for self-improvement. **2moro** unifies these fragmented threads into a cohesive tapestry, acting as a proactive partner in their life's journey rather than just a passive repository of data.
-
-### ❓ The Problem
-We live in an era of information overload and tool fatigue.
-- **Fragmentation**: Life data is scattered across incompatible platforms.
-- **Analysis Paralysis**: We have data (steps, dollars, tasks) but lack actionable wisdom.
-- **Short-termism**: Most tools focus on "today" (to-do lists) but neglect "tomorrow" (long-term vision and legacy).
-
-### 💡 The Solution & Importance
-2moro functions as a **"Life Operating System."** It doesn't just store data; it synthesizes it.
-- **Unified Context**: Your financial health informs your life goals; your daily mood influences your journal prompts.
-- **AI-Driven Wisdom**: The Oracle doesn't just chat; it remembers your history, understands your personality (MBTI), and offers tailored guidance.
-- **Legacy Building**: Features like 'MyStory' and 'Archive' preserve your experiences, turning daily moments into a structured biography.
-
-### 🎯 Usefulness
-- **For Clarity**: Clears mental clutter by organizing tasks, finances, and thoughts in one place.
-- **For Growth**: Provides objective, AI-analyzed feedback on your habits and trajectory.
-- **For Peace of Mind**: Ensures no aspect of life (health, wealth, relationships) is neglected via holistic health scores.
-
-### 👥 Target Audience
-- **The Self-Optimizer**: Individuals interested in "Quantified Self" and continuous improvement.
-- **The Busy Professional**: People who need a high-level cockpit for their complex lives.
-- **The Introspective**: Those who value journaling, memory keeping, and legacy.
+* **The Problem:** Youth possess time and energy but often lack foresight and experience. Mentorship is scarce, and young people often reject external advice due to a lack of perceived urgency.
+* **The Reality:** As the proverb goes, *"The best time to plant a tree was yesterday. The next best time is today."* Regret often stems from realized ignorance—the painful admission of "If I had only known."
+* **The Solution:** **2moro** eliminates the "stranger danger" of advice. It utilizes the psychological truth that while we may reject opinions from others, we rarely reject the needs of our future selves if we can clearly visualize them.
 
 ---
 
-## Features
+## The "Future Self" Engine
 
-### 🏠 Dashboard
-- Daily memory overview with rich media support
-- Habit tracking with streak visualization
-- Activity feed and calendar integration
-- Quick memory capture
+The platform’s central innovation is the **Future Simulator**. Instead of a generic coach, 2moro uses user data (habits, finances, memories) to model a vivid projection of the user's future reality.
 
-### 📝 Diary (Archive)
-- Timeline-based memory browsing
-- Location and weather metadata
-- People tagging and relationships
-- Multi-media support (text, images, video)
+* **Visual Aging:** Generates an aged visualization of the user, turning the "future self" from an abstract concept into a recognizable person. This builds empathy and comfort with one's own aging process.
+* **Reality Simulation:** Projects current behaviors forward. If a user saves $X or exercises Y times a week, what does their life look like in 10 years? This serves as both an effective warning system and a powerful encouragement mechanism.
 
-### 🧭 Compass
-- **Personal Growth**: AI-generated recommendations based on MBTI personality type
-- **Financial Wellness**: Health score calculation, investment projections
-- **Action Plans**: Daily/weekly/monthly task management
-- **Google Calendar Integration**: Sync tasks to external calendar
+---
 
-### 🔮 Oracle
-- **Text Chat**: Conversational AI with context awareness
-- **Voice Mode**: Real-time speech-to-speech interaction
-- **Future Visualization**: AI-generated life path scenarios
-- **Conversation History**: Persistent session management
+## Key Features & Functionality
 
-### 📖 MyStory
-- AI-generated biography chapters
-- Audiobook narration via ElevenLabs
-- Chronological life story compilation
+### 1. The Oracle (AI Mentorship Interface) 🔮
+A dedicated space where users communicate with their "Future Self" in real-time.
 
-### ⚙️ Settings
-- Theme preferences (dark/light)
-- Google Calendar OAuth connection
-- Notification preferences
-- Account management
+* **Perspective Shifting:** Users can text or speak to The Oracle about current pressures, obsessions, or rash decisions.
+* **Wisdom Injection:** Using the user's personality and goals, the AI responds with the tempered wisdom of an older, more experienced version of themselves, preventing regretful mistakes before they happen.
+
+### 2. The Real-Time Digital Autobiographer 📖
+2moro turns daily living into a legacy through an **Omni-Journal**.
+
+* **Non-Linear Input, Linear Output:** Users can input memories multimodally (text, voice, photo) as they happen. Whether it is a current event or a childhood memory, the system intelligently files it into the correct chronological slot.
+* **Legacy Creation:** The platform acts as a ghostwriter, composing these entries into a coherent autobiography or audio-book. Users can read their own unfolding story, gaining a "third-person perspective" on their own life.
+* **People-Centric Search:** Memories are tagged against the people involved, creating a relational database of social history.
+
+### 3. Behavioral & Financial Life OS 🧭
+Beyond reflection, 2moro provides the tactical tools to engineer a better tomorrow.
+
+* **Financial Projection:** Connects to banking apps or accepts manual input to track assets and investments. It visualizes not just current net worth, but *future value estimates* based on current trajectories.
+* **Atomic Habits:** Includes psychometric testing (Personality Tests) to tailor habit recommendations. It breaks big goals down into atomic habits synced directly to the user's calendar.
+
+---
+
+## The Value Proposition
+
+**2moro** is not just an app; it is an **anti-regret engine**.
+
+By introducing the young to their future selves early, the platform fosters conscientiousness without feeling like a chore. It answers the haunting question—*"What if you had known?"*—by allowing the user to "know" today, ensuring that their current actions serve their future reality.
+
+It is a fun, engaging, and deeply personalized coach that grows with the user, ensuring they maximize their life’s potential, not by chance, but by design.
 
 ---
 
@@ -112,89 +85,44 @@ We live in an era of information overload and tool fatigue.
 | **React** | 19.2 | UI component library |
 | **TypeScript** | 5.x | Type-safe JavaScript |
 | **Tailwind CSS** | 4.x | Utility-first styling |
-| **Framer Motion** | 12.x | Animations and transitions |
 | **Three.js** | 0.182 | 3D graphics (Oracle orb) |
-| **Lucide React** | 0.562 | Icon system |
 
 ### Backend
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| **Next.js API Routes** | 16.1 | Serverless API endpoints |
-| **Prisma ORM** | 5.22 | Database access layer |
+| **Next.js API** | 16.1 | Serverless endpoints |
+| **Prisma ORM** | 5.22 | Database access |
 | **PostgreSQL** | 15+ | Primary database |
-| **NextAuth.js** | 5.0-beta | Authentication |
+| **NextAuth** | 5.0 | Authentication |
 | **Zod** | 4.x | Runtime validation |
 
-### AI & External Services
+### External Services
 | Service | Purpose |
 |---------|---------|
-| **Google Gemini** | Primary AI model (chat, recommendations, analysis) |
+| **Google Gemini** | AI model for Oracle & Analysis |
 | **Google Gemini Live** | Real-time voice interactions |
-| **ElevenLabs** | Text-to-speech for audiobooks |
-| **Google Calendar API** | Task synchronization |
-| **Google OAuth** | User authentication |
+| **ElevenLabs** | Visionary text-to-speech for audiobooks |
+| **Google Calendar** | Task synchronization |
 
 ---
 
-## Architecture
+## Project Structure
 
-```mermaid
-graph TB
-    subgraph Client["Frontend (Next.js App Router)"]
-        UI[React Components]
-        Providers[Context Providers]
-        Hooks[Custom Hooks]
-    end
-
-    subgraph API["API Layer"]
-        Routes[API Routes]
-        Actions[Server Actions]
-        Middleware[Auth Middleware]
-    end
-
-    subgraph Services["Service Layer"]
-        AI[AI Service]
-        Auth[Auth Service]
-        Calendar[Calendar Service]
-        Crypto[Crypto Service]
-    end
-
-    subgraph External["External Services"]
-        Gemini[Google Gemini]
-        OAuth[Google OAuth]
-        GCal[Google Calendar]
-        ElevenLabs[ElevenLabs TTS]
-    end
-
-    subgraph Data["Data Layer"]
-        Prisma[Prisma ORM]
-        DB[(PostgreSQL)]
-    end
-
-    UI --> Providers
-    Providers --> Actions
-    UI --> Routes
-    Routes --> Middleware
-    Middleware --> Services
-    Actions --> Services
-    Services --> AI
-    Services --> Auth
-    Services --> Calendar
-    AI --> Gemini
-    Auth --> OAuth
-    Calendar --> GCal
-    Services --> Prisma
-    Prisma --> DB
 ```
-
-### Request Flow
-
-1. **Client Request** → Browser sends request to Next.js
-2. **Middleware** → `middleware.ts` validates authentication
-3. **Route Handler** → API route or Server Action processes request
-4. **Service Layer** → Business logic in `/lib` modules
-5. **Data Layer** → Prisma ORM interacts with PostgreSQL
-6. **External Services** → AI, OAuth, Calendar APIs called as needed
+2moro/
+├── app/                          # Next.js App Router
+│   ├── api/                      # API Routes (Oracle, Auth, Speech)
+│   ├── archive/                  # Diary functionality
+│   ├── compass/                  # Financial & Habit OS
+│   ├── dashboard/                # Daily Overview
+│   ├── mystory/                  # Autobiography generation
+│   ├── oracle/                   # Future Self Interface
+│   └── simulation/               # Future Visualization
+├── components/                   # UI Components
+├── lib/                          # Business Logic (AI, Auth, Finance)
+├── prisma/                       # Database Schema
+└── public/                       # Assets
+```
 
 ---
 
@@ -202,8 +130,8 @@ graph TB
 
 ### Prerequisites
 - Node.js 20+
-- PostgreSQL 15+
-- Google Cloud Console project (for OAuth & Gemini)
+- PostgreSQL Database
+- Google Cloud Project (OAuth & Gemini API)
 
 ### Installation
 
@@ -215,342 +143,22 @@ cd 2moro
 # Install dependencies
 npm install
 
-# Setup environment variables
+# Setup env
 cp .env.example .env.local
-# Edit .env.local with your values
 
-# Setup database
+# Initialize DB
 npx prisma migrate dev
 
-# Start development server
+# Run development server
 npm run dev
-```
-
-### Available Scripts
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server (Turbopack) |
-| `npm run build` | Create production build |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm test` | Run tests in watch mode |
-| `npm run test:run` | Run tests once |
-| `npm run test:coverage` | Run tests with coverage |
-
----
-
-## Project Structure
-
-```
-2moro/
-├── app/                          # Next.js App Router
-│   ├── actions/                  # Server Actions
-│   │   ├── compass.ts           # Compass feature actions
-│   │   ├── dashboard.ts         # Dashboard data fetching
-│   │   ├── habits.ts            # Habit tracking
-│   │   ├── mystory.ts           # Biography generation
-│   │   └── onboarding.ts        # User onboarding
-│   ├── api/                      # API Routes
-│   │   ├── auth/                # Authentication endpoints
-│   │   ├── oracle/              # AI chat & voice endpoints
-│   │   ├── speech/              # TTS token endpoint
-│   │   └── suggestions/         # Daily suggestions
-│   ├── archive/                  # Diary page
-│   ├── compass/                  # Compass pages
-│   ├── dashboard/                # Main dashboard
-│   ├── login/                    # Authentication page
-│   ├── mystory/                  # Biography viewer
-│   ├── oracle/                   # Oracle chat interface
-│   ├── settings/                 # User settings
-│   └── simulation/               # Future visualization
-│
-├── components/                   # React Components
-│   ├── archive/                  # Diary components
-│   ├── auth/                     # Auth UI components
-│   ├── compass/                  # Compass feature UI
-│   ├── dashboard/                # Dashboard widgets
-│   ├── mystory/                  # Biography components
-│   ├── onboarding/               # Onboarding flows
-│   ├── oracle/                   # Oracle UI (orb, chat)
-│   ├── settings/                 # Settings panels
-│   └── ui/                       # Shared UI primitives
-│
-├── lib/                          # Utility Libraries
-│   ├── ai.ts                     # Gemini AI wrapper
-│   ├── auth.ts                   # NextAuth configuration
-│   ├── crypto.ts                 # Encryption utilities
-│   ├── db.ts                     # Prisma client
-│   ├── finance.ts                # Financial calculations
-│   ├── google-calendar.ts        # Calendar integration
-│   ├── logger.ts                 # Structured logging
-│   ├── rate-limit.ts             # API rate limiting
-│   ├── session.ts                # Session helpers
-│   └── validations/              # Zod schemas
-│
-├── prisma/
-│   └── schema.prisma             # Database schema
-│
-├── public/                       # Static assets
-├── middleware.ts                 # Route protection
-├── vitest.config.ts              # Test configuration
-└── package.json
 ```
 
 ---
 
 ## API Reference
 
-### Authentication Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/[...nextauth]` | ALL | NextAuth.js handler |
-| `/api/auth/user` | GET | Get current user |
-| `/api/auth/clear-cookies` | POST | Clear auth cookies |
-| `/api/auth/google/calendar` | GET | Initiate Calendar OAuth |
-| `/api/auth/google/callback` | GET | Calendar OAuth callback |
-| `/api/auth/google/disconnect` | POST | Revoke Calendar access |
-
-### Oracle API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/oracle/chat` | POST | Send chat message, receive AI response |
-| `/api/oracle/voice` | POST | Voice transcription and response |
-| `/api/oracle/live` | WS | Real-time voice streaming |
-| `/api/oracle/speak` | POST | Text-to-speech generation |
-| `/api/oracle/conversations` | GET | List conversation history |
-| `/api/oracle/conversations/[id]` | GET/DELETE | Manage specific conversation |
-| `/api/oracle/recent` | GET | Get recent conversation summary |
-| `/api/oracle/future/generate` | POST | Generate future scenarios |
-| `/api/oracle/future` | GET | Get existing visualization |
-| `/api/oracle/future/image` | POST | Generate scenario images |
-
-### Suggestions API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/suggestions/daily` | GET | Get daily memory prompts |
-| `/api/suggestions/regenerate` | POST | Force new suggestions |
-
-### Speech API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/speech/token` | GET | Get ElevenLabs session token |
-
----
-
-## Authentication & Security
-
-### Authentication Flow
-1. User clicks "Sign in with Google" on `/login`
-2. NextAuth.js redirects to Google OAuth
-3. Upon success, JWT session token is created
-4. Middleware validates token on protected routes
-
-### Security Features
-
-| Feature | Implementation |
-|---------|----------------|
-| **Session Management** | JWT-based sessions (30-day expiry) |
-| **Route Protection** | `middleware.ts` guards protected pages |
-| **Input Validation** | Zod schemas validate all inputs |
-| **OAuth Token Encryption** | AES-256-GCM for stored tokens |
-| **Rate Limiting** | Token bucket algorithm for AI endpoints |
-| **HTTPS Only** | Secure cookies in production |
-| **Environment Validation** | Startup checks for required env vars |
-
-### Protected Routes
-All routes except `/`, `/login`, and `/api/auth/*` require authentication.
-
----
-
-## AI Integration
-
-### Smart Router
-The `lib/ai.ts` module provides a unified interface to Gemini models:
-
-```typescript
-// Model Selection
-generateContentWithSmartRouter(prompt, mode)
-// mode: "smart" | "pro" | "flash"
-```
-
-| Mode | Model | Use Case |
-|------|-------|----------|
-| `smart` | gemini-2.0-flash | Balanced speed/quality |
-| `pro` | gemini-2.0-flash | Complex reasoning |
-| `flash` | gemini-2.0-flash | Quick responses |
-
-### AI Features
-
-1. **Chat Oracle**: Contextual conversation with memory of past interactions
-2. **Recommendations**: MBTI-based personal growth suggestions
-3. **Financial Analysis**: AI-powered financial health insights
-4. **Future Visualization**: Multi-scenario life path predictions
-5. **Biography Generation**: Chronological life story from memories
-
----
-
-## Database Schema
-
-### Core Models
-
-```mermaid
-erDiagram
-    User ||--o{ Memory : creates
-    User ||--o{ CompassTodo : has
-    User ||--o{ PersonalityTest : takes
-    User ||--o{ FinancialSnapshot : stores
-    User ||--o{ OracleConversation : initiates
-    User ||--o{ Habit : tracks
-    User ||--|| UserPreferences : configures
-    
-    Memory ||--o{ Person : tags
-    Memory ||--o{ MemoryMedia : contains
-    
-    User {
-        string id PK
-        string email UK
-        string name
-        boolean onboardingCompleted
-        json preferences
-    }
-    
-    Memory {
-        string id PK
-        string userId FK
-        string content
-        string type
-        datetime memoryDate
-        string locationName
-        json weather
-    }
-    
-    CompassTodo {
-        string id PK
-        string userId FK
-        string task
-        string category
-        string timeframe
-        string status
-    }
-    
-    OracleConversation {
-        string id PK
-        string userId FK
-        string type
-        json messages
-        string summary
-    }
-```
-
-### Key Relationships
-- **User** → Central entity, all features connect here
-- **Memory** → Core content with people tagging and media
-- **CompassTodo** → Task management with timeframes
-- **OracleConversation** → Persistent chat history
-
----
-
-## Testing
-
-### Framework
-- **Vitest**: Fast unit testing
-- **Testing Library**: React component testing
-- **jsdom**: Browser environment simulation
-
-### Running Tests
-
-```bash
-# Watch mode
-npm test
-
-# Single run
-npm run test:run
-
-# With coverage
-npm run test:coverage
-```
-
-### Test Coverage
-
-| Module | Tests | Coverage |
-|--------|-------|----------|
-| `lib/utils.ts` | 6 | className merging |
-| `lib/finance.ts` | 16 | Projections, scoring |
-
----
-
-## Deployment
-
-### Vercel (Recommended)
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel --prod
-```
-
-### Environment Setup
-1. Add all environment variables in Vercel dashboard
-2. Connect PostgreSQL (Vercel Postgres or external)
-3. Configure Google OAuth redirect URIs
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
-
----
-
-## Environment Variables
-
-### Required
-
-```env
-# Database
-DATABASE_URL="postgresql://..."
-
-# Authentication
-NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="..."
-GOOGLE_CLIENT_SECRET="..."
-
-# AI Services
-GOOGLE_AI_API_KEY="..."
-
-# Encryption
-ENCRYPTION_KEY="32-byte-hex-key"
-```
-
-### Optional
-
-```env
-# ElevenLabs (for audiobooks)
-ELEVENLABS_API_KEY="..."
-
-# Development
-NEXT_PUBLIC_API_URL="http://localhost:3000"
-```
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit changes: `git commit -m 'Add my feature'`
-4. Push to branch: `git push origin feature/my-feature`
-5. Open a Pull Request
-
----
-
-## License
-
-This project is proprietary software. All rights reserved.
+See [docs/API.md](./docs/API.md) for full API documentation.
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system design.
 
 ---
 

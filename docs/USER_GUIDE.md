@@ -1,91 +1,70 @@
-# 2moro User Guide
+# 2moro User Guide: Navigating Your LifeOS
 
-Welcome to **2moro**, your AI-powered companion for a focused, meaningful life. This guide will help you get started and make the most of the platform's features.
-
----
-
-## 🚀 Getting Started
-
-### 1. Initial Setup (Onboarding)
-When you first log in, you will be guided through an onboarding process designed to calibrate the AI to your life.
-- **Personality Assessment**: You'll answer a few questions to determine your MBTI personality type. This helps the Oracle tailor its advice (e.g., offering structured plans for "Judgers" or flexible options for "Perceivers").
-- **Financial Snapshot**: Input your basic financial vitals (optional but recommended). This data is encrypted and used solely for your personal health score.
-- **Goal Setting**: Define 3 primary goals for the next quarter.
-
-### 2. The Dashboard
-Your daily command center.
-- **Top Bar**: Shows your "Life Fuel" (aggregate health score) and current streak.
-- **Morning Brief**: A personalized greeting with a "Thought of the Day" derived from your personality type.
-- **Habit Stack**: Check off your daily non-negotiables.
-- **Activity Log**: See a timeline of your interactions with the system.
+Welcome to **2moro**, your personal **Anti-Regret Engine**. This guide will help you use the platform to close the gap between who you are and who you want to become.
 
 ---
 
-## 🔄 Core User Flows
+## 🚀 The Core Engines
 
-### Flow 1: Starting Your Day (The Morning Ritual)
-*Goal: Gain clarity and set intention.*
+### 1. The Oracle (Your Future Self)
+This isn't a chatbot; consider it a direct line to your future self.
+- **When to use:** When you're stressed, about to make an impulsive purchase, or need a "perspective shift."
+- **How it works:** The Oracle analyzes your long-term goals and personality to give you advice your older self would wish you had followed.
+- **Try saying:** *"I feel like skipping my workout today"* or *"Should I buy this $2000 laptop?"*
 
-1.  **Check the Dashboard**: Review your sleep data (if synced) and today's schedule.
-2.  **Visit Compass**:
-    - Look at "Today's Actions" (automatically prioritized).
-    - Review "Daily Suggestions" (AI-generated prompts based on yesterday's mood).
-3.  **Chat with Oracle**:
-    - *User*: "What should I focus on first today?"
-    - *Oracle*: Analyzes your calendar and energy levels to suggest the highest-leverage task.
+### 2. The Omni-Journal (Your Autobiographer)
+Your life is a story. 2moro writes it for you.
+- **Multi-modal Input:** Just talk, type, or upload a photo. Don't worry about formatting. The system files it chronologically.
+- **Legacy Creation:** At the end of every week/month, check "MyStory" to see your entries turned into a readable chapter of your biography.
+- **Search your past:** *"When was the last time I saw my parents?"* or *"Show me all my memories from Paris."*
 
-### Flow 2: Managing Life (The Compass)
-*Goal: Execute on goals and maintain balance.*
-
-- **Action Plan**: This isn't just a to-do list. Tasks here are linked to your long-term goals.
-- **Financial Wellness**: View your 'Health Score'. If it drops, the AI will suggest specific actions (e.g., "Your savings rate dipped this month; consider pausing subscription X").
-- **Growth Tracker**: Periodic check-ins on your relationships and career satisfaction.
-
-### Flow 3: Deep Reflection (Voice Mode)
-*Goal: Unpack complex thoughts without typing.*
-
-1.  Navigate to **Oracle > Voice Mode**.
-2.  Tap the Orb to speak.
-3.  *User*: "I'm feeling overwhelmed by the project launch."
-4.  *Oracle*: Listens, acknowledges the stress, and guides you through a decompression exercise or helps break the project into smaller steps.
-5.  **Result**: The conversation is summarized and stored in your Diary for future reference.
-
-### Flow 4: Preserving Memories (MyStory)
-*Goal: Build your legacy.*
-
-1.  **Weekly Review**: At the end of the week, 2moro compiles your key moments.
-2.  **Chapter Generation**: The AI drafts a "Chapter" of your life biography based on your diary entries, completed tasks, and photos.
-3.  **Audiobook**: Convert this chapter into audio to listen to your own life story during your commute.
+### 3. The Future Simulator (Your Compass)
+A visualization of your trajectory.
+- ** Reality Check:** See exactly where your current financial and health habits lead in 10 years.
+- ** Visual Aging:** View the AI-generated projection of your future self. It changes based on your current choices (e.g., stress levels, health).
 
 ---
 
-## 🛠 Feature Deep Dive
+## 🔄 Daily Workflows
 
-### The Oracle 🔮
-Think of the Oracle as a wise mentor who knows your entire context.
-- **Context Awareness**: It knows you're saving for a house, so it won't suggest an expensive vacation.
-- **Proactivity**: It might nudge you: "You haven't mentioned your best friend in 2 months. Call them?"
+### The Morning Ritual: "Planting the Tree"
+*Goal: Align today's actions with tomorrow's reality.*
 
-### The Archive (Diary) 📔
-A searchable timeline of your life.
-- **Tags**: Auto-tagging of people, places, and emotions.
-- **Search**: "Show me all times I felt happy in 2024" or "When did I last visit Paris?"
+1.  **Check the Dashboard:** See your "Life Fuel" score. Is your tank full?
+2.  **Consult the Oracle:** Ask *"What is the one thing I can do today that my future self will thank me for?"*
+3.  **Review Atomic Habits:** Check off the small daily actions that compound over time.
 
-### Future Visualization 🔭
-A unique feature that uses generative AI to paint pictures of your potential futures.
-- **Scenario A (Status Quo)**: Where you'll be in 5 years if you change nothing.
-- **Scenario B (Optimized)**: Where you could be if you follow your action plan.
-- **Visuals**: The system generates actual images of "Future You" to make these scenarios visceral and motivating.
+### The Evening Reflection: "Closing the Gap"
+*Goal: Capture the day and learn.*
+
+1.  **Omni-Journal Usage:**
+    - Navigate to **Archive** or just use **Voice Mode**.
+    - Narrate your day. Be honest. The AI doesn't judge; it chronicles.
+2.  **Review Compass:** Did you move the needle on your financial or personal goals?
+
+---
+
+## 🛠 Features Deep Dive
+
+### Financial Projection (Money Time Travel)
+Most apps show you what you *have*. 2moro shows you what you *will have*.
+- **Input:** Connect accounts or manually enter savings/investments.
+- **The Simulation:** Watch the projection curve change as you adjust your monthly savings. See the difference between buying that car now vs. investing the money for 10 years.
+
+### Personality Integration
+Your 2moro experience is tailored to *you*.
+- **MBTI Awareness:** If you're a standard "Perceiver" (P), the system might offer flexible goals. If "Judger" (J), it provides structure.
+- **Optimization:** The system learns. If you consistently ignore morning notifications, it learns to nudge you when you're actually receptive.
 
 ---
 
 ## ❓ FAQ
 
-**Q: Is my data private?**
-A: Yes. All sensitive data (financials, journal entries) is encrypted with AES-256 before storage. We do not sell your data.
+**Q: Is "The Oracle" a real person?**
+A: No, it is a sophisticated AI modeled on your own data and psychological profile. It simulates the wisdom of a mentor.
 
-**Q: Can I use it offline?**
-A: Currently, 2moro requires an internet connection to access the AI features.
+**Q: Why does it generate an image of my older self?**
+A: Psychology shows that we treat our future selves like strangers. Visualizing an aged version of yourself builds empathy and helps you make better long-term decisions *today*.
 
-**Q: How do I reset my data?**
-A: Go to Settings > Data Management > Reset Account. Warning: This is irreversible.
+**Q: Is my autobiography private?**
+A: Yes. Your "LifeOS" data is encrypted. Only you hold the keys to your story.
