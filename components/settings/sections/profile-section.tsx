@@ -156,10 +156,14 @@ export function ProfileSection({ user: initialUser }: ProfileSectionProps) {
                 <button
                     type="button"
                     onClick={resetOnboarding}
-                    className="px-5 py-2.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2"
+                    className="relative overflow-hidden group px-6 py-3 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12" /><path d="M3 3v9h9" /></svg>
-                    Redo Onboarding
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-600 opacity-90 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+                    <div className="relative flex items-center gap-2 text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /></svg>
+                        <span>Redo Onboarding Journey</span>
+                    </div>
                 </button>
             </div>
 

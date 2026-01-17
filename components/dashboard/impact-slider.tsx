@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { updatePreferences } from "@/app/actions/user";
+import { updateUserPreferences } from "@/app/actions/user";
 
 interface ImpactSliderProps {
     initialValue: number;
@@ -18,7 +18,7 @@ export function ImpactSlider({ initialValue, userId }: ImpactSliderProps) {
         const timer = setTimeout(() => {
             if (value !== initialValue) {
                 startTransition(async () => {
-                    await updatePreferences(userId, { impactValue: value });
+                    await updateUserPreferences({ impactValue: value }); // Updated to match new signature (object only, userId handled in action)
                 });
             }
         }, 1000);
