@@ -11,6 +11,7 @@ export async function updateUserPreferences(data: {
     pushNotifications?: boolean;
     weeklyDigest?: boolean;
     locationEnabled?: boolean;
+    impactValue?: number;
 }) {
     const { userId } = await getServerUser();
 

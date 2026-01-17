@@ -247,7 +247,9 @@ model UserPreferences {
   
   // Financial
   monthlyInvestment     Int      @default(100) // In dollars
+
   expectedReturn        Float    @default(0.07) // 7% default
+  impactValue           Int      @default(50)   // 0-100 slider value
   
   // Horoscope
   lastHoroscopeFetch    DateTime?
