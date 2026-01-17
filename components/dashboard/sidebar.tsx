@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
 import {
     Compass, BookOpen, Play, Moon, Sun, Book, Sparkles, LayoutDashboard,
@@ -58,8 +59,13 @@ export function Sidebar({ className }: { className?: string }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showThemeSubmenu, setShowThemeSubmenu] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const { profileImage, user } = useUser();
     const { theme, setTheme } = useTheme();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const toggleSidebar = () => {
         setIsExpanded(!isExpanded);
@@ -199,7 +205,7 @@ export function Sidebar({ className }: { className?: string }) {
             )}
 
             {/* Profile Section with Dropdown */}
-            <div className="pt-4 border-t border-border relative">
+            <div className="pt-4 border-t border-border relative group/profile">
                 {isExpanded ? (
                     <button
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -238,17 +244,36 @@ export function Sidebar({ className }: { className?: string }) {
                     </Tooltip>
                 )}
 
-                {/* Profile Dropdown Menu */}
-                {showProfileMenu && (
+
+            </div>
+
+            {/* Profile Dropdown Menu (Portaled) */}
+            {mounted && showProfileMenu && createPortal(
+                <>
+                    {/* Overlay - High z-index to capture clicks everywhere */}
+                    <div
+                        className="fixed inset-0 z-[9998] bg-black/5"
+                        onClick={() => {
+                            setShowProfileMenu(false);
+                            setShowThemeSubmenu(false);
+                        }}
+                    />
+
+                    {/* Menu - Fixed positioning based on sidebar state */}
                     <div
                         className={cn(
-                            "absolute bottom-full mb-2 bg-card text-card-foreground border border-border rounded-xl shadow-xl overflow-hidden z-50",
-                            isExpanded ? "left-0 right-0 mx-2" : "left-full ml-2 w-48"
+                            "fixed z-[9999] bottom-[5rem] bg-card text-card-foreground border border-border rounded-xl shadow-xl overflow-hidden",
+                            /* Positioning logic */
+                            isExpanded ? "left-3 w-44" : "left-[4rem] w-52"
                         )}
+                        style={{
+                            // Fallback animation since we aren't using Framer Motion here
+                            animation: "fadeIn 0.1s ease-out"
+                        }}
                     >
                         <div className="p-1">
                             <Link
-                                href="/profile"
+                                href="/settings"
                                 onClick={() => setShowProfileMenu(false)}
                                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-sm transition-colors"
                             >
@@ -265,12 +290,12 @@ export function Sidebar({ className }: { className?: string }) {
                             </Link>
 
                             {/* Theme Submenu */}
-                            <div
-                                className="relative"
-                                onMouseEnter={() => setShowThemeSubmenu(true)}
-                                onMouseLeave={() => setShowThemeSubmenu(false)}
-                            >
+                            <div className="relative">
                                 <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowThemeSubmenu(!showThemeSubmenu);
+                                    }}
                                     className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-muted text-sm transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
@@ -325,22 +350,12 @@ export function Sidebar({ className }: { className?: string }) {
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-sm transition-colors text-red-500"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span>Log out</span>
+                                <span className="flex-1 text-left">Log out</span>
                             </button>
                         </div>
                     </div>
-                )}
-            </div>
-
-            {/* Click outside to close menu */}
-            {showProfileMenu && (
-                <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => {
-                        setShowProfileMenu(false);
-                        setShowThemeSubmenu(false);
-                    }}
-                />
+                </>,
+                document.body
             )}
         </aside>
     );

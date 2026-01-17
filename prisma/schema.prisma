@@ -257,6 +257,11 @@ model UserPreferences {
   personalityRecsGeneratedAt DateTime?
   financialRecsGeneratedAt   DateTime?
   
+  // Notification Settings
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(false)
+  weeklyDigest          Boolean  @default(true)
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

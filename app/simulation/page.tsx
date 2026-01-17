@@ -715,8 +715,8 @@ export default function OraclePage() {
                 createdAt: data.createdAt
             });
 
-            // If photo was uploaded, generate age-progressed images
-            if (uploadedPhoto && data.scenarios) {
+            // Always generate 3 images (Age progression or Scene generation)
+            if (data.scenarios) {
                 setIsGeneratingImages(true);
                 try {
                     const imageResponse = await fetch("/api/oracle/future/image", {
@@ -725,7 +725,7 @@ export default function OraclePage() {
                         body: JSON.stringify({
                             userId: user.id,
                             scenarios: data.scenarios,
-                            originalPhotoBase64: uploadedPhoto
+                            originalPhotoBase64: uploadedPhoto || null
                         })
                     });
 
@@ -1001,7 +1001,7 @@ export default function OraclePage() {
 
                                                     {/* Optional Photo Upload */}
                                                     <div className="mb-6 p-4 rounded-xl bg-slate-800/30 border border-dashed border-slate-700/50">
-                                                        <p className="text-xs text-slate-500 mb-3">📷 Optional: Upload a photo for age progression</p>
+                                                        <p className="text-xs text-slate-500 mb-3">📷 Optional: Update your picture to see your possible future self.</p>
 
                                                         {uploadedPhoto ? (
                                                             <div className="flex items-center gap-4">
@@ -1020,7 +1020,7 @@ export default function OraclePage() {
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-sm text-green-400">✓ Photo attached</p>
-                                                                    <p className="text-xs text-slate-500">AI will generate age-progressed versions</p>
+                                                                    <p className="text-xs text-slate-500">Update your picture to see your possible future self.</p>
                                                                 </div>
                                                             </div>
                                                         ) : (

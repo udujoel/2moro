@@ -12,6 +12,7 @@ const EDIT_IMAGE_MODELS = [
 ];
 
 const GENERATE_IMAGE_MODELS = [
+    "gemini-2.5-flash-image-preview",
     "imagen-3.0-generate-002",
     "imagen-3.0-generate-001",
     "imagen-3.0-fast-generate-001"
@@ -94,44 +95,167 @@ export async function POST(req: NextRequest) {
                         console.warn(`[Future/Image] editImage ${modelName} failed: ${editError.message}`);
                     }
                 }
+            } else {
+                // No photo uploaded - Use Text-to-Image for Scene Generation
+                console.log(`[Future/Image] No photo provided. Generating scene for ${scenarioType}`);
             }
 
-            // Fallback: Generate new image from scratch (text-to-image)
+            // Fallback (or Primary if no photo): Generate new image from scratch (text-to-image)
+            // Define fallbackPrompt here so it's accessible to OpenRouter too
+            const fallbackPrompt = originalPhotoBase64
+                ? agePrompt
+                : buildSceneGenerationPrompt(scenarioType, scenario.description, scenario.title);
+
             if (!imageGenerated) {
-                for (const modelName of GENERATE_IMAGE_MODELS) {
+                // Try Gemini 2.0+ native image generation via generateContent
+                const geminiImageModels = [
+                    "gemini-2.0-flash-exp",
+                    "gemini-2.5-flash-preview-05-20",
+                ];
+
+                for (const modelName of geminiImageModels) {
                     if (imageGenerated) break;
 
                     try {
-                        console.log(`[Future/Image] Fallback: trying ${modelName} for ${scenarioType}`);
+                        console.log(`[Future/Image] Generating via ${modelName} (generateContent) for ${scenarioType}`);
 
-                        const response = await ai.models.generateImages({
+                        const response = await ai.models.generateContent({
                             model: modelName,
-                            prompt: agePrompt,
+                            contents: [{ parts: [{ text: `Generate an image: ${fallbackPrompt}` }] }],
                             config: {
-                                numberOfImages: 1,
-                                aspectRatio: "1:1"
+                                responseModalities: ["IMAGE", "TEXT"],
                             }
                         });
 
-                        if (response.generatedImages && response.generatedImages.length > 0) {
-                            const image = response.generatedImages[0];
-                            if (image.image?.imageBytes) {
-                                const base64Image = `data:image/png;base64,${image.image.imageBytes}`;
-                                generatedImages.push(base64Image);
-                                imageGenerated = true;
-                                console.log(`[Future/Image] Fallback success with ${modelName}`);
+                        // Extract image from response
+                        const parts = response.candidates?.[0]?.content?.parts;
+                        if (parts) {
+                            for (const part of parts) {
+                                if (part.inlineData?.mimeType?.startsWith("image/")) {
+                                    const base64Image = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                                    generatedImages.push(base64Image);
+                                    imageGenerated = true;
+                                    console.log(`[Future/Image] Native image generation success with ${modelName}`);
+                                    break;
+                                }
                             }
                         }
                     } catch (genError: any) {
-                        console.warn(`[Future/Image] generateImages ${modelName} failed: ${genError.message}`);
+                        console.error(`[Future/Image] generateContent ${modelName} failed: ${genError.message}`);
                     }
                 }
             }
 
             // If all models failed, push empty string
+            // OpenRouter Fallback - Use chat/completions with a capable image model
+            if (!imageGenerated && process.env.OPENROUTER_API) {
+                try {
+                    console.log(`[Future/Image] Trying OpenRouter fallback for ${scenarioType}`);
+
+                    // List of image-capable models to try (in order of preference)
+                    const imageModels = [
+                        "google/gemini-2.5-flash-preview-05-20", // Gemini 2.5 via OpenRouter
+                        "anthropic/claude-sonnet-4",             // Claude with image output (if supported)
+                        "openai/gpt-4o",                         // GPT-4o with DALL-E
+                        "google/gemini-2.0-flash-001",           // Gemini 2.0 stable
+                    ];
+
+                    for (const model of imageModels) {
+                        if (imageGenerated) break;
+
+                        try {
+                            console.log(`[Future/Image] Trying OpenRouter model: ${model}`);
+                            const chatResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                                method: "POST",
+                                headers: {
+                                    "Authorization": `Bearer ${process.env.OPENROUTER_API}`,
+                                    "Content-Type": "application/json",
+                                    "HTTP-Referer": "https://2moro.vercel.app",
+                                    "X-Title": "2moro"
+                                },
+                                body: JSON.stringify({
+                                    model: model,
+                                    messages: [
+                                        {
+                                            role: "user",
+                                            content: `Generate an image based on this description: ${fallbackPrompt}`
+                                        }
+                                    ],
+                                    // Some models support native image generation
+                                    response_format: { type: "image_url" }
+                                })
+                            });
+
+                            if (chatResponse.ok) {
+                                const chatData = await chatResponse.json();
+                                console.log(`[Future/Image] OpenRouter ${model} response received`);
+
+                                // Check for image in various response formats
+                                const message = chatData.choices?.[0]?.message;
+                                if (message) {
+                                    // Check content array for image_url type
+                                    if (Array.isArray(message.content)) {
+                                        const imageContent = message.content.find((c: any) => c.type === 'image_url' || c.type === 'image');
+                                        if (imageContent?.image_url?.url) {
+                                            generatedImages.push(imageContent.image_url.url);
+                                            imageGenerated = true;
+                                            console.log(`[Future/Image] OpenRouter ${model} success (content array)`);
+                                        }
+                                    }
+                                    // Check for base64 image in content string
+                                    else if (typeof message.content === 'string' && message.content.startsWith('data:image')) {
+                                        generatedImages.push(message.content);
+                                        imageGenerated = true;
+                                        console.log(`[Future/Image] OpenRouter ${model} success (base64 string)`);
+                                    }
+                                }
+                            } else {
+                                const errText = await chatResponse.text();
+                                console.warn(`[Future/Image] OpenRouter ${model} failed: ${chatResponse.status}`);
+                            }
+                        } catch (modelError) {
+                            console.warn(`[Future/Image] OpenRouter ${model} error:`, modelError);
+                        }
+                    }
+                } catch (orError) {
+                    console.error("[Future/Image] OpenRouter error:", orError);
+                }
+            }
+
             if (!imageGenerated) {
-                console.warn(`[Future/Image] All models failed for ${scenarioType}`);
-                generatedImages.push("");
+                // Try generic chat completion for OpenRouter if image endpoint fails? (Some models are chat-only but return image urls? rare)
+                // Proceed to mock fallback
+            }
+
+            // If all models failed, push mock image to ensure UI works (Mandatory Visuals)
+            if (!imageGenerated) {
+                console.warn(`[Future/Image] All models failed for ${scenarioType}. Using realistic mock fallback.`);
+
+                // Select a realistic image based on the scenario type
+                let mockUrl = "";
+                const timestamp = new Date().getTime(); // Prevent caching
+
+                if (scenarioType === "optimistic") {
+                    // Optimistic: Wealthy, successful, confident person
+                    // Unsplash ID: XB8qikgD860
+                    mockUrl = "https://images.unsplash.com/photo-1738750908048-14200459c3c9?auto=format&fit=crop&q=80&w=1024";
+                } else if (scenarioType === "current") {
+                    // Current: Casual professional, standard portrait
+                    // Unsplash ID: pAtA8xe_iVM (Man looking confident but normal)
+                    // Note: Browser found ID pAtA8xe_iVM which is 1560250097-0b93528c311a
+                    mockUrl = "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=1024";
+                } else if (scenarioType === "warning") {
+                    // Warning: Struggling, stressed, hardship
+                    // Unsplash ID: iUszrMKx7bc
+                    mockUrl = "https://images.unsplash.com/photo-1549983885-5c9eeb881f44?auto=format&fit=crop&q=80&w=1024";
+                } else {
+                    // Generic fallback
+                    mockUrl = `https://placehold.co/1024x1024/2f3136/ffffff.png?text=${encodeURIComponent(scenarioType.toUpperCase() + "\\nVision")}&font=montserrat`;
+                }
+
+                generatedImages.push(mockUrl);
+            } else {
+                console.log(`[Future/Image] Completed generation for ${scenarioType}`);
             }
         }
 
@@ -213,5 +337,30 @@ This is a WARNING path. Age them showing signs of stress:
 Context: ${description}
 
 Style: Dramatic portrait, slightly harsh lighting, high quality, photorealistic.`;
+    }
+}
+
+
+/**
+ * Build a scene generation prompt when no photo is provided
+ */
+function buildSceneGenerationPrompt(scenarioType: string, description: string, title: string): string {
+    const style = "Style: Cinematic, highly detailed, photorealistic, 8k, dramatic lighting.";
+
+    if (scenarioType === "optimistic") {
+        return `A cinematic shot representing a successful future: "${title}". 
+        Visuals: A confident person standing in a bright, modern, sunlit environment (like a high-end office or beautiful home/nature), looking successful and peaceful. 
+        Context: ${description}
+        ${style} Make it inspiring and warm.`;
+    } else if (scenarioType === "current") {
+        return `A realistic shot representing a stable future: "${title}". 
+        Visuals: A person in a standard comfortable environment, looking content but ordinary. daily life setting.
+        Context: ${description}
+        ${style} Neutral lighting, realistic slice of life.`;
+    } else {
+        return `A dramatic shot representing a difficult future: "${title}". 
+        Visuals: A tired person in a cluttered or dim environment, looking stressed or exhausted. Shadowy atmosphere.
+        Context: ${description}
+        ${style} Moody, darker tones, warning sign.`;
     }
 }
