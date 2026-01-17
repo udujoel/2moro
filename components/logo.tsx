@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useTheme } from "@/components/theme-provider";
+import { cn } from "@/lib/utils";
 
 interface LogoProps {
     className?: string;
@@ -8,37 +10,21 @@ interface LogoProps {
 }
 
 export function Logo({ className, size = 20 }: LogoProps) {
+    const { theme } = useTheme();
+    const isDark = theme === "midnight";
+
     return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 80 120"
-            fill="currentColor"
-            width={size}
-            height={size}
-            className={className}
-        >
-            {/* The "2" top part with curved hook */}
-            <path d="M55 0C67 0 78 10 78 22C78 34 70 42 58 50L42 62H42L42 62C50 66 55 74 55 82C55 96 44 108 28 108H20C12 108 5 102 5 92C5 84 12 78 20 78H28C32 78 35 75 35 71C35 67 32 64 28 61L15 52C10 48 8 44 8 38C8 32 10 28 15 24L38 6C40 4 43 2 48 2H48" stroke="currentColor" strokeWidth="6" fill="none" />
-
-            {/* Upper hourglass glass */}
-            <ellipse cx="40" cy="38" rx="18" ry="8" stroke="currentColor" strokeWidth="4" fill="none" />
-
-            {/* Sand in top */}
-            <path d="M32 42C32 40 36 38 40 38C44 38 48 40 48 42C48 44 44 48 40 52C36 48 32 44 32 42Z" fill="currentColor" opacity="0.6" />
-
-            {/* Falling sand */}
-            <circle cx="40" cy="58" r="1.5" />
-            <circle cx="40" cy="64" r="1.5" />
-            <circle cx="40" cy="70" r="1.5" />
-
-            {/* Lower hourglass glass */}
-            <ellipse cx="40" cy="88" rx="18" ry="8" stroke="currentColor" strokeWidth="4" fill="none" />
-
-            {/* Sand pile at bottom */}
-            <path d="M28 88C28 82 34 78 40 78C46 78 52 82 52 88C52 90 46 94 40 94C34 94 28 90 28 88Z" fill="currentColor" opacity="0.8" />
-
-            {/* Base stand */}
-            <path d="M22 105H58" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-        </svg>
+        <div className={cn("relative flex items-center justify-center", className)} style={{ width: size, height: size }}>
+            <Image
+                src="/logo-correct.png"
+                alt="2moro Logo"
+                fill
+                className={cn(
+                    "object-contain transition-all duration-300",
+                    isDark && "invert brightness-0" // Invert black to white for dark mode
+                )}
+                priority
+            />
+        </div>
     );
 }
