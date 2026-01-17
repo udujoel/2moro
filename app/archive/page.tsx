@@ -8,12 +8,12 @@ import { PeopleView } from "@/components/archive/people-view";
 import { Play } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast-context";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { getMemories, getPeople, createMemory } from "@/lib/actions";
 import { useUser } from "@/components/user-provider";
 import { useSearchParams } from "next/navigation";
 
-export default function ArchivePage() {
+function ArchiveContent() {
     const { user } = useUser();
     const { showToast } = useToast();
     const searchParams = useSearchParams();
@@ -277,5 +277,13 @@ export default function ArchivePage() {
                     }} />
             </div>
         </div>
+    );
+}
+
+export default function ArchivePage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+            <ArchiveContent />
+        </Suspense>
     );
 }
