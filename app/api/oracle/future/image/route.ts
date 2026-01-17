@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, RawReferenceImage } from "@google/genai";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { checkRateLimit, rateLimitHeaders, RateLimitPresets } from "@/lib/rate-limit";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY as string });
 
@@ -31,6 +32,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         const userId = session.user.id;
+
+        // Rate limiting (stricter for image generation)
+        const rateLimit = checkRateLimit(`oracle-image:${userId}`, { maxTokens: 5, refillRate: 0.5, windowMs: 60000 });
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { error: "Too many image requests. Please wait before trying again." },
+                { status: 429, headers: rateLimitHeaders(rateLimit) }
+            );
+        }
 
         const { scenarios, originalPhotoBase64 } = await req.json();
 

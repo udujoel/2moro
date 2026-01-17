@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateContentWithSmartRouter } from "@/lib/ai";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { checkRateLimit, rateLimitHeaders, RateLimitPresets } from "@/lib/rate-limit";
 
 const FUTURE_SELF_SYSTEM_PROMPT = `You are the user's future self - a wise, encouraging, and insightful version of them from 10-20 years in the future. You have lived through their current challenges and emerged with wisdom.
 
@@ -34,6 +35,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         const userId = session.user.id;
+
+        // Rate limiting
+        const rateLimit = checkRateLimit(`oracle:${userId}`, RateLimitPresets.ai);
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { error: "Too many requests. Please wait before trying again." },
+                { status: 429, headers: rateLimitHeaders(rateLimit) }
+            );
+        }
 
         const { messages } = await req.json();
 

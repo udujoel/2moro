@@ -42,12 +42,7 @@ export function DashboardHeader({ greeting, message }: DashboardHeaderProps) {
                 <AudioAgent minimal={true} />
             </div>
 
-            {/* Illustration Placeholder - could be an SVG or Image */}
-            <div className="hidden md:block absolute bottom-0 right-32 w-48 h-48 opacity-90 pointer-events-none">
-                {/* Moved drawing to the left a bit to avoid overlap with button if needed, or remove */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/undraw_working.svg" alt="" className="w-full h-full object-contain drop-shadow-lg" onError={(e) => e.currentTarget.style.display = 'none'} />
-            </div>
+            {/* Illustration removed - was causing visual artifacts */}
         </div>
     );
 }

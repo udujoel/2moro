@@ -21,6 +21,20 @@
   /* Soft rounded corners */
 }
 
+[data-theme="daybreak"] {
+  /* Light/Daybreak Theme - Clean white */
+  --background: #ffffff;
+  --foreground: #1f2937;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --card: #f9fafb;
+  --card-foreground: #1f2937;
+  --accent: #8b5cf6;
+  --border: #e5e7eb;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+}
+
 [data-theme="midnight"] {
   /* Midnight / Deep Space variant */
   --background: #020617;
@@ -120,6 +134,7 @@ body {
     transform: scale(1);
     opacity: 0.6;
   }
+
   100% {
     transform: scale(1.8);
     opacity: 0;

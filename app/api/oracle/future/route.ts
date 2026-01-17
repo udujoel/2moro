@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateContentWithFallback } from "@/lib/ai";
 import { auth } from "@/lib/auth";
+import { checkRateLimit, rateLimitHeaders, RateLimitPresets } from "@/lib/rate-limit";
 
 /**
  * POST /api/oracle/future
@@ -15,6 +16,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         const userId = session.user.id;
+
+        // Rate limiting
+        const rateLimit = checkRateLimit(`oracle:${userId}`, RateLimitPresets.ai);
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { error: "Too many requests. Please wait before trying again." },
+                { status: 429, headers: rateLimitHeaders(rateLimit) }
+            );
+        }
 
         const { yearsAhead = 20 } = await req.json();
 
