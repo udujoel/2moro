@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { OracleChat } from "@/components/oracle/oracle-chat";
 import { ThreeOrb } from "@/components/oracle/three-orb";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal, Settings, Download, Upload } from "lucide-react";
+import { Sparkles, Eye, MessageCircle, ChevronRight, Mic, MicOff, Phone, X, SendHorizonal, Settings, Download, Upload, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/user-provider";
 import { GeminiLiveClient, createGeminiLiveClient, getAudioInputDevices, AudioInputDevice } from "@/lib/gemini-live-client";
@@ -114,6 +114,14 @@ export default function OraclePage() {
     const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
     const [isGeneratingImages, setIsGeneratingImages] = useState(false);
     const [scenarioImages, setScenarioImages] = useState<string[]>([]);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+    // Default placeholder images for scenarios
+    const defaultScenarioImages = [
+        '/images/future-scenarios/optimistic.jpg',
+        '/images/future-scenarios/current.jpg',
+        '/images/future-scenarios/warning.jpg'
+    ];
 
     // Auto-scroll to bottom of transcript
     useEffect(() => {
@@ -858,52 +866,61 @@ export default function OraclePage() {
                                                     </div>
 
                                                     {/* Three Age-Progressed Images Gallery */}
-                                                    {(scenarioImages.length > 0 || isGeneratingImages) && (
-                                                        <div className="mt-4 grid grid-cols-3 gap-4">
-                                                            {[0, 1, 2].map((idx) => (
-                                                                <button
-                                                                    key={idx}
-                                                                    onClick={() => setSelectedScenario(idx)}
-                                                                    className={`relative aspect-square rounded-2xl overflow-hidden transition-all ${selectedScenario === idx
-                                                                        ? 'ring-2 ring-offset-2 ring-offset-[#12121a] ' +
-                                                                        (idx === 0 ? 'ring-green-500' : idx === 1 ? 'ring-blue-500' : 'ring-amber-500')
-                                                                        : 'opacity-70 hover:opacity-100'
-                                                                        }`}
-                                                                >
-                                                                    {isGeneratingImages ? (
-                                                                        <div className="w-full h-full bg-slate-700/50 animate-pulse flex items-center justify-center">
-                                                                            <div className="text-center">
-                                                                                <div className="w-6 h-6 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-1" />
-                                                                                <p className="text-[10px] text-slate-500">
-                                                                                    {idx === 0 ? 'Best' : idx === 1 ? 'Current' : 'Warning'}
-                                                                                </p>
+                                                    <div className="mt-4 grid grid-cols-3 gap-4">
+                                                        {[0, 1, 2].map((idx) => {
+                                                            const imageUrl = scenarioImages[idx] || defaultScenarioImages[idx];
+                                                            return (
+                                                                <div key={idx} className="relative">
+                                                                    <button
+                                                                        onClick={() => setSelectedScenario(idx)}
+                                                                        className={`relative aspect-square rounded-2xl overflow-hidden transition-all w-full ${selectedScenario === idx
+                                                                            ? 'ring-2 ring-offset-2 ring-offset-background ' +
+                                                                            (idx === 0 ? 'ring-green-500' : idx === 1 ? 'ring-blue-500' : 'ring-amber-500')
+                                                                            : 'opacity-70 hover:opacity-100'
+                                                                            }`}
+                                                                    >
+                                                                        {isGeneratingImages ? (
+                                                                            <div className="w-full h-full bg-muted animate-pulse flex items-center justify-center">
+                                                                                <div className="text-center">
+                                                                                    <div className="w-6 h-6 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-1" />
+                                                                                    <p className="text-[10px] text-muted-foreground">
+                                                                                        {idx === 0 ? 'Best' : idx === 1 ? 'Current' : 'Warning'}
+                                                                                    </p>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    ) : scenarioImages[idx] ? (
-                                                                        <>
-                                                                            <img
-                                                                                src={scenarioImages[idx]}
-                                                                                alt={`${idx === 0 ? 'Optimistic' : idx === 1 ? 'Current trajectory' : 'Warning'} future`}
-                                                                                className="w-full h-full object-cover"
-                                                                            />
-                                                                            <div className={`absolute bottom-0 left-0 right-0 p-2 text-center text-xs font-medium ${idx === 0 ? 'bg-green-500/80 text-white'
-                                                                                : idx === 1 ? 'bg-blue-500/80 text-white'
-                                                                                    : 'bg-amber-500/80 text-white'
-                                                                                }`}>
-                                                                                {idx === 0 ? '✨ Best Future' : idx === 1 ? '📊 Current Path' : '⚠️ Warning'}
-                                                                            </div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <div className="w-full h-full bg-slate-800/50 flex items-center justify-center">
-                                                                            <p className="text-xs text-slate-500 text-center px-2">
-                                                                                {idx === 0 ? 'Optimistic' : idx === 1 ? 'Current' : 'Warning'}
-                                                                            </p>
-                                                                        </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                <img
+                                                                                    src={imageUrl}
+                                                                                    alt={`${idx === 0 ? 'Optimistic' : idx === 1 ? 'Current trajectory' : 'Warning'} future`}
+                                                                                    className="w-full h-full object-cover"
+                                                                                />
+                                                                                <div className={`absolute bottom-0 left-0 right-0 p-2 text-center text-xs font-medium ${idx === 0 ? 'bg-green-500/80 text-white'
+                                                                                    : idx === 1 ? 'bg-blue-500/80 text-white'
+                                                                                        : 'bg-amber-500/80 text-white'
+                                                                                    }`}>
+                                                                                    {idx === 0 ? '✨ Best Future' : idx === 1 ? '📊 Current Path' : '⚠️ Warning'}
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                    {/* Expand button */}
+                                                                    {!isGeneratingImages && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setLightboxImage(imageUrl);
+                                                                            }}
+                                                                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-all"
+                                                                            title="View larger"
+                                                                        >
+                                                                            <Maximize2 className="w-3 h-3" />
+                                                                        </button>
                                                                     )}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
 
                                                 {/* Selected Scenario Content */}
@@ -913,25 +930,31 @@ export default function OraclePage() {
                                                             {/* Scenario Header */}
                                                             <div className="flex flex-col md:flex-row gap-6">
                                                                 {/* Age-Progressed Image */}
-                                                                <div className="flex-shrink-0">
+                                                                <div className="flex-shrink-0 relative group">
                                                                     {isGeneratingImages ? (
-                                                                        <div className="w-48 h-48 rounded-2xl bg-slate-700/50 animate-pulse flex items-center justify-center">
+                                                                        <div className="w-48 h-48 rounded-2xl bg-muted animate-pulse flex items-center justify-center">
                                                                             <div className="text-center">
                                                                                 <div className="w-8 h-8 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin mx-auto mb-2" />
-                                                                                <p className="text-xs text-slate-500">Generating your future...</p>
+                                                                                <p className="text-xs text-muted-foreground">Generating your future...</p>
                                                                             </div>
                                                                         </div>
-                                                                    ) : scenarioImages[selectedScenario] ? (
-                                                                        <img
-                                                                            src={scenarioImages[selectedScenario]}
-                                                                            alt={`Your ${selectedScenario === 0 ? 'optimistic' : selectedScenario === 1 ? 'current' : 'warning'} future`}
-                                                                            className="w-48 h-48 rounded-2xl object-cover border-2 border-purple-500/30 shadow-lg shadow-purple-500/10"
-                                                                        />
-                                                                    ) : uploadedPhoto ? (
-                                                                        <div className="w-48 h-48 rounded-2xl bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-center">
-                                                                            <p className="text-xs text-slate-500 text-center px-4">Image generation unavailable</p>
-                                                                        </div>
-                                                                    ) : null}
+                                                                    ) : (
+                                                                        <>
+                                                                            <img
+                                                                                src={scenarioImages[selectedScenario] || defaultScenarioImages[selectedScenario]}
+                                                                                alt={`Your ${selectedScenario === 0 ? 'optimistic' : selectedScenario === 1 ? 'current' : 'warning'} future`}
+                                                                                className="w-48 h-48 rounded-2xl object-cover border-2 border-purple-500/30 shadow-lg shadow-purple-500/10 cursor-pointer"
+                                                                                onClick={() => setLightboxImage(scenarioImages[selectedScenario] || defaultScenarioImages[selectedScenario])}
+                                                                            />
+                                                                            <button
+                                                                                onClick={() => setLightboxImage(scenarioImages[selectedScenario] || defaultScenarioImages[selectedScenario])}
+                                                                                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all"
+                                                                                title="View larger"
+                                                                            >
+                                                                                <Maximize2 className="w-4 h-4" />
+                                                                            </button>
+                                                                        </>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* Title and Description */}
@@ -1444,6 +1467,40 @@ export default function OraclePage() {
                     </div>
                 </main>
             </div>
+
+            {/* Lightbox Modal for enlarged image view */}
+            <AnimatePresence>
+                {lightboxImage && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
+                        onClick={() => setLightboxImage(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ type: "spring", bounce: 0.2 }}
+                            className="relative max-w-4xl max-h-[90vh] w-full"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <img
+                                src={lightboxImage}
+                                alt="Enlarged future scenario"
+                                className="w-full h-full object-contain rounded-2xl"
+                            />
+                            <button
+                                onClick={() => setLightboxImage(null)}
+                                className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-all"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
