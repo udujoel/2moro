@@ -173,14 +173,14 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-b from-[#0a0a12] to-[#0f0f1a]">
+        <div className="flex flex-col h-full bg-background">
             {/* Header - Phone Style */}
-            <div className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-xl sticky top-0 z-10">
+            <div className="px-4 py-3 flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                     {onClose && (
                         <button
                             onClick={handleClose}
-                            className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors"
+                            className="p-2 -ml-2 text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <ChevronLeft className="w-6 h-6" />
                         </button>
@@ -189,11 +189,11 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
                         <Sparkles className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="font-semibold text-white">Future Self</h2>
-                        <p className="text-xs text-slate-500">Always here for you</p>
+                        <h2 className="font-semibold text-foreground">Future Self</h2>
+                        <p className="text-xs text-muted-foreground">Always here for you</p>
                     </div>
                 </div>
-                <button className="p-2 text-slate-400 hover:text-white transition-colors">
+                <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
                     <MoreVertical className="w-5 h-5" />
                 </button>
             </div>
@@ -219,9 +219,9 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
                                         <Sparkles className="w-4 h-4 text-white" />
                                     </div>
                                     <div className="flex flex-col gap-2">
-                                        <span className="text-xs text-slate-500">Future Self</span>
-                                        <div className="relative rounded-2xl rounded-tl-md bg-[#1a1a2e] border-l-4 border-cyan-500/50 px-4 py-3">
-                                            <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                        <span className="text-xs text-muted-foreground">Future Self</span>
+                                        <div className="relative rounded-2xl rounded-tl-md bg-muted border-l-4 border-cyan-500/50 px-4 py-3">
+                                            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                                                 {message.content}
                                             </p>
                                         </div>
@@ -229,7 +229,7 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
                                         <div className="flex items-center gap-2 px-1">
                                             <button
                                                 onClick={() => copyMessage(message.content)}
-                                                className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                                                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                                             >
                                                 <Copy className="w-4 h-4" />
                                             </button>
@@ -280,7 +280,7 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
                             <Sparkles className="w-4 h-4 text-white animate-pulse" />
                         </div>
-                        <div className="rounded-2xl rounded-tl-md bg-[#1a1a2e] border-l-4 border-cyan-500/50 px-4 py-3">
+                        <div className="rounded-2xl rounded-tl-md bg-muted border-l-4 border-cyan-500/50 px-4 py-3">
                             <div className="flex gap-1.5">
                                 <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                                 <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -294,11 +294,11 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
             </div>
 
             {/* Input Area - Phone Style */}
-            <div className="px-4 py-3 border-t border-white/5 bg-[#0a0a12]/80 backdrop-blur-xl">
+            <div className="px-4 py-3 border-t border-border bg-background/80 backdrop-blur-xl">
                 <form onSubmit={handleSubmit} className="flex items-center gap-3">
                     <button
                         type="button"
-                        className="p-2.5 rounded-full bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+                        className="p-2.5 rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all"
                     >
                         <Plus className="w-5 h-5" />
                     </button>
@@ -312,7 +312,7 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
                             onKeyDown={handleKeyDown}
                             placeholder="Type your message..."
                             autoFocus
-                            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-full pl-4 pr-12 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+                            className="w-full bg-muted border border-border rounded-full pl-4 pr-12 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                         />
                         {/* Send button inside input */}
                         <button
@@ -332,7 +332,7 @@ export function OracleChat({ onClose, onMicClick }: OracleChatProps) {
                     <button
                         type="button"
                         onClick={onMicClick}
-                        className="p-2.5 rounded-full bg-slate-800/50 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
+                        className="p-2.5 rounded-full bg-muted text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
                     >
                         <Mic className="w-5 h-5" />
                     </button>

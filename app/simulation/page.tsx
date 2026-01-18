@@ -778,16 +778,16 @@ export default function OraclePage() {
     const displayText = currentUserSpeech || lastEntry?.content || "";
 
     return (
-        <div className="flex min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
-            <Sidebar className="hidden md:flex border-r border-white/5" />
+        <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
+            <Sidebar className="hidden md:flex border-r border-border" />
 
             <div className="flex-1 flex flex-col relative">
                 {/* Header */}
-                <header className="h-14 flex items-center justify-between px-6 lg:px-12 border-b border-white/5 bg-[#0a0a0f]/50 backdrop-blur-md sticky top-0 z-30">
+                <header className="h-14 flex items-center justify-between px-6 lg:px-12 border-b border-border bg-background/50 backdrop-blur-md sticky top-0 z-30">
                     <div className="flex items-center gap-2 text-sm">
-                        <Link href="/dashboard" className="text-slate-500 hover:text-white transition-colors">Dashboard</Link>
-                        <span className="text-slate-600">›</span>
-                        <span className="text-white font-medium">Oracle</span>
+                        <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
+                        <span className="text-muted-foreground">›</span>
+                        <span className="text-foreground font-medium">Oracle</span>
                     </div>
                 </header>
 
@@ -815,12 +815,12 @@ export default function OraclePage() {
                                             <p className="text-sm text-slate-500">AI-powered timeline projection</p>
                                         </div>
                                     </div>
-                                    <div className="flex-1 bg-[#12121a] border border-slate-800/40 rounded-3xl overflow-hidden">
+                                    <div className="flex-1 bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
                                         {futureData ? (
                                             // Vision has been generated - show 3 scenarios
                                             <div className="h-full overflow-y-auto">
                                                 {/* Scenario Tabs */}
-                                                <div className="sticky top-0 bg-[#12121a] border-b border-slate-800/40 p-4 z-10">
+                                                <div className="sticky top-0 bg-card border-b border-border p-4 z-10">
                                                     <div className="flex items-center justify-between mb-4">
                                                         <p className="text-xs text-slate-500">
                                                             Last glimpsed: {new Date(futureData.createdAt).toLocaleDateString()}
@@ -849,7 +849,7 @@ export default function OraclePage() {
                                                                     ? idx === 0 ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                                                         : idx === 1 ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                                                                             : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                                                                    : "bg-slate-800/50 text-slate-400 hover:bg-slate-800"
+                                                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                                     }`}
                                                             >
                                                                 {idx === 0 ? "✨ Optimistic" : idx === 1 ? "📊 Current" : "⚠️ Warning"}
@@ -936,40 +936,40 @@ export default function OraclePage() {
 
                                                                 {/* Title and Description */}
                                                                 <div className="flex-1">
-                                                                    <h2 className="text-2xl font-bold mb-2">{futureData.scenarios[selectedScenario].title}</h2>
-                                                                    <p className="text-slate-400">{futureData.scenarios[selectedScenario].description}</p>
+                                                                    <h2 className="text-2xl font-bold mb-2 text-foreground">{futureData.scenarios[selectedScenario].title}</h2>
+                                                                    <p className="text-muted-foreground">{futureData.scenarios[selectedScenario].description}</p>
                                                                 </div>
                                                             </div>
 
                                                             {/* Narrative */}
                                                             <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/5 to-indigo-500/5 border border-purple-500/20">
-                                                                <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                                                <p className="text-foreground leading-relaxed whitespace-pre-wrap">
                                                                     {futureData.scenarios[selectedScenario].narrative}
                                                                 </p>
                                                             </div>
 
                                                             {/* Life Path Breakdowns */}
                                                             <div>
-                                                                <h3 className="text-lg font-semibold mb-4 text-slate-300">Life Path Breakdown</h3>
+                                                                <h3 className="text-lg font-semibold mb-4 text-foreground">Life Path Breakdown</h3>
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                     {futureData.scenarios[selectedScenario].lifePaths?.map((path: any, pathIdx: number) => (
-                                                                        <div key={pathIdx} className="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30">
+                                                                        <div key={pathIdx} className="p-4 rounded-xl bg-muted border border-border">
                                                                             <div className="flex items-center justify-between mb-2">
-                                                                                <span className="text-lg">{path.icon} {path.category}</span>
+                                                                                <span className="text-lg text-foreground">{path.icon} {path.category}</span>
                                                                                 <div className="flex items-center gap-1">
                                                                                     {[...Array(10)].map((_, i) => (
                                                                                         <div
                                                                                             key={i}
                                                                                             className={`w-1.5 h-4 rounded-full ${i < path.score
                                                                                                 ? path.score >= 7 ? "bg-green-400" : path.score >= 5 ? "bg-blue-400" : "bg-amber-400"
-                                                                                                : "bg-slate-700"
+                                                                                                : "bg-muted-foreground/20"
                                                                                                 }`}
                                                                                         />
                                                                                     ))}
                                                                                 </div>
                                                                             </div>
-                                                                            <p className="text-xs text-slate-500 mb-1">Now: {path.current}</p>
-                                                                            <p className="text-sm text-slate-300">{path.projection}</p>
+                                                                            <p className="text-xs text-muted-foreground mb-1">Now: {path.current}</p>
+                                                                            <p className="text-sm text-foreground">{path.projection}</p>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -978,7 +978,7 @@ export default function OraclePage() {
                                                             {/* Wisdom Content */}
                                                             {futureData.wisdomContent && (
                                                                 <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                                                                    <p className="text-sm text-amber-200/80 italic">
+                                                                    <p className="text-sm text-amber-700 dark:text-amber-200/80 italic">
                                                                         💫 {futureData.wisdomContent}
                                                                     </p>
                                                                 </div>
@@ -995,13 +995,13 @@ export default function OraclePage() {
                                                         <Eye className="w-10 h-10 text-purple-400" />
                                                     </div>
                                                     <h2 className="text-3xl font-bold mb-4">Glimpse Your Future</h2>
-                                                    <p className="text-slate-400 text-lg mb-6 leading-relaxed">
+                                                    <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
                                                         Based on your memories, personality, and goals, I'll show you 3 possible futures 20 years from now.
                                                     </p>
 
                                                     {/* Optional Photo Upload */}
-                                                    <div className="mb-6 p-4 rounded-xl bg-slate-800/30 border border-dashed border-slate-700/50">
-                                                        <p className="text-xs text-slate-500 mb-3">📷 Optional: Update your picture to see your possible future self.</p>
+                                                    <div className="mb-6 p-4 rounded-xl bg-muted border border-dashed border-border">
+                                                        <p className="text-xs text-muted-foreground mb-3">📷 Optional: Update your picture to see your possible future self.</p>
 
                                                         {uploadedPhoto ? (
                                                             <div className="flex items-center gap-4">
@@ -1024,7 +1024,7 @@ export default function OraclePage() {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 text-sm hover:bg-slate-700 transition-all">
+                                                            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border text-muted-foreground text-sm hover:bg-muted/80 transition-all">
                                                                 <Upload className="w-4 h-4" />
                                                                 Upload Photo
                                                                 <input
@@ -1094,7 +1094,7 @@ export default function OraclePage() {
                                             {/* Left: Orb Card */}
                                             <button
                                                 onClick={() => setActiveView("voice")}
-                                                className="md:col-span-3 relative rounded-3xl bg-gradient-to-br from-[#12121a] to-[#0f0f18] border border-slate-800/40 overflow-hidden text-left hover:border-cyan-500/30 transition-all group min-h-[320px] md:h-full"
+                                                className="md:col-span-3 relative rounded-3xl bg-card border border-border overflow-hidden text-left hover:border-primary/30 transition-all group min-h-[320px] md:h-full shadow-sm"
                                             >
                                                 {/* Orb */}
                                                 <div className="absolute top-1/2 right-4 sm:right-12 -translate-y-1/2 scale-110">
@@ -1103,7 +1103,7 @@ export default function OraclePage() {
 
                                                 {/* Text */}
                                                 <div className="absolute left-8 md:left-12 top-1/2 -translate-y-1/2 max-w-[200px] md:max-w-[260px] z-10">
-                                                    <h3 className="text-3xl md:text-4xl font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                                                    <h3 className="text-3xl md:text-4xl font-bold leading-tight text-foreground">
                                                         Something on your mind?
                                                     </h3>
                                                     <p className="text-slate-500 mt-6 text-sm font-medium flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
@@ -1116,7 +1116,7 @@ export default function OraclePage() {
                                             <div className="md:col-span-2 flex flex-col gap-6 h-full">
                                                 <button
                                                     onClick={() => setActiveView("chat")}
-                                                    className="flex-1 relative rounded-3xl bg-gradient-to-br from-[#12121a] to-[#0f0f18] border border-slate-800/40 p-8 text-left hover:border-blue-500/30 transition-all group flex flex-col justify-between min-h-[220px] md:min-h-0"
+                                                    className="flex-1 relative rounded-3xl bg-card border border-border p-8 text-left hover:border-primary/30 transition-all group flex flex-col justify-between min-h-[220px] md:min-h-0 shadow-sm"
                                                 >
                                                     <div className="flex items-start justify-between w-full">
                                                         <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500/20 transition-all">
@@ -1134,7 +1134,7 @@ export default function OraclePage() {
 
                                                 <button
                                                     onClick={() => setActiveView("vision")}
-                                                    className="flex-1 relative rounded-3xl bg-gradient-to-br from-[#12121a] to-[#0f0f18] border border-slate-800/40 p-8 text-left hover:border-amber-500/30 transition-all group flex flex-col justify-between"
+                                                    className="flex-1 relative rounded-3xl bg-card border border-border p-8 text-left hover:border-primary/30 transition-all group flex flex-col justify-between shadow-sm"
                                                 >
                                                     <div className="flex items-start justify-between w-full">
                                                         <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:bg-amber-500/20 transition-all">
@@ -1186,18 +1186,18 @@ export default function OraclePage() {
                                                             <Link
                                                                 key={conv.id}
                                                                 href={`/oracle/session/${conv.id}`}
-                                                                className="flex flex-col justify-between p-5 rounded-2xl bg-[#12121a] border border-slate-800/30 hover:bg-[#16161f] transition-all text-left group h-36"
+                                                                className="flex flex-col justify-between p-5 rounded-2xl bg-card border border-border hover:bg-muted transition-all text-left group h-36 shadow-sm"
                                                             >
                                                                 <div className="flex justify-between items-start">
                                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bgClass}`}>
                                                                         <Icon className={`w-5 h-5 ${colorClass}`} />
                                                                     </div>
-                                                                    <span className="text-xs text-slate-600 bg-slate-900/50 px-2 py-1 rounded-full">
+                                                                    <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
                                                                         {formatTimeAgo(conv.createdAt)}
                                                                     </span>
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-sm font-medium line-clamp-2 text-slate-200 group-hover:text-white transition-colors">{conv.summary}</p>
+                                                                    <p className="text-sm font-medium line-clamp-2 text-foreground group-hover:text-primary transition-colors">{conv.summary}</p>
                                                                 </div>
                                                             </Link>
                                                         );
